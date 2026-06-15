@@ -13,6 +13,7 @@ return new class extends Migration
             $table->id();
 
             $table->string('code', 50)->unique();
+
             $table->string('name');
 
             $table->text('description')->nullable();
@@ -20,9 +21,13 @@ return new class extends Migration
             $table->boolean('status')->default(true);
 
             $table->unsignedBigInteger('created_by')->nullable();
+
             $table->unsignedBigInteger('updated_by')->nullable();
 
+            $table->softDeletes();
+
             $table->timestamps();
+
         });
     }
 

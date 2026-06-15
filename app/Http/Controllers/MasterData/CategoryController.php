@@ -1,7 +1,7 @@
 <?php
 
-namespace App\Http\Controllers;
-
+namespace App\Http\Controllers\MasterData;
+use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Http\Requests\CategoryRequest;
 use Inertia\Inertia;

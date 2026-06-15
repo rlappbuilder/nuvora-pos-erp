@@ -4,7 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\MasterData\CategoryController;
+use App\Http\Controllers\MasterData\BrandController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -46,7 +47,16 @@ Route::prefix('master-data')
             '/categories/{category}',
             [CategoryController::class, 'destroy']
         )->name('categories.destroy');
+         });
+/** end route master data  categories*/
+       
+   
+    /** route Master data brand */
+    Route::prefix('master-data')->group(function () {
+        Route::resource(
+    'brands',
+    BrandController::class
+        );
+  });
 
-    });
-/** end route master data */
 require __DIR__.'/auth.php';

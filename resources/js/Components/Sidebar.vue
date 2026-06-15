@@ -188,15 +188,21 @@ const toggleSidebar = () => {
 
                 </Link>
 
-                <Link
+               <Link
 
-                    href="#"
+                    :href="route('brands.index')"
 
-                    class="block rounded-lg p-2 hover:bg-blue-50"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50"
 
                 >
 
-                    Brands
+                    <Package :size="20" />
+
+                    <span v-if="!collapsed">
+
+                        Brands
+
+                    </span>
 
                 </Link>
 
