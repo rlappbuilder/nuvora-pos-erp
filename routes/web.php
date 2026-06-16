@@ -12,7 +12,7 @@ use App\Http\Controllers\MasterData\SizeController;
 use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\BranchController;
 use App\Http\Controllers\MasterData\WarehouseController;
-
+use App\Http\Controllers\MasterData\ProductController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -60,7 +60,18 @@ Route::prefix('master-data')
 
     });
 /** end route master data  categories*/
-       
+       /** route Produk */
+       Route::prefix('master-data')
+    ->group(function () {
+
+        Route::resource(
+            'products',
+            ProductController::class
+        );
+
+    });
+    /** end route prduct */
+
    /** route branches */
    Route::prefix('master-data')->group(function () {
         Route::resource(

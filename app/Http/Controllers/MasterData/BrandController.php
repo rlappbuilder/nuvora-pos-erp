@@ -184,4 +184,11 @@ class BrandController extends Controller
 
             );
     }
+
+    public function products()
+{
+    return $this->hasMany(
+        Product::class
+    );
+}
 }

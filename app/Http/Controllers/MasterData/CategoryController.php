@@ -150,4 +150,10 @@ class CategoryController extends Controller
             'Category deleted successfully.'
         );
 }
+public function products()
+{
+    return $this->hasMany(
+        Product::class
+    );
+}
 }
