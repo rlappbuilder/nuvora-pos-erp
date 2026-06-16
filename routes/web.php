@@ -11,6 +11,9 @@ use App\Http\Controllers\MasterData\ColorController;
 use App\Http\Controllers\MasterData\SizeController;
 use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\BranchController;
+use App\Http\Controllers\MasterData\WarehouseController;
+
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -65,7 +68,15 @@ Route::prefix('master-data')
             BranchController::class
         );
   });
-   
+   /** route warehouse */
+   Route::prefix('master-data')->group(function () {
+
+    Route::resource(
+        'warehouses',
+        WarehouseController::class
+    );
+
+});
     /** route Master data brand */
     Route::prefix('master-data')->group(function () {
         Route::resource(

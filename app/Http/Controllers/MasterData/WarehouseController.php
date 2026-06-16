@@ -4,63 +4,66 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Warehouse;
 use App\Models\Branch;
-use App\Models\Company;
-use App\Http\Requests\BranchRequest;
+use App\Http\Requests\WarehouseRequest;
 use Inertia\Inertia;
 
-class BranchController extends Controller
+class WarehouseController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
    public function index()
 {
-    $branches = Branch::with('company')
+   $warehouses = Warehouse::with(
+    'branch.company'
 
-        ->when(
+    )
 
-            request('search'),
+    ->when(
 
-            function ($query) {
+        request('search'),
 
-                $query->where(
+        function ($query) {
 
-                    'code',
+            $query->where(
 
-                    'like',
+                'code',
 
-                    '%' . request('search') . '%'
+                'like',
 
-                )
+                '%' . request('search') . '%'
 
-                ->orWhere(
+            )
 
-                    'name',
+            ->orWhere(
 
-                    'like',
+                'name',
 
-                    '%' . request('search') . '%'
+                'like',
 
-                );
+                '%' . request('search') . '%'
 
-            }
+            );
 
-        )
+        }
 
-        ->latest()
+    )
 
-        ->paginate(10)
+    ->latest()
 
-        ->withQueryString();
+    ->paginate(10)
+
+    ->withQueryString();
 
     return Inertia::render(
 
-        'MasterData/Branches/Index',
+        'MasterData/Warehouses/Index',
 
         [
 
-            'branches' => $branches,
+            'warehouses' => $warehouses,
 
             'filters' => [
 
@@ -80,11 +83,11 @@ class BranchController extends Controller
 {
     return Inertia::render(
 
-        'MasterData/Branches/Create',
+        'MasterData/Warehouses/Create',
 
         [
 
-            'companies' => Company::where(
+            'branches' => Branch::where(
 
                 'status',
 
@@ -96,35 +99,34 @@ class BranchController extends Controller
 
     );
 }
-
     /**
      * Store a newly created resource in storage.
      */
-   public function store(
-    BranchRequest $request
+    public function store(
+    WarehouseRequest $request
 )
 {
-    $lastBranch = Branch::withTrashed()
+    $lastWarehouse = Warehouse::withTrashed()
 
         ->latest('id')
 
         ->first();
 
-    if (!$lastBranch) {
+    if (!$lastWarehouse) {
 
-        $code = 'BR0001';
+        $code = 'WH0001';
 
     } else {
 
         $lastNumber = (int) substr(
 
-            $lastBranch->code,
+            $lastWarehouse->code,
 
             2
 
         );
 
-        $code = 'BR' .
+        $code = 'WH' .
 
             str_pad(
 
@@ -140,27 +142,23 @@ class BranchController extends Controller
 
     }
 
-    Branch::create([
+    Warehouse::create([
 
-        'company_id' => $request->company_id,
+        'branch_id' => $request->branch_id,
 
         'code' => $code,
 
         'name' => $request->name,
 
-        'manager_name' => $request->manager_name,
+        'warehouse_type' => $request->warehouse_type,
+
+        'pic_name' => $request->pic_name,
 
         'phone' => $request->phone,
 
         'email' => $request->email,
 
         'address' => $request->address,
-
-        'city' => $request->city,
-
-        'province' => $request->province,
-
-        'is_head_office' => $request->is_head_office,
 
         'status' => $request->status,
 
@@ -172,7 +170,7 @@ class BranchController extends Controller
 
         ->route(
 
-            'branches.index'
+            'warehouses.index'
 
         )
 
@@ -180,7 +178,7 @@ class BranchController extends Controller
 
             'success',
 
-            'Branch created successfully.'
+            'Warehouse created successfully.'
 
         );
 }
@@ -189,42 +187,41 @@ class BranchController extends Controller
      * Display the specified resource.
      */
     public function show(
-    Branch $branch
+    Warehouse $warehouse
 )
 {
-    $branch->load(
-        'company'
+    $warehouse->load(
+        'branch'
     );
 
     return Inertia::render(
 
-        'MasterData/Branches/Show',
+        'MasterData/Warehouses/Show',
 
         [
 
-            'branch' => $branch
+            'warehouse' => $warehouse
 
         ]
 
     );
 }
-
     /**
      * Show the form for editing the specified resource.
      */
    public function edit(
-    Branch $branch
+    Warehouse $warehouse
 )
 {
     return Inertia::render(
 
-        'MasterData/Branches/Edit',
+        'MasterData/Warehouses/Edit',
 
         [
 
-            'branch' => $branch,
+            'warehouse' => $warehouse,
 
-            'companies' => Company::where(
+            'branches' => Branch::where(
 
                 'status',
 
@@ -239,30 +236,26 @@ class BranchController extends Controller
     /**
      * Update the specified resource in storage.
      */
-   public function update(
-    BranchRequest $request,
-    Branch $branch
+    public function update(
+    WarehouseRequest $request,
+    Warehouse $warehouse
 )
 {
-    $branch->update([
+    $warehouse->update([
 
-        'company_id' => $request->company_id,
+        'branch_id' => $request->branch_id,
 
         'name' => $request->name,
 
-        'manager_name' => $request->manager_name,
+        'warehouse_type' => $request->warehouse_type,
+
+        'pic_name' => $request->pic_name,
 
         'phone' => $request->phone,
 
         'email' => $request->email,
 
         'address' => $request->address,
-
-        'city' => $request->city,
-
-        'province' => $request->province,
-
-        'is_head_office' => $request->is_head_office,
 
         'status' => $request->status,
 
@@ -274,9 +267,9 @@ class BranchController extends Controller
 
         ->route(
 
-            'branches.show',
+            'warehouses.show',
 
-            $branch->id
+            $warehouse->id
 
         )
 
@@ -284,7 +277,7 @@ class BranchController extends Controller
 
             'success',
 
-            'Branch updated successfully.'
+            'Warehouse updated successfully.'
 
         );
 }
@@ -293,16 +286,16 @@ class BranchController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(
-    Branch $branch
+    Warehouse $warehouse
 )
 {
-    $branch->delete();
+    $warehouse->delete();
 
     return redirect()
 
         ->route(
 
-            'branches.index'
+            'warehouses.index'
 
         )
 
@@ -310,14 +303,8 @@ class BranchController extends Controller
 
             'success',
 
-            'Branch deleted successfully.'
+            'Warehouse deleted successfully.'
 
         );
-}
-public function company()
-{
-    return $this->belongsTo(
-        Company::class
-    );
 }
 }
