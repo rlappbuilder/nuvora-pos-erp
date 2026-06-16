@@ -206,17 +206,17 @@ const toggleSidebar = () => {
 
                 </Link>
 
-                <Link
+              <Link
+    :href="route('units.index')"
+    class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50"
+>
+    <Ruler :size="20" />
 
-                    href="#"
+    <span v-if="!collapsed">
+        Units
+    </span>
 
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Units
-
-                </Link>
+</Link>
 
                 <Link
 

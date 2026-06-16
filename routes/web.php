@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\MasterData\CategoryController;
 use App\Http\Controllers\MasterData\BrandController;
+use App\Http\Controllers\MasterData\UnitController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -59,4 +60,11 @@ Route::prefix('master-data')
         );
   });
 
+     /** route Master data unit */
+    Route::prefix('master-data')->group(function () {
+        Route::resource(
+    'units',
+    UnitController::class
+);
+  });
 require __DIR__.'/auth.php';
