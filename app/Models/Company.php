@@ -65,4 +65,11 @@ class Company extends Model
 
             ->dontSubmitEmptyLogs();
     }
+
+    public function branches()
+{
+    return $this->hasMany(
+        Branch::class
+    );
+}
 }

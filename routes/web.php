@@ -10,7 +10,7 @@ use App\Http\Controllers\MasterData\UnitController;
 use App\Http\Controllers\MasterData\ColorController;
 use App\Http\Controllers\MasterData\SizeController;
 use App\Http\Controllers\MasterData\CompanyController;
-
+use App\Http\Controllers\MasterData\BranchController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -52,9 +52,19 @@ Route::prefix('master-data')
             '/categories/{category}',
             [CategoryController::class, 'destroy']
         )->name('categories.destroy');
-         });
+
+        
+
+    });
 /** end route master data  categories*/
        
+   /** route branches */
+   Route::prefix('master-data')->group(function () {
+        Route::resource(
+            'branches',
+            BranchController::class
+        );
+  });
    
     /** route Master data brand */
     Route::prefix('master-data')->group(function () {
