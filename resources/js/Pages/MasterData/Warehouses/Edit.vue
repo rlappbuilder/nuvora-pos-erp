@@ -5,36 +5,50 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
 
+    warehouse: Object,
+
     branches: Array
 
 })
 
 const form = useForm({
 
-    branch_id: '',
+    branch_id:
+        props.warehouse.branch_id,
 
-    name: '',
+    name:
+        props.warehouse.name,
 
-    warehouse_type: 'MAIN',
+    warehouse_type:
+        props.warehouse.warehouse_type,
 
-    pic_name: '',
+    pic_name:
+        props.warehouse.pic_name,
 
-    phone: '',
+    phone:
+        props.warehouse.phone,
 
-    email: '',
+    email:
+        props.warehouse.email,
 
-    address: '',
+    address:
+        props.warehouse.address,
 
-    status: true
+    status:
+        props.warehouse.status
 
 })
 
 const submit = () => {
 
-    form.post(
+    form.put(
 
         route(
-            'warehouses.store'
+
+            'warehouses.update',
+
+            props.warehouse.id
+
         )
 
     )
@@ -44,7 +58,7 @@ const submit = () => {
 </script>
 <template>
 
-    <Head title="Create Warehouse" />
+    <Head title="Edit Warehouse" />
 
     <AuthenticatedLayout>
 
@@ -59,13 +73,13 @@ const submit = () => {
                     <h2
                         class="text-3xl font-bold text-gray-800"
                     >
-                        Create Warehouse
+                        Edit Warehouse
                     </h2>
 
                     <p
                         class="mt-1 text-sm text-gray-500"
                     >
-                        Create new company branch.
+                        Edit Warehouse.
                     </p>
 
                 </div>
@@ -336,7 +350,8 @@ const submit = () => {
 
         :href="
             route(
-                'warehouses.index'
+                'warehouses.show',
+                warehouse.id
             )
         "
 
@@ -356,7 +371,7 @@ const submit = () => {
 
     >
 
-        Save Warehouse
+        Update Warehouse
 
     </button>
 

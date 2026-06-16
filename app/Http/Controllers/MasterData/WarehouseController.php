@@ -191,8 +191,8 @@ class WarehouseController extends Controller
 )
 {
     $warehouse->load(
-        'branch'
-    );
+    'branch.company'
+);
 
     return Inertia::render(
 

@@ -10,7 +10,11 @@ class Warehouse extends Model
 {
     use HasFactory;
     use SoftDeletes;
+protected $casts = [
 
+        'status' => 'boolean',
+
+    ];
     protected $fillable = [
 
         'branch_id',
