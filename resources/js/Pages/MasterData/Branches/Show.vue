@@ -1,5 +1,8 @@
 <script setup>
+import BaseToast from '@/Components/UI/BaseToast.vue'
+import { usePage } from '@inertiajs/vue3'
 
+const page = usePage()
 import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
@@ -451,7 +454,13 @@ const props = defineProps({
             </div>
 
         </div>
+<BaseToast
 
+    :show="page.props.flash.success"
+
+    :message="page.props.flash.success"
+
+/>
     </AuthenticatedLayout>
 
 </template>
