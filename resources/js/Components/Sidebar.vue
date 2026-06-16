@@ -1,9 +1,4 @@
 <script setup>
-
-import { ref } from 'vue'
-
-import { Link } from '@inertiajs/vue3'
-
 import {
 
     LayoutDashboard,
@@ -30,9 +25,16 @@ import {
 
     ChevronDown,
 
-    FolderOpen
+    FolderOpen,
+    Ruler
 
 } from 'lucide-vue-next'
+
+import { ref } from 'vue'
+
+import { Link } from '@inertiajs/vue3'
+
+
 
 const collapsed = ref(false)
 
@@ -169,128 +171,83 @@ const toggleSidebar = () => {
             </button>
 
             <div
-
-                v-if="masterDataOpen && !collapsed"
-
-                class="ml-6 mb-3 space-y-1"
-
-            >
-
-                <Link
-
-                    :href="route('categories.index')"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Categories
-
-                </Link>
-
-               <Link
-
-                    :href="route('brands.index')"
-
-                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50"
-
-                >
-
-                    <Package :size="20" />
-
-                    <span v-if="!collapsed">
-
-                        Brands
-
-                    </span>
-
-                </Link>
-
-              <Link
-    :href="route('units.index')"
-    class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50"
+    v-if="masterDataOpen && !collapsed"
+    class="ml-6 mb-3 space-y-1"
 >
-    <Ruler :size="20" />
 
-    <span v-if="!collapsed">
-        Units
-    </span>
+    <Link
+        :href="route('categories.index')"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <FolderOpen :size="18" />
+        <span>Categories</span>
+    </Link>
 
-</Link>
+    <Link
+        :href="route('brands.index')"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <Package :size="18" />
+        <span>Brands</span>
+    </Link>
 
-                <Link
+    <Link
+        :href="route('units.index')"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <Ruler :size="18" />
+        <span>Units</span>
+    </Link>
 
-                    href="#"
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <FolderOpen :size="18" />
+        <span>Colors</span>
+    </Link>
 
-                    class="block rounded-lg p-2 hover:bg-blue-50"
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <FolderOpen :size="18" />
+        <span>Sizes</span>
+    </Link>
 
-                >
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <FolderOpen :size="18" />
+        <span>Branches</span>
+    </Link>
 
-                    Colors
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <Warehouse :size="18" />
+        <span>Warehouses</span>
+    </Link>
 
-                </Link>
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <FolderOpen :size="18" />
+        <span>Companies</span>
+    </Link>
 
-                <Link
+    <Link
+        href="#"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <Users :size="18" />
+        <span>Employees</span>
+    </Link>
 
-                    href="#"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Sizes
-
-                </Link>
-
-                <Link
-
-                    href="#"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Branches
-
-                </Link>
-
-                <Link
-
-                    href="#"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Warehouses
-
-                </Link>
-
-                <Link
-
-                    href="#"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Companies
-
-                </Link>
-
-                <Link
-
-                    href="#"
-
-                    class="block rounded-lg p-2 hover:bg-blue-50"
-
-                >
-
-                    Employees
-
-                </Link>
-
-            </div>
+</div>
 
             <!-- Product -->
 
