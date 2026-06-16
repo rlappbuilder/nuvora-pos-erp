@@ -7,6 +7,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\MasterData\CategoryController;
 use App\Http\Controllers\MasterData\BrandController;
 use App\Http\Controllers\MasterData\UnitController;
+use App\Http\Controllers\MasterData\ColorController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -67,4 +69,17 @@ Route::prefix('master-data')
     UnitController::class
 );
   });
+
+  /** route Master data Color */
+Route::prefix('master-data')->group(function () {
+
+    Route::resource(
+
+        'colors',
+
+        \App\Http\Controllers\MasterData\ColorController::class
+
+    );
+
+});
 require __DIR__.'/auth.php';
