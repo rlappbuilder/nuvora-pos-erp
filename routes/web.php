@@ -9,6 +9,8 @@ use App\Http\Controllers\MasterData\BrandController;
 use App\Http\Controllers\MasterData\UnitController;
 use App\Http\Controllers\MasterData\ColorController;
 use App\Http\Controllers\MasterData\SizeController;
+use App\Http\Controllers\MasterData\CompanyController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -91,6 +93,19 @@ Route::prefix('master-data')->group(function () {
         'sizes',
 
         SizeController::class
+
+    );
+
+});
+
+/** Company Master Data */
+Route::prefix('master-data')->group(function () {
+
+    Route::resource(
+
+        'companies',
+
+        CompanyController::class
 
     );
 
