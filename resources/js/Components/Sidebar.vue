@@ -189,7 +189,7 @@ const toggleSidebar = () => {
         <FolderOpen :size="18" />
         <span>Categories</span>
     </Link>
-
+ 
     <Link
         :href="route('brands.index')"
         class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
@@ -205,7 +205,13 @@ const toggleSidebar = () => {
         <Ruler :size="18" />
         <span>Units</span>
     </Link>
-
+   <Link
+        :href="route('products.index')"
+        class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+    >
+        <Package :size="18" />
+        <span>Product</span>
+    </Link>
     <Link
         :href="route('colors.index')"
         class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
@@ -278,23 +284,99 @@ const toggleSidebar = () => {
 
             <!-- Inventory -->
 
-            <Link
+            <button
 
-                href="#"
+                @click="Inventory = !InventoryOpen"
 
-                class="mb-2 flex items-center gap-3 rounded-xl p-3 hover:bg-blue-50"
+                class="mb-2 flex w-full items-center justify-between rounded-xl p-3 hover:bg-blue-50"
 
             >
 
-                <Warehouse :size="20" />
+                <div
 
-                <span v-if="!collapsed">
+                    class="flex items-center gap-3"
 
-                    Inventory
+                >
 
-                </span>
+                    <Database :size="20" />
 
-            </Link>
+                    <span v-if="!collapsed">
+
+                        Inventory
+
+                    </span>
+
+                </div>
+
+                <ChevronDown
+
+                    v-if="!collapsed"
+
+                    :size="18"
+
+                />
+
+            </button>
+
+            <div
+    v-if="Inventory && !collapsed"
+    class="ml-6 mb-3 space-y-1"
+>
+<div class="mb-2">
+
+ 
+
+    <div
+        v-if="!collapsed"
+        class="ml-8 mt-2 space-y-1"
+    >
+
+        <Link
+
+            :href="
+                route(
+                    'opening-stock.create'
+                )
+            "
+
+            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+
+        >
+            Opening Stock
+        </Link>
+
+        <Link
+
+            :href="
+                route(
+                    'stock-balance.index'
+                )
+            "
+
+            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+
+        >
+            Stock Balance
+        </Link>
+
+        <Link
+
+            :href="
+                route(
+                    'stock-card.index'
+                )
+            "
+
+            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+
+        >
+            Stock Card
+        </Link>
+
+    </div>
+
+</div>
+</div>
 
             <!-- Sales -->
 
