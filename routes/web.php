@@ -16,6 +16,7 @@ use App\Http\Controllers\MasterData\ProductController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockBalanceController;
 use App\Http\Controllers\Inventory\StockCardController;
+use App\Http\Controllers\MasterData\SupplierController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -142,6 +143,11 @@ Route::prefix('master-data')->group(function () {
 
         CompanyController::class
 
+    );
+    /** supplier */
+    Route::resource(
+    'suppliers',
+    SupplierController::class
     );
 
 });
