@@ -14,6 +14,9 @@ use App\Http\Controllers\MasterData\BranchController;
 use App\Http\Controllers\MasterData\WarehouseController;
 use App\Http\Controllers\MasterData\ProductController;
 use App\Http\Controllers\Inventory\OpeningStockController;
+use App\Http\Controllers\Inventory\StockBalanceController;
+use App\Http\Controllers\Inventory\StockCardController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -142,6 +145,40 @@ Route::prefix('master-data')->group(function () {
     );
 
 });
+
+/** stock balance stock card */
+Route::prefix(
+    'inventory'
+)->group(function () {
+
+    Route::get(
+
+        'stock-balance',
+
+        [
+            StockBalanceController::class,
+            'index'
+        ]
+
+    )->name(
+        'stock-balance.index'
+    );
+    
+    Route::get(
+
+    'stock-card',
+
+    [
+        StockCardController::class,
+        'index'
+    ]
+
+)->name(
+    'stock-card.index'
+);
+
+});
+/** end stock */
 /** stock movement */
 Route::prefix(
     'inventory'

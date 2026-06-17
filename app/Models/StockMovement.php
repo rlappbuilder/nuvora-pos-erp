@@ -4,7 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use App\Models\Product;
+use App\Models\Warehouse;
 class StockMovement extends Model
 {
     use HasFactory;
@@ -12,6 +13,7 @@ class StockMovement extends Model
     protected $fillable = [
 
         'product_id',
+
         'warehouse_id',
 
         'transaction_type',
@@ -27,4 +29,18 @@ class StockMovement extends Model
         'created_by',
 
     ];
+
+    public function product()
+    {
+        return $this->belongsTo(
+            Product::class
+        );
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(
+            Warehouse::class
+        );
+    }
 }
