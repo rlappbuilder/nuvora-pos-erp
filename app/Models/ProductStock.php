@@ -17,6 +17,9 @@ class ProductStock extends Model
 
         'qty',
 
+        'created_by',
+
+        'updated_by',
     ];
 
     public function product()

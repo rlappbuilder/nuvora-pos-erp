@@ -13,7 +13,7 @@ use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\BranchController;
 use App\Http\Controllers\MasterData\WarehouseController;
 use App\Http\Controllers\MasterData\ProductController;
-
+use App\Http\Controllers\Inventory\OpeningStockController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -139,6 +139,38 @@ Route::prefix('master-data')->group(function () {
 
         CompanyController::class
 
+    );
+
+});
+/** stock movement */
+Route::prefix(
+    'inventory'
+)->group(function () {
+
+    Route::get(
+
+        'opening-stock',
+
+        [
+            OpeningStockController::class,
+            'create'
+        ]
+
+    )->name(
+        'opening-stock.create'
+    );
+
+    Route::post(
+
+        'opening-stock',
+
+        [
+            OpeningStockController::class,
+            'store'
+        ]
+
+    )->name(
+        'opening-stock.store'
     );
 
 });
