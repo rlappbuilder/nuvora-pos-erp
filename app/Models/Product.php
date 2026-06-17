@@ -62,4 +62,10 @@ class Product extends Model
             Brand::class
         );
     }
+    public function stocks()
+{
+    return $this->hasMany(
+        ProductStock::class
+    );
+}
 }

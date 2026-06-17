@@ -47,4 +47,10 @@ protected $casts = [
             Branch::class
         );
     }
+    public function stocks()
+{
+    return $this->hasMany(
+        ProductStock::class
+    );
+}
 }
