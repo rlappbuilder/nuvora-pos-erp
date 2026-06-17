@@ -1,28 +1,24 @@
 <script setup>
 
 import { Head, Link } from '@inertiajs/vue3'
-import { usePage } from '@inertiajs/vue3'
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import BaseToast from '@/Components/UI/BaseToast.vue'
-
-const page = usePage()
 
 const props = defineProps({
 
-    product: Object
+    supplier: Object
 
 })
 
 </script>
 
-<template>
+<<template>
 
-    <Head title="Product Detail" />
+    <Head title="Supplier Detail" />
 
     <AuthenticatedLayout>
 
-        <template #header>
+        <div class="space-y-6">
 
             <div
                 class="flex items-center justify-between"
@@ -30,252 +26,217 @@ const props = defineProps({
 
                 <div>
 
-                    <h2
-                        class="text-3xl font-bold text-gray-800"
+                    <h1
+                        class="text-2xl font-bold"
                     >
-                       Product Detail
-                    </h2>
+                        Supplier Detail
+                    </h1>
 
                     <p
-                        class="mt-1 text-sm text-gray-500"
+                        class="text-sm text-gray-500"
                     >
-                       Product information overview.
+                        View supplier information
                     </p>
 
                 </div>
 
-                <div
-    class="flex gap-3"
->
+                <Link
 
-    <Link
-        :href="route('products.index')"
-    >
-        Back
-    </Link>
+                    :href="
+                        route(
+                            'suppliers.index'
+                        )
+                    "
 
-    <Link
-        :href="
-            route(
-                'products.edit',
-                product.id
-            )
-        "
-    >
-        Edit
-    </Link>
+                    class="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-gray-700"
 
-</div>
+                >
+
+                    Back
+
+                </Link>
 
             </div>
-
-        </template>
-
-        <div
-            class="mx-auto max-w-7xl space-y-4"
-        >
-
-            <!-- Header Card -->
-<div
-    class="flex items-center gap-5"
->
-
-    <div
-        class="flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-100 text-4xl"
-    >
-        📦
-    </div>
-
-    <div>
-
-        <div
-            class="mb-2"
-        >
-
-            <span
-                class="rounded-full bg-green-100 px-3 py-1 text-sm text-green-700"
-            >
-                {{ product.product_type }}
-            </span>
-
-        </div>
-
-        <h1
-            class="text-3xl font-bold text-gray-800"
-        >
-            {{ product.name }}
-        </h1>
-
-        <p
-            class="mt-1 text-gray-500"
-        >
-            {{ product.sku }}
-        </p>
-
-    </div>
-
-</div>
-
-           
-
-            <!-- Contact Information -->
-<div class="space-y-6">
-
-    <div class="grid grid-cols-2 gap-6">
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                SKU
-            </div>
-
-            <div class="font-medium">
-                {{ product.sku }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Barcode
-            </div>
-
-            <div class="font-medium">
-                {{ product.barcode || '-' }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Category
-            </div>
-
-            <div class="font-medium">
-                {{ product.category?.name || '-' }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Brand
-            </div>
-
-            <div class="font-medium">
-                {{ product.brand?.name || '-' }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Product Type
-            </div>
-
-            <div class="font-medium">
-                {{ product.product_type }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Unit
-            </div>
-
-            <div class="font-medium">
-                {{ product.unit }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Cost Price
-            </div>
-
-            <div class="font-medium">
-                Rp {{ Number(product.cost_price).toLocaleString() }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Selling Price
-            </div>
-
-            <div class="font-medium">
-                Rp {{ Number(product.selling_price).toLocaleString() }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Minimum Stock
-            </div>
-
-            <div class="font-medium">
-                {{ product.minimum_stock }}
-            </div>
-
-        </div>
-
-        <div>
-
-            <div class="text-sm text-gray-500">
-                Status
-            </div>
-
-            <div class="font-medium">
-                {{ product.status ? 'Active' : 'Inactive' }}
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-            <!-- Address -->
 
             <div
-                class="rounded-3xl bg-white p-8 shadow-sm"
+                class="rounded-2xl bg-white p-6 shadow"
             >
 
-                <h3
-                    class="mb-6 text-lg font-semibold"
+                <div
+                    class="grid gap-6 md:grid-cols-2"
                 >
-                    Description
-                </h3>
 
-                <p
-                    class="text-gray-700"
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Supplier Code
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.supplier_code }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Supplier Name
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.name }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Contact Person
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.contact_person || '-' }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Phone
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.phone || '-' }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Email
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.email || '-' }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            City
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.city || '-' }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Tax Number
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.tax_number || '-' }}
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Payment Term
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{ supplier.payment_term }} Days
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Status
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                            {{
+                                supplier.status
+                                    ? 'Active'
+                                    : 'Inactive'
+                            }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="mt-6"
                 >
-                    {{ product.description || '-' }}
-                </p>
+
+                    <div
+                        class="text-sm text-gray-500"
+                    >
+                        Address
+                    </div>
+
+                    <div
+                        class="mt-1"
+                    >
+                        {{ supplier.address || '-' }}
+                    </div>
+
+                </div>
 
             </div>
 
         </div>
-
-        <BaseToast
-
-            :show="page.props.flash.success"
-
-            :message="page.props.flash.success"
-
-        />
 
     </AuthenticatedLayout>
 

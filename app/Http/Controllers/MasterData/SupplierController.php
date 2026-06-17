@@ -204,4 +204,71 @@ public function show(
 
     );
 }
+public function edit(
+    Supplier $supplier
+)
+{
+    return Inertia::render(
+
+        'MasterData/Suppliers/Edit',
+
+        [
+
+            'supplier' => $supplier
+
+        ]
+
+    );
+}
+public function update(
+
+    Request $request,
+
+    Supplier $supplier
+
+)
+{
+    $validated = $request->validate([
+
+        'name' => 'required',
+
+        'contact_person' => 'nullable',
+
+        'phone' => 'nullable',
+
+        'email' => 'nullable|email',
+
+        'city' => 'nullable',
+
+        'tax_number' => 'nullable',
+
+        'payment_term' => 'nullable|integer',
+
+        'address' => 'nullable',
+
+        'status' => 'boolean',
+
+    ]);
+
+    $validated['updated_by'] =
+        auth()->id();
+
+    $supplier->update(
+        $validated
+    );
+
+    return redirect()
+
+        ->route(
+            'suppliers.index'
+        )
+
+        ->with(
+
+            'success',
+
+            'Supplier updated successfully.'
+
+        );
+}
 }
