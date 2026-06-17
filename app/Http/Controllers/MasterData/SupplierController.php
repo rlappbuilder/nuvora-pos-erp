@@ -188,4 +188,20 @@ public function destroy(
 
         );
 }
+public function show(
+    Supplier $supplier
+)
+{
+    return Inertia::render(
+
+        'MasterData/Suppliers/Show',
+
+        [
+
+            'supplier' => $supplier
+
+        ]
+
+    );
+}
 }
