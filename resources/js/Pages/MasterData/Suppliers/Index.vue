@@ -1,5 +1,11 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3'
+import {
+    Head,
+    Link,
+    router,
+    usePage
+} from '@inertiajs/vue3'
+
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
 
@@ -7,22 +13,26 @@ const page = usePage()
 
 const props = defineProps({
 
-    products: Object
+    suppliers: Object,
+
+    filters: Object,
 
 })
 
-const deleteProduct = (id) => {
+const deleteSupplier = (id) => {
 
     if (
+
         confirm(
-            'Are you sure you want to delete this product ?'
+            'Are you sure you want to delete this supplier?'
         )
+
     ) {
 
         router.delete(
 
             route(
-                'products.destroy',
+                'suppliers.destroy',
                 id
             )
 
@@ -35,352 +45,240 @@ const deleteProduct = (id) => {
 
 <template>
 
-    <Head title="Product Management" />
+    <Head title="Suppliers" />
 
     <AuthenticatedLayout>
 
-        <template #header>
+        <div class="space-y-6">
 
-            <div
-                class="flex items-center justify-between"
-            >
+            <div class="flex items-center justify-between">
 
                 <div>
 
-                    <h2
-                        class="text-3xl font-bold text-gray-800"
+                    <h1
+                        class="text-2xl font-bold text-gray-900"
                     >
-                        Product Management
-                    </h2>
+                        Supplier List
+                    </h1>
 
                     <p
                         class="mt-1 text-sm text-gray-500"
                     >
-                        Manage company products and locations.
+                        Manage supplier master data
                     </p>
 
                 </div>
 
                 <Link
 
-                    :href="route('products.create')"
+                    :href="
+                        route(
+                            'suppliers.create'
+                        )
+                    "
 
-                    class="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
+                    class="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 
                 >
 
-                    + Add products
+                    Create Supplier
 
                 </Link>
 
             </div>
 
-        </template>
-
-        <!-- Empty State -->
-
-        <div
-
-            v-if="products.data.length == 0"
-
-            class="rounded-3xl bg-white p-16 text-center shadow-sm"
-
-        >
-
             <div
-                class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-5xl"
+                class="overflow-hidden rounded-2xl bg-white shadow"
             >
 
-                📦
-            </div>
-
-            <h3
-                class="text-2xl font-bold text-gray-800"
-            >
-
-                No products available
-
-            </h3>
-
-            <p
-                class="mt-2 text-gray-500"
-            >
-
-                Create your first products
-
-            </p>
-
-            <div
-                class="mt-8"
-            >
-
-                <Link
-
-                    :href="route('products.create')"
-
-                    class="rounded-xl bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-
+                <table
+                    class="min-w-full"
                 >
 
-                    + Add products
-
-                </Link>
-
-            </div>
-
-        </div>
-
-        <!-- Company Card -->
-
-        <div
-
-            v-else
-
-            class="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
-
-        >
-
-            <div
-
-                v-for="product in products.data"
-
-                :key="product.id"
-
-                class="overflow-hidden rounded-3xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-
-            >
-
-                <!-- Accent -->
-
-                <div
-                    class="h-2 bg-blue-600"
-                ></div>
-
-                <div
-                    class="p-8"
-                >
-
-                    <!-- Logo -->
-
-                    <div
-                        class="mb-5 flex justify-center"
+                    <thead
+                        class="bg-gray-50"
                     >
 
-                        <div
+                        <tr>
 
-                            class="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl"
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                Code
+                            </th>
 
-                        >
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                Supplier
+                            </th>
 
-                            📦
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                Phone
+                            </th>
 
-                        </div>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                City
+                            </th>
 
-                    </div>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                Status
+                            </th>
 
-                    <!-- Name -->
+                            <th
+                                class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
+                            >
+                                Action
+                            </th>
 
-                    <h3
-                        class="text-center text-2xl font-bold text-gray-800"
+                        </tr>
+
+                    </thead>
+
+                    <tbody
+                        class="divide-y divide-gray-200 bg-white"
                     >
 
-                        {{ product.name }}
+                        <tr
 
-                    </h3>
-
-                    <p
-                        class="mt-2 text-center text-gray-500"
-                    >
-
-                        {{ product.sku }}
-
-                    </p>
-
-                    <div
-                        class="my-6 border-t"
-                     >
-                    </div>
-<div class="space-y-3">
-
-    <div class="flex">
-
-        <div class="w-28 text-gray-500">
-            SKU
-        </div>
-
-        <div>
-            {{ product.sku }}
-        </div>
-
-    </div>
-
-    <div class="flex">
-
-        <div class="w-28 text-gray-500">
-            Category
-        </div>
-
-        <div>
-            {{ product.category?.name || '-' }}
-        </div>
-
-    </div>
-
-    <div class="flex">
-
-        <div class="w-28 text-gray-500">
-            Brand
-        </div>
-
-        <div>
-            {{ product.brand?.name || '-' }}
-        </div>
-
-    </div>
-
-    <div class="flex">
-
-        <div class="w-28 text-gray-500">
-            Unit
-        </div>
-
-        <div>
-            {{ product.unit }}
-        </div>
-
-    </div>
-
-</div>
-<div
-    class="my-6 border-t"
-></div>
-
-<div
-    class="grid grid-cols-2 gap-4 text-center"
->
-
-    <div>
-
-        <div
-            class="text-lg font-bold text-green-600"
-        >
-            Rp
-            {{
-                Number(
-                    product.cost_price
-                ).toLocaleString()
-            }}
-        </div>
-
-        <div
-            class="text-sm text-gray-500"
-        >
-            Cost Price
-        </div>
-
-    </div>
-
-    <div>
-
-        <div
-            class="text-lg font-bold text-blue-600"
-        >
-            Rp
-            {{
-                Number(
-                    product.selling_price
-                ).toLocaleString()
-            }}
-        </div>
-
-        <div
-            class="text-sm text-gray-500"
-        >
-            Selling Price
-        </div>
-
-    </div>
-
-</div>
-
-<div
-    class="my-6 border-t"
-></div>
-
-<div
-    class="my-6 border-t"
-></div>
-                   
-                   
-                   
-
-                    <!-- Action -->
-
-                    <div
-                        class="flex justify-center gap-3"
-                    >
-
-                        <Link
-
-                            :href="route(
-                                'products.show',
-                                product.id
-                            )"
-
-                            class="rounded-xl bg-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-700"
-
-                        >
-
-                            View
-
-                        </Link>
-
-                        <Link
-
-                            :href="route(
-                                'products.edit',
-                              product.id
-                            )"
-
-                            class="rounded-xl bg-amber-500 px-4 py-2 text-sm text-white hover:bg-amber-600"
-
-                        >
-
-                            Edit
-
-                        </Link>
-
-                        <button
-
-                            @click="
-                                deleteproduct(
-                                  product.id
-                                )
+                            v-for="
+                                supplier
+                                in suppliers.data
                             "
 
-                            class="rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
+                            :key="
+                                supplier.id
+                            "
 
                         >
 
-                            Delete
+                            <td
+                                class="px-6 py-4"
+                            >
+                                {{ supplier.supplier_code }}
+                            </td>
 
-                        </button>
+                            <td
+                                class="px-6 py-4"
+                            >
+                                {{ supplier.name }}
+                            </td>
 
-                    </div>
+                            <td
+                                class="px-6 py-4"
+                            >
+                                {{ supplier.phone || '-' }}
+                            </td>
 
-                </div>
+                            <td
+                                class="px-6 py-4"
+                            >
+                                {{ supplier.city || '-' }}
+                            </td>
+
+                            <td
+                                class="px-6 py-4"
+                            >
+
+                                <span
+
+                                    class="rounded-full px-3 py-1 text-xs"
+
+                                    :class="
+                                        supplier.status
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-red-100 text-red-700'
+                                    "
+
+                                >
+
+                                    {{
+                                        supplier.status
+                                        ? 'Active'
+                                        : 'Inactive'
+                                    }}
+
+                                </span>
+
+                            </td>
+
+                                                            <td
+                                    class="px-6 py-4 text-right"
+                                >
+
+                                    <div
+                                        class="flex justify-end gap-2"
+                                    >
+
+                                        <Link
+
+                                            :href="
+                                                route(
+                                                    'suppliers.show',
+                                                    supplier.id
+                                                )
+                                            "
+
+                                            class="rounded-lg bg-slate-600 px-3 py-2 text-sm text-white hover:bg-slate-700"
+
+                                        >
+
+                                            View
+
+                                        </Link>
+
+                                        <Link
+
+                                            :href="
+                                                route(
+                                                    'suppliers.edit',
+                                                    supplier.id
+                                                )
+                                            "
+
+                                            class="rounded-lg bg-amber-500 px-3 py-2 text-sm text-white hover:bg-amber-600"
+
+                                        >
+
+                                            Edit
+
+                                        </Link>
+
+                                        <button
+
+                                            @click="
+                                                deleteSupplier(
+                                                    supplier.id
+                                                )
+                                            "
+
+                                            class="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
+
+                                        >
+
+                                            Delete
+
+                                        </button>
+
+                                    </div>
+
+                                </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
 
             </div>
 
         </div>
-
-        <BaseToast
-
-            :show="page.props.flash.success"
-
-            :message="page.props.flash.success"
-
-        />
 
     </AuthenticatedLayout>
 
