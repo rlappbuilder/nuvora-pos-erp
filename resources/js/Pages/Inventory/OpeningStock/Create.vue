@@ -363,18 +363,15 @@ const submit = () => {
 </div>
 <BaseToast
 
-    v-if="
-        page.props.flash.success
+    :show="
+        !!page.props.flash.success
     "
 
     :message="
         page.props.flash.success
     "
 
-    type="success"
-
-/>
-                   
+/>      
 
     </AuthenticatedLayout>
 
