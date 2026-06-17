@@ -43,10 +43,11 @@ import { Link } from '@inertiajs/vue3'
 
 
 
+
 const collapsed = ref(false)
 
 const masterDataOpen = ref(true)
-
+const inventoryOpen = ref(false)
 const toggleSidebar = () => {
 
     collapsed.value = !collapsed.value
@@ -262,73 +263,34 @@ const toggleSidebar = () => {
 
 </div>
 
-            <!-- Product -->
 
-            <Link
 
-                href="#"
+        <!-- Inventory -->
 
-                class="mb-2 flex items-center gap-3 rounded-xl p-3 hover:bg-blue-50"
-
-            >
-
-                <Package :size="20" />
-
-                <span v-if="!collapsed">
-
-                    Products
-
-                </span>
-
-            </Link>
-
-            <!-- Inventory -->
-
-            <button
-
-                @click="Inventory = !InventoryOpen"
-
-                class="mb-2 flex w-full items-center justify-between rounded-xl p-3 hover:bg-blue-50"
-
-            >
-
-                <div
-
-                    class="flex items-center gap-3"
-
-                >
-
-                    <Database :size="20" />
-
-                    <span v-if="!collapsed">
-
-                        Inventory
-
-                    </span>
-
-                </div>
-
-                <ChevronDown
-
-                    v-if="!collapsed"
-
-                    :size="18"
-
-                />
-
-            </button>
-
-            <div
-    v-if="Inventory && !collapsed"
-    class="ml-6 mb-3 space-y-1"
+<div
+    class="mb-3"
 >
-<div class="mb-2">
-
- 
 
     <div
+        class="flex items-center gap-3 rounded-xl p-3"
+    >
+
+        <Warehouse :size="20" />
+
+        <span v-if="!collapsed">
+
+            Inventory
+
+        </span>
+
+    </div>
+
+    <div
+
         v-if="!collapsed"
-        class="ml-8 mt-2 space-y-1"
+
+        class="ml-6 space-y-1"
+
     >
 
         <Link
@@ -339,10 +301,18 @@ const toggleSidebar = () => {
                 )
             "
 
-            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
 
         >
-            Opening Stock
+
+            <Package :size="18" />
+
+            <span>
+
+                Opening Stock
+
+            </span>
+
         </Link>
 
         <Link
@@ -353,10 +323,18 @@ const toggleSidebar = () => {
                 )
             "
 
-            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
 
         >
-            Stock Balance
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Balance
+
+            </span>
+
         </Link>
 
         <Link
@@ -367,15 +345,22 @@ const toggleSidebar = () => {
                 )
             "
 
-            class="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
 
         >
-            Stock Card
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Card
+
+            </span>
+
         </Link>
 
     </div>
-
-</div>
+    
 </div>
 
             <!-- Sales -->
