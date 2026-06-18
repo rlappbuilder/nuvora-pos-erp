@@ -131,10 +131,11 @@ class SupplierController extends Controller
     ]);
 
    
+$lastSupplier = Supplier::withTrashed()
 
-$lastSupplier = Supplier::latest(
-        'id'
-    )->first();
+    ->latest('id')
+
+    ->first();
 
     $nextNumber = $lastSupplier
         ? $lastSupplier->id + 1

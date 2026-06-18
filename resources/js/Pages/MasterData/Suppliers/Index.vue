@@ -55,33 +55,26 @@ const deleteSupplier = (id) => {
 
                 <div>
 
-                    <h1
-                        class="text-2xl font-bold text-gray-900"
-                    >
-                        Supplier List
-                    </h1>
+                            <h1
+                class="text-4xl font-bold text-slate-900"
+            >
+                Supplier Management
+            </h1>
 
-                    <p
-                        class="mt-1 text-sm text-gray-500"
-                    >
-                        Manage supplier master data
-                    </p>
-<div
-    class="mb-4 flex justify-between"
->
+            <p
+                class="mt-2 text-gray-500"
+            >
+                Manage supplier master data and business partners.
+            </p>
+            <div
+                class="mb-6 flex items-center justify-between"
+            >
 
-    <input
-
-        type="text"
-
-        placeholder="Search Customer..."
-
-        class="w-72 rounded-xl border border-gray-300 px-4 py-2"
-
-    />
-
-</div>
-                </div>
+                <input
+                    type="text"
+                    placeholder="Search Supplier..."
+                    class="w-72 rounded-xl border px-4 py-3"
+                />
 
                 <Link
 
@@ -91,13 +84,18 @@ const deleteSupplier = (id) => {
                         )
                     "
 
-                    class="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white"
 
                 >
 
-                    Create Supplier
+                    + Create Supplier
 
-                </Link>
+    </Link>
+
+</div>
+                </div>
+
+               
 
             </div>
 <!-- statistik-->
@@ -107,17 +105,17 @@ const deleteSupplier = (id) => {
 >
 
     <div
-        class="rounded-2xl bg-white p-5 shadow"
+        class="rounded-2xl bg-white p-6 shadow-sm"
     >
 
         <div
             class="text-sm text-gray-500"
         >
-            Total Customer
+            Total Supplier
         </div>
 
         <div
-            class="mt-2 text-3xl font-bold"
+            class="mt-2 text-4xl font-bold"
         >
             {{ suppliers.total }}
         </div>
@@ -227,7 +225,7 @@ const deleteSupplier = (id) => {
                     <tbody
                         class="divide-y divide-gray-200 bg-white"
                     >
-                    <!-- Customer empty state-->
+                    <!-- Supplier empty state-->
 <tr
     v-if="
         suppliers.data.length === 0

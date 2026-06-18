@@ -101,16 +101,16 @@ public function create()
 
     ]);
 
-   
 
-$lastCustomer = Customer::latest(
-    'id'
-)->first();
 
+$lastCustomer = Customer::withTrashed()
+
+    ->latest('id')
+
+    ->first();
 $nextNumber = $lastCustomer
-    ? $lastCustomer->id + 1
-    : 1;
-
+        ? $lastCustomer->id + 1
+        : 1;
 $validated['customer_code'] =
     'CUS' .
     str_pad(
@@ -163,11 +163,23 @@ $validated['customer_code'] =
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
-    {
-        //
-    }
+    public function edit(
+    Customer $customer
+)
+{
+    return Inertia::render(
 
+        'MasterData/Customers/Edit',
+
+        [
+
+            'customer' => $customer
+
+        ]
+
+    );
+}
+ 
     /**
      * Update the specified resource in storage.
      */

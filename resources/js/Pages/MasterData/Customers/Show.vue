@@ -77,7 +77,7 @@ const props = defineProps({
                         <div
                             class="font-medium"
                         >
-                            {{ customer.supplier_code }}
+                            {{ customer.customer_code }}
                         </div>
 
                     </div>
@@ -190,6 +190,27 @@ const props = defineProps({
                             class="font-medium"
                         >
                             {{ customer.payment_term }} Days
+                        </div>
+
+                    </div>
+                    <div>
+
+                        <div
+                            class="text-sm text-gray-500"
+                        >
+                            Credit Limit
+                        </div>
+
+                        <div
+                            class="font-medium"
+                        >
+                           {{
+                                Number(
+                                    customer.credit_limit
+                                ).toLocaleString(
+                                    'id-ID'
+                                )
+                            }}
                         </div>
 
                     </div>

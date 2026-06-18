@@ -222,7 +222,19 @@ const submit = () => {
                                 />
 
                             </div>
+                             <div>
 
+                                <label class="mb-2 block text-sm font-medium">
+                                    Credit Limit
+                                </label>
+
+                                <input
+                                    v-model="form.credit_limit"
+                                    type="number"
+                                    class="w-full rounded-xl border-gray-300"
+                                />
+
+                            </div>
                         </div>
                 <!-- Status -->
 

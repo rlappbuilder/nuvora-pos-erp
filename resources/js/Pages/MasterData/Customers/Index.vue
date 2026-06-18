@@ -55,51 +55,51 @@ const deleteSupplier = (id) => {
 
                 <div>
 
-                    <h1
-                        class="text-2xl font-bold text-gray-900"
+                   <h1
+                        class="text-4xl font-bold text-slate-900"
                     >
-                        Customer List
+                        Customer Management
                     </h1>
 
                     <p
-                        class="mt-1 text-sm text-gray-500"
+                        class="mt-2 text-gray-500"
                     >
-                        Manage Customer master data
+                        Manage Customer master data and business partners.
                     </p>
-<div
-    class="mb-4 flex justify-between"
->
+            <div
+                class="mb-4 flex justify-between"
+            >
 
-    <input
+                <input
 
-        type="text"
+                    type="text"
 
-        placeholder="Search Customer..."
+                    placeholder="Search Customer..."
 
-        class="w-72 rounded-xl border border-gray-300 px-4 py-2"
+                    class="w-72 rounded-xl border border-gray-300 px-4 py-2"
 
-    />
+                        />
 
-</div>
-                </div>
+                    </div>
+                            </div>
 
-                <Link
+                            <Link
 
-                    :href="
-                        route(
-                            'customers.create'
-                        )
-                    "
+                                :href="
+                                    route(
+                                        'customers.create'
+                                    )
+                                "
 
-                    class="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                                class="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 
-                >
+                            >
 
-                    Create Customer
+                                Create Customer
 
-                </Link>
+                            </Link>
 
-            </div>
+                        </div>
             <!-- Card Empty-->
 <div
     class="mb-6 grid gap-4 md:grid-cols-3"
