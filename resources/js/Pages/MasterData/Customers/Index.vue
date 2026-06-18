@@ -13,7 +13,7 @@ const page = usePage()
 
 const props = defineProps({
 
-    suppliers: Object,
+    customers: Object,
 
     filters: Object,
 
@@ -24,7 +24,7 @@ const deleteSupplier = (id) => {
     if (
 
         confirm(
-            'Are you sure you want to delete this supplier?'
+            'Are you sure you want to delete this customer?'
         )
 
     ) {
@@ -32,7 +32,7 @@ const deleteSupplier = (id) => {
         router.delete(
 
             route(
-                'suppliers.destroy',
+                'customers.destroy',
                 id
             )
 
@@ -45,7 +45,7 @@ const deleteSupplier = (id) => {
 
 <template>
 
-    <Head title="Suppliers" />
+    <Head title="Customers" />
 
     <AuthenticatedLayout>
 
@@ -58,13 +58,13 @@ const deleteSupplier = (id) => {
                     <h1
                         class="text-2xl font-bold text-gray-900"
                     >
-                        Supplier List
+                        Customer List
                     </h1>
 
                     <p
                         class="mt-1 text-sm text-gray-500"
                     >
-                        Manage supplier master data
+                        Manage Customer master data
                     </p>
 <div
     class="mb-4 flex justify-between"
@@ -87,7 +87,7 @@ const deleteSupplier = (id) => {
 
                     :href="
                         route(
-                            'suppliers.create'
+                            'customers.create'
                         )
                     "
 
@@ -95,13 +95,12 @@ const deleteSupplier = (id) => {
 
                 >
 
-                    Create Supplier
+                    Create Customer
 
                 </Link>
 
             </div>
-<!-- statistik-->
-   <!-- Card Empty-->
+            <!-- Card Empty-->
 <div
     class="mb-6 grid gap-4 md:grid-cols-3"
 >
@@ -119,7 +118,7 @@ const deleteSupplier = (id) => {
         <div
             class="mt-2 text-3xl font-bold"
         >
-            {{ suppliers.total }}
+            {{ customers.total }}
         </div>
 
     </div>
@@ -138,7 +137,7 @@ const deleteSupplier = (id) => {
             class="mt-2 text-3xl font-bold text-green-600"
         >
             {{
-                suppliers.data.filter(
+                customers.data.filter(
                     item => item.status
                 ).length
             }}
@@ -160,7 +159,7 @@ const deleteSupplier = (id) => {
             class="mt-2 text-3xl font-bold text-red-600"
         >
             {{
-                suppliers.data.filter(
+                customers.data.filter(
                     item => !item.status
                 ).length
             }}
@@ -169,7 +168,7 @@ const deleteSupplier = (id) => {
     </div>
 
 </div>
- <!-- end statik-->
+            <!-- end card -->
             <div
                 class="overflow-hidden rounded-2xl bg-white shadow"
             >
@@ -193,7 +192,7 @@ const deleteSupplier = (id) => {
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
                             >
-                                Supplier
+                                customer
                             </th>
 
                             <th
@@ -227,10 +226,10 @@ const deleteSupplier = (id) => {
                     <tbody
                         class="divide-y divide-gray-200 bg-white"
                     >
-                    <!-- Customer empty state-->
+<!-- Customer empty state-->
 <tr
     v-if="
-        suppliers.data.length === 0
+        customers.data.length === 0
     "
 >
 
@@ -252,20 +251,20 @@ const deleteSupplier = (id) => {
             <div
                 class="text-lg font-semibold"
             >
-                No Supplier Found
+                No Customer Found
             </div>
 
             <div
                 class="text-gray-500"
             >
-                Create your first Supplier.
+                Create your first customer.
             </div>
 
             <Link
 
                 :href="
                     route(
-                        'suppliers.create'
+                        'customers.create'
                     )
                 "
 
@@ -273,7 +272,7 @@ const deleteSupplier = (id) => {
 
             >
 
-                Create Supplier
+                Create Customer
 
             </Link>
 
@@ -283,16 +282,15 @@ const deleteSupplier = (id) => {
 
 </tr>
 <!-- end customer empty state-->
-
                         <tr
 
                             v-for="
-                                supplier
-                                in suppliers.data
+                                customer
+                                in customers.data
                             "
 
                             :key="
-                                supplier.id
+                                customer.id
                             "
 
                         >
@@ -300,25 +298,25 @@ const deleteSupplier = (id) => {
                             <td
                                 class="px-6 py-4"
                             >
-                                {{ supplier.supplier_code }}
+                                {{ customer.customer_code }}
                             </td>
 
                             <td
                                 class="px-6 py-4"
                             >
-                                {{ supplier.name }}
+                                {{ customer.name }}
                             </td>
 
                             <td
                                 class="px-6 py-4"
                             >
-                                {{ supplier.phone || '-' }}
+                                {{ customer.phone || '-' }}
                             </td>
 
                             <td
                                 class="px-6 py-4"
                             >
-                                {{ supplier.city || '-' }}
+                                {{ customer.city || '-' }}
                             </td>
 
                             <td
@@ -330,7 +328,7 @@ const deleteSupplier = (id) => {
                                     class="rounded-full px-3 py-1 text-xs"
 
                                     :class="
-                                        supplier.status
+                                        customer.status
                                         ? 'bg-green-100 text-green-700'
                                         : 'bg-red-100 text-red-700'
                                     "
@@ -338,7 +336,7 @@ const deleteSupplier = (id) => {
                                 >
 
                                     {{
-                                        supplier.status
+                                        customer.status
                                         ? 'Active'
                                         : 'Inactive'
                                     }}
@@ -359,8 +357,8 @@ const deleteSupplier = (id) => {
 
                                             :href="
                                                 route(
-                                                    'suppliers.show',
-                                                    supplier.id
+                                                    'customers.show',
+                                                    customer.id
                                                 )
                                             "
 
@@ -376,8 +374,8 @@ const deleteSupplier = (id) => {
 
                                             :href="
                                                 route(
-                                                    'suppliers.edit',
-                                                    supplier.id
+                                                    'customers.edit',
+                                                    customer.id
                                                 )
                                             "
 
@@ -393,7 +391,7 @@ const deleteSupplier = (id) => {
 
                                             @click="
                                                 deleteSupplier(
-                                                    supplier.id
+                                                    customer.id
                                                 )
                                             "
 

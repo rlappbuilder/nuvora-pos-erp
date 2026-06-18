@@ -365,7 +365,26 @@ const toggleSidebar = () => {
             </span>
 
         </Link>
+        <Link
 
+            :href="
+                route(
+                    'customers.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Customer
+            </span>
+
+        </Link>
     </div>
     
 </div>
