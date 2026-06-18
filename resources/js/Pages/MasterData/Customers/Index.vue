@@ -48,7 +48,9 @@ const deleteSupplier = (id) => {
     <Head title="Customers" />
 
     <AuthenticatedLayout>
+        
 
+        <!-- batas template -->
         <div class="space-y-6">
 
             <div class="flex items-center justify-between">
@@ -101,7 +103,7 @@ const deleteSupplier = (id) => {
 
                         </div>
             <!-- Card Empty-->
-<div
+        <div
     class="mb-6 grid gap-4 md:grid-cols-3"
 >
 

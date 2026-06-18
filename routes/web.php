@@ -18,7 +18,7 @@ use App\Http\Controllers\Inventory\StockBalanceController;
 use App\Http\Controllers\Inventory\StockCardController;
 use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
-
+use App\Http\Controllers\Purchasing\PurchaseOrderController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -157,6 +157,31 @@ Route::prefix('master-data')->group(function () {
     );
 
 });
+
+/** purchasing */
+/*
+|--------------------------------------------------------------------------
+| Purchasing
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('purchasing')
+
+    ->group(function () {
+
+        Route::resource(
+
+            'purchase-orders',
+
+            PurchaseOrderController::class
+
+        );
+        Route::resource(
+            'purchase-orders',
+            PurchaseOrderController::class
+        );
+
+    });
 /**  customer prefix  */
 
 /** stock balance stock card */
