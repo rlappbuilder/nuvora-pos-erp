@@ -39,6 +39,21 @@ class PurchaseOrder extends Model
         'created_by',
 
         'updated_by',
+        'submitted_at',
+        'submitted_by',
+
+        'approved_at',
+        'approved_by',
+
+        'rejected_at',
+        'rejected_by',
+
+        'rejection_reason',
+
+        'cancelled_at',
+        'cancelled_by',
+
+        'cancel_reason',
 
     ];
 
@@ -72,4 +87,35 @@ class PurchaseOrder extends Model
 
             ->dontSubmitEmptyLogs();
     }
+    public function submittedBy()
+{
+    return $this->belongsTo(
+        User::class,
+        'submitted_by'
+    );
+}
+
+public function approvedBy()
+{
+    return $this->belongsTo(
+        User::class,
+        'approved_by'
+    );
+}
+
+public function rejectedBy()
+{
+    return $this->belongsTo(
+        User::class,
+        'rejected_by'
+    );
+}
+
+public function cancelledBy()
+{
+    return $this->belongsTo(
+        User::class,
+        'cancelled_by'
+    );
+}
 }

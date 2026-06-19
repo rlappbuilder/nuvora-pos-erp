@@ -4,16 +4,96 @@ import {
     Head,
     Link
 } from '@inertiajs/vue3'
-
+import { router } from '@inertiajs/vue3'
 import AuthenticatedLayout
 from '@/Layouts/AuthenticatedLayout.vue'
+
+import { ref } from 'vue'
+
+const showRejectModal =
+    ref(false)
+
+const showCancelModal =
+    ref(false)
+
+const rejectionReason =
+    ref('')
+
+const cancelReason =
+    ref('')
 
 const props = defineProps({
 
     purchaseOrder: Object
 
 })
+const submitReject = () => {
 
+    router.patch(
+
+        route(
+            'purchase-orders.reject',
+            props.purchaseOrder.id
+        ),
+
+        {
+
+            rejection_reason:
+                rejectionReason.value
+
+        },
+
+        {
+
+            onSuccess: () => {
+
+                showRejectModal.value =
+                    false
+
+                rejectionReason.value =
+                    ''
+
+            }
+
+        }
+
+    )
+
+}
+
+const submitCancel = () => {
+
+    router.patch(
+
+        route(
+            'purchase-orders.cancel',
+            props.purchaseOrder.id
+        ),
+
+        {
+
+            cancel_reason:
+                cancelReason.value
+
+        },
+
+        {
+
+            onSuccess: () => {
+
+                showCancelModal.value =
+                    false
+
+                cancelReason.value =
+                    ''
+
+            }
+
+        }
+
+    )
+
+}
 const formatCurrency = (
     value
 ) => {
@@ -130,34 +210,30 @@ const formatCurrency = (
                                 Approve
 
                             </Link>
-                        <!-- v if -->
+                        <!-- tombol reject-->
+                            <button
 
-                            <Link
-
-                            v-if="
-                                    purchaseOrder.status === 'Submitted'
+                                v-if="
+                                    purchaseOrder.status
+                                    === 'Submitted'
                                 "
 
-                                method="patch"
-
-                                as="button"
-
-                                :href="
-                                    route(
-                                        'purchase-orders.reject',
-                                        purchaseOrder.id
-                                    )
+                                @click="
+                                    showRejectModal = true
                                 "
 
-                                class="rounded-lg bg-red-600 px-4 py-2 text-white"
+                                class="
+                                    rounded-lg
+                                    bg-red-600
+                                    px-4 py-2
+                                    text-white
+                                "
 
-                              
-                             
                             >
 
                                 Reject
 
-                            </Link>
+                            </button>
                             <!-- button reopen-->
                            <Link
 
@@ -184,6 +260,55 @@ const formatCurrency = (
                                     Reopen
 
                                 </Link>
+                                <!-- cancell PO -->
+                             <button
+
+                                v-if="
+                                    purchaseOrder.status
+                                    === 'Approved'
+                                "
+
+                                @click="
+                                    showCancelModal = true
+                                "
+
+                                class="
+                                    rounded-lg
+                                    bg-red-600
+                                    px-4 py-2
+                                    text-white
+                                "
+
+                            >
+
+                                Cancel PO
+
+                            </button>
+                                <!-- good receipt button-->
+                                <!-- 
+                                <Link
+
+                                :href="
+                                    route(
+                                        'goods-receipts.create',
+                                        purchaseOrder.id
+                                    )
+                                "
+
+                                class="
+                                    rounded-lg
+                                    bg-green-600
+                                    px-4
+                                    py-2
+                                    text-white
+                                "
+
+                            >
+
+                                Create Goods Receipt
+
+                            </Link>
+                        -->
                         </div>
                     <!-- end approval submit rijeck-->
                 </div>
@@ -271,7 +396,225 @@ const formatCurrency = (
                 </div>
 
             </div>
+           
+                <!-- Workflow History -->
 
+                <div
+                    class="mb-6 rounded-xl bg-white p-6 shadow"
+                >
+
+                    <h3
+                        class="mb-4 text-lg font-bold"
+                    >
+
+                        Workflow History
+
+                    </h3>
+
+                    <div
+                        class="space-y-3"
+                    >
+
+                        <div
+                            v-if="
+                                purchaseOrder.submitted_at
+                            "
+                        >
+
+                            <span
+                                class="font-semibold"
+                            >
+
+                                Submitted
+
+                            </span>
+
+                            <br>
+
+                            By :
+
+                            {{
+
+                               purchaseOrder.submitted_by?.name
+                                ||
+
+                                '-'
+
+                            }}
+
+                            <br>
+
+                            At :
+
+                            {{
+
+                                purchaseOrder
+                                .submitted_at
+
+                            }}
+
+                        </div>
+
+                        <div
+                            v-if="
+                                purchaseOrder.approved_at
+                            "
+                        >
+
+                            <span
+                                class="font-semibold text-green-600"
+                            >
+
+                                Approved
+
+                            </span>
+
+                            <br>
+
+                            By :
+
+                            {{
+
+                                purchaseOrder
+                                .approved_by?.name
+                                ||
+
+                                '-'
+
+                            }}
+
+                            <br>
+
+                            At :
+
+                            {{
+
+                                purchaseOrder
+                                .approved_at
+
+                            }}
+
+                        </div>
+
+                        <div
+                            v-if="
+                                purchaseOrder.rejected_at
+                            "
+                        >
+
+                            <span
+                                class="font-semibold text-red-600"
+                            >
+
+                                Rejected
+
+                            </span>
+
+                            <br>
+
+                            By :
+
+                            {{
+
+                                purchaseOrder
+                                .rejected_by?.name
+                                ||
+
+                                '-'
+
+                            }}
+
+                            <br>
+
+                            At :
+
+                            {{
+
+                                purchaseOrder
+                                .rejected_at
+
+                            }}
+                            <!-- rejected reason-->
+                             <br>
+                                    <div
+                                        v-if="
+                                            purchaseOrder.rejection_reason
+                                        "
+                                    >
+                                     <span
+                                        class="font-semibold text-red-600"
+                                         >
+                                        Reason :
+
+                                        {{
+                                            purchaseOrder.rejection_reason
+                                        }}
+                                    </span>
+                                    </div>
+                             <!-- rejected reason-->
+                        </div>
+                           
+                        <div
+                            v-if="
+                                purchaseOrder.cancelled_at
+                            "
+                        >
+
+                            <span
+                                class="font-semibold text-orange-600"
+                            >
+
+                                Cancelled
+
+                            </span>
+
+                            <br>
+
+                            By :
+
+                            {{
+
+                                purchaseOrder
+                                .cancelled_by?.name
+                                ||
+
+                                '-'
+
+                            }}
+
+                            <br>
+
+                            At :
+
+                            {{
+
+                                purchaseOrder
+                                .cancelled_at
+
+                            }}
+                        <!-- cancell reason-->
+                            <div
+                                v-if="
+                                    purchaseOrder.cancel_reason
+                                "
+                            >
+                            <p class="font-semibold text-orange-600"
+                            >
+                                Reason :
+
+                                {{
+                                    purchaseOrder.cancel_reason
+                                }}
+                            </p>
+                            </div>
+                        <!-- end cancell reason-->
+                        </div>
+
+                    </div>
+
+                </div>
+
+            <!-- end history-->
             <!-- Detail Items -->
 
             <div
@@ -464,7 +807,210 @@ const formatCurrency = (
             </div>
 
         </div>
+<!-- modal reject cancell-->
+<div
 
+    v-if="
+        showRejectModal
+    "
+
+    class="
+        fixed inset-0
+        flex items-center
+        justify-center
+        bg-black/50
+    "
+
+>
+
+    <div
+        class="
+            w-full max-w-md
+            rounded-xl
+            bg-white
+            p-6
+        "
+    >
+
+        <h3
+            class="
+                mb-4
+                text-lg
+                font-bold
+            "
+        >
+
+            Reject Purchase Order
+
+        </h3>
+
+        <textarea
+
+            v-model="
+                rejectionReason
+            "
+
+            rows="4"
+
+            class="
+                w-full rounded-lg border
+            "
+
+            placeholder="
+                Enter rejection reason
+            "
+
+        />
+
+        <div
+            class="
+                mt-4 flex justify-end gap-2
+            "
+        >
+
+            <button
+
+                @click="
+                    showRejectModal = false
+                "
+
+                class="
+                    rounded-lg
+                    border px-4 py-2
+                "
+
+            >
+
+                Close
+
+            </button>
+
+            <button
+
+                @click="
+                    submitReject
+                "
+
+                class="
+                    rounded-lg
+                    bg-red-600
+                    px-4 py-2
+                    text-white
+                "
+
+            >
+
+                Reject
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+<!-- modal cancell-->
+ <div
+
+    v-if="
+        showCancelModal
+    "
+
+    class="
+        fixed inset-0
+        flex items-center
+        justify-center
+        bg-black/50
+    "
+
+>
+
+    <div
+        class="
+            w-full max-w-md
+            rounded-xl
+            bg-white
+            p-6
+        "
+    >
+
+        <h3
+            class="
+                mb-4
+                text-lg
+                font-bold
+            "
+        >
+
+            Cancel Purchase Order
+
+        </h3>
+
+        <textarea
+
+            v-model="
+                cancelReason
+            "
+
+            rows="4"
+
+            class="
+                w-full rounded-lg border
+            "
+
+            placeholder="
+                Enter cancel reason
+            "
+
+        />
+
+        <div
+            class="
+                mt-4 flex justify-end gap-2
+            "
+        >
+
+            <button
+
+                @click="
+                    showCancelModal = false
+                "
+
+                class="
+                    rounded-lg
+                    border px-4 py-2
+                "
+
+            >
+
+                Close
+
+            </button>
+
+            <button
+
+                @click="
+                    submitCancel
+                "
+
+                class="
+                    rounded-lg
+                    bg-red-600
+                    px-4 py-2
+                    text-white
+                "
+
+            >
+
+                Confirm Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
     </AuthenticatedLayout>
 
 </template>

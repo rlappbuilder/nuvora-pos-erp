@@ -206,15 +206,23 @@ public function show(
     PurchaseOrder $purchaseOrder
 )
 {
-    $purchaseOrder->load(
+    $purchaseOrder->load([
 
         'supplier',
 
         'warehouse',
 
-        'details.product'
+        'details.product',
 
-    );
+        'submittedBy',
+
+        'approvedBy',
+
+        'rejectedBy',
+
+        'cancelledBy',
+
+    ]);
 
     return Inertia::render(
 
@@ -222,8 +230,7 @@ public function show(
 
         [
 
-            'purchaseOrder' =>
-                $purchaseOrder
+            'purchaseOrder' => $purchaseOrder
 
         ]
 
@@ -269,7 +276,9 @@ public function submit(
 
     $purchaseOrder->update([
 
-        'status' => 'Submitted'
+        'status' => 'Submitted',
+        'submitted_at' => now(),
+        'submitted_by' => auth()->id(),
 
     ]);
 
@@ -289,13 +298,16 @@ public function approve(
 
     $purchaseOrder->update([
 
-        'status' => 'Approved'
+       'status' => 'Approved',
+        'approved_at' => now(),
+        'approved_by' => auth()->id(),
 
     ]);
 
     return back();
 }
 public function reject(
+    Request $request,
     PurchaseOrder $purchaseOrder
 )
 {
@@ -307,9 +319,23 @@ public function reject(
 
     }
 
+    $request->validate([
+
+        'rejection_reason' =>
+            'required|string|max:500'
+
+    ]);
+
     $purchaseOrder->update([
 
-        'status' => 'Rejected'
+        'status' => 'Rejected',
+
+        'rejection_reason' =>
+            $request->rejection_reason,
+
+        'rejected_at' => now(),
+
+        'rejected_by' => auth()->id(),
 
     ]);
 
@@ -340,5 +366,40 @@ public function reopen(
             'success',
             'Purchase Order reopened.'
         );
+}
+public function cancel(
+    Request $request,
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
+        $purchaseOrder->status !== 'Approved'
+    ) {
+
+        return back();
+
+    }
+
+    $request->validate([
+
+        'cancel_reason' =>
+            'required|string|max:500'
+
+    ]);
+
+    $purchaseOrder->update([
+
+        'status' => 'Cancelled',
+
+        'cancel_reason' =>
+            $request->cancel_reason,
+
+        'cancelled_at' => now(),
+
+        'cancelled_by' => auth()->id(),
+
+    ]);
+
+    return back();
 }
 }
