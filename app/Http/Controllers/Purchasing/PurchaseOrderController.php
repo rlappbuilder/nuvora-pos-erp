@@ -16,21 +16,31 @@ class PurchaseOrderController extends Controller
 {
     
     public function index()
-    {
-        $purchaseOrders = PurchaseOrder::with(
-            'supplier',
-            'warehouse'
-        )
-        ->latest()
-        ->paginate(10);
+{
+    $purchaseOrders = PurchaseOrder::with(
 
-        return Inertia::render(
-            'Purchasing/PurchaseOrders/Index',
-            [
-                'purchaseOrders' => $purchaseOrders
-            ]
-        );
-    }
+        'supplier',
+
+        'warehouse'
+
+    )
+
+    ->latest()
+
+    ->paginate(10);
+
+    return Inertia::render(
+
+        'Purchasing/PurchaseOrders/Index',
+
+        [
+
+            'purchaseOrders' => $purchaseOrders
+
+        ]
+
+    );
+}
 
     public function create()
     {
