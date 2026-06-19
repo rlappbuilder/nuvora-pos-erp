@@ -233,18 +233,26 @@ public function destroy(
     PurchaseOrder $purchaseOrder
 )
 {
+    if (
+        $purchaseOrder->status
+        !== 'Draft'
+    )
+    {
+        return back()
+
+            ->with(
+                'error',
+                'Only draft documents can be deleted.'
+            );
+    }
+
     $purchaseOrder->delete();
 
-    return redirect()
-
-        ->back()
+    return back()
 
         ->with(
-
             'success',
-
             'Purchase Order deleted successfully.'
-
         );
 }
 public function submit(
@@ -306,5 +314,31 @@ public function reject(
     ]);
 
     return back();
+}
+public function reopen(
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
+        $purchaseOrder->status
+        !== 'Rejected'
+    ) {
+
+        return back();
+
+    }
+
+    $purchaseOrder->update([
+
+        'status' => 'Draft'
+
+    ]);
+
+    return back()
+
+        ->with(
+            'success',
+            'Purchase Order reopened.'
+        );
 }
 }

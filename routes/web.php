@@ -195,6 +195,10 @@ Route::prefix('purchasing')
             'purchase-orders/{purchaseOrder}/reject',
             [PurchaseOrderController::class, 'reject']
         )->name('purchase-orders.reject');
+        Route::patch(
+            'purchase-orders/{purchaseOrder}/reopen',
+            [PurchaseOrderController::class, 'reopen']
+        )->name('purchase-orders.reopen');
 
     });
 /**  customer prefix  */

@@ -71,10 +71,12 @@ const formatCurrency = (
                         class="rounded-full bg-yellow-100 px-4 py-2 text-sm font-semibold text-yellow-700"
                     >
 
-                        {{ purchaseOrder.status }}
+                       {{ purchaseOrder.status }}
+                      
 
                     </span>
                     <!-- Approvel Submit Rijec-->
+
                      <div
                             class="mt-4 flex gap-2"
                         >
@@ -128,10 +130,11 @@ const formatCurrency = (
                                 Approve
 
                             </Link>
+                        <!-- v if -->
 
                             <Link
 
-                                v-if="
+                            v-if="
                                     purchaseOrder.status === 'Submitted'
                                 "
 
@@ -148,12 +151,39 @@ const formatCurrency = (
 
                                 class="rounded-lg bg-red-600 px-4 py-2 text-white"
 
+                              
+                             
                             >
 
                                 Reject
 
                             </Link>
+                            <!-- button reopen-->
+                           <Link
 
+                                    v-if="
+                                        purchaseOrder.status
+                                        === 'Rejected'
+                                    "
+
+                                    method="patch"
+
+                                    as="button"
+
+                                    :href="
+                                        route(
+                                            'purchase-orders.reopen',
+                                            purchaseOrder.id
+                                        )
+                                    "
+
+                                 class="rounded-lg bg-blue-600 px-4 py-2 text-white-50"
+
+                                >
+
+                                    Reopen
+
+                                </Link>
                         </div>
                     <!-- end approval submit rijeck-->
                 </div>

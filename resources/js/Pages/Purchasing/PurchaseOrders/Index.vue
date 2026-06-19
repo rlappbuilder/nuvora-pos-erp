@@ -436,31 +436,60 @@ const formatCurrency = (
 
                                     </Link>
 
-                                    <button
-                                        class="rounded-lg bg-amber-500 px-3 py-2 text-white"
-                                    >
-                                        Edit
-                                    </button>
+                                    <!-- edit-->
+                                     <Link
 
-                                   <Link
-
-                                        method="delete"
-
-                                        as="button"
+                                        v-if="
+                                            po.status === 'Draft'
+                                        "
 
                                         :href="
                                             route(
-                                                'purchase-orders.destroy',
+                                                'purchase-orders.edit',
                                                 po.id
                                             )
                                         "
 
+                                        class="
+                                            rounded-lg
+                                            bg-amber-500
+                                            px-3
+                                            py-2
+                                            text-white
+                                        "
+
                                     >
 
-                                    Delete
+                                        Edit
 
                                     </Link>
+                                     <!-- end edit-->
+                              <!-- delete button-->
+                                  <Link
 
+                                            v-if="
+                                                po.status === 'Draft'
+                                            "
+
+                                            method="delete"
+
+                                            as="button"
+
+                                            :href="
+                                                route(
+                                                    'purchase-orders.destroy',
+                                                    po.id
+                                                )
+                                            "
+
+                                            class="rounded-lg bg-red-500 px-3 py-2 text-white"
+
+                                        >
+
+                                            Delete
+
+                                        </Link>
+                                <!-- end delete -->
                                 </div>
 
                             </td>
