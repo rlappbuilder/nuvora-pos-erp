@@ -376,8 +376,9 @@ public function cancel(
         $purchaseOrder->status !== 'Approved'
     ) {
 
-        return back();
-
+       return back(); 
+         
+       
     }
 
     $request->validate([

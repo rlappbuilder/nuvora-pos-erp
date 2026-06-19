@@ -118,4 +118,10 @@ public function cancelledBy()
         'cancelled_by'
     );
 }
+public function goodsReceipts()
+{
+    return $this->hasMany(
+        GoodsReceipt::class
+    );
+}
 }

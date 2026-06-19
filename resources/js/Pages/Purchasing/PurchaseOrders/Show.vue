@@ -285,30 +285,35 @@ const formatCurrency = (
 
                             </button>
                                 <!-- good receipt button-->
-                                <!-- 
+                                            
                                 <Link
 
-                                :href="
-                                    route(
-                                        'goods-receipts.create',
-                                        purchaseOrder.id
-                                    )
-                                "
+                                    v-if="
+                                        purchaseOrder.status
+                                        === 'Approved'
+                                    "
 
-                                class="
-                                    rounded-lg
-                                    bg-green-600
-                                    px-4
-                                    py-2
-                                    text-white
-                                "
+                                    :href="
+                                        route(
+                                            'goods-receipts.create-from-po',
+                                            purchaseOrder.id
+                                        )
+                                    "
 
-                            >
+                                    class="
+                                        rounded-lg
+                                        bg-green-600
+                                        px-4
+                                        py-2
+                                        text-white
+                                    "
 
-                                Create Goods Receipt
+                                >
 
-                            </Link>
-                        -->
+                                    Create Goods Receipt
+
+                                </Link>
+                        
                         </div>
                     <!-- end approval submit rijeck-->
                 </div>

@@ -19,6 +19,8 @@ use App\Http\Controllers\Inventory\StockCardController;
 use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
+use App\Http\Controllers\Purchasing\GoodsReceiptController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -203,10 +205,41 @@ Route::prefix('purchasing')
             'purchase-orders/{purchaseOrder}/cancel',
             [PurchaseOrderController::class, 'cancel']
         )->name('purchase-orders.cancel');
+       
 
     });
-/**  customer prefix  */
+/**  customer goog receipt  */
+Route::prefix('purchasing')
 
+    ->group(function () {
+
+        Route::resource(
+            'purchase-orders',
+            PurchaseOrderController::class
+        );
+
+        Route::resource(
+            'goods-receipts',
+            GoodsReceiptController::class
+        );
+
+        Route::get(
+
+             'purchase-orders/{purchaseOrder}/create-goods-receipt',
+
+            [
+
+                GoodsReceiptController::class,
+
+                'createFromPurchaseOrder'
+
+            ]
+
+            )->name(
+                'goods-receipts.create-from-po'
+            );
+
+    });
 /** stock balance stock card */
 Route::prefix(
     'inventory'
