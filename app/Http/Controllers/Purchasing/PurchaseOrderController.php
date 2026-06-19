@@ -71,33 +71,54 @@ class PurchaseOrderController extends Controller
     }
     public function store(Request $request)
 {
-    $validated = $request->validate([
+ $validated = $request->validate([
 
-        'supplier_id' => 'required',
+    'supplier_id' =>
 
-        'warehouse_id' => 'required',
+        'required',
 
-        'order_date' => 'required|date',
+    'warehouse_id' =>
 
-        'items' => 'required|array|min:1',
+        'required',
 
-    ]);
+    'order_date' =>
 
-    $lastPO = PurchaseOrder::latest('id')
-        ->first();
+        'required|date',
 
-    $nextNumber = $lastPO
-        ? $lastPO->id + 1
-        : 1;
+    'items' =>
 
-    $poNumber =
-        'PO' .
-        str_pad(
-            $nextNumber,
-            5,
-            '0',
-            STR_PAD_LEFT
-        );
+        'required|array|min:1',
+
+]);
+
+$lastPO = PurchaseOrder::withTrashed()
+
+    ->orderBy(
+        'id',
+        'desc'
+    )
+
+    ->first();
+
+$nextNumber = $lastPO
+    ? $lastPO->id + 1
+    : 1;
+
+$poNumber =
+
+    'PO' .
+
+    str_pad(
+
+        $nextNumber,
+
+        5,
+
+        '0',
+
+        STR_PAD_LEFT
+
+    );
 
     $grandTotal = collect(
 
@@ -180,5 +201,110 @@ class PurchaseOrderController extends Controller
             'Purchase Order created successfully.'
 
         );
+}
+public function show(
+    PurchaseOrder $purchaseOrder
+)
+{
+    $purchaseOrder->load(
+
+        'supplier',
+
+        'warehouse',
+
+        'details.product'
+
+    );
+
+    return Inertia::render(
+
+        'Purchasing/PurchaseOrders/Show',
+
+        [
+
+            'purchaseOrder' =>
+                $purchaseOrder
+
+        ]
+
+    );
+}
+public function destroy(
+    PurchaseOrder $purchaseOrder
+)
+{
+    $purchaseOrder->delete();
+
+    return redirect()
+
+        ->back()
+
+        ->with(
+
+            'success',
+
+            'Purchase Order deleted successfully.'
+
+        );
+}
+public function submit(
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
+        $purchaseOrder->status !== 'Draft'
+    ) {
+
+        return back();
+
+    }
+
+    $purchaseOrder->update([
+
+        'status' => 'Submitted'
+
+    ]);
+
+    return back();
+}
+public function approve(
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
+        $purchaseOrder->status !== 'Submitted'
+    ) {
+
+        return back();
+
+    }
+
+    $purchaseOrder->update([
+
+        'status' => 'Approved'
+
+    ]);
+
+    return back();
+}
+public function reject(
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
+        $purchaseOrder->status !== 'Submitted'
+    ) {
+
+        return back();
+
+    }
+
+    $purchaseOrder->update([
+
+        'status' => 'Rejected'
+
+    ]);
+
+    return back();
 }
 }

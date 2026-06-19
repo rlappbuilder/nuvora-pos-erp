@@ -142,7 +142,31 @@ const removeItem = (index) => {
                     </option>
 
                 </select>
+                <!-- select validation-->
+                <div
 
+                    v-if="
+                        form.errors
+                        .supplier_id
+                    "
+
+                    class="
+                        mt-1
+                        text-sm
+                        text-red-500
+                    "
+
+                >
+
+                    {{
+
+                        form.errors
+                        .supplier_id
+
+                    }}
+
+                </div>
+                <!-- end -->
             </div>
 
             <div>
@@ -187,7 +211,31 @@ const removeItem = (index) => {
                     </option>
 
                 </select>
+                <!-- warehouse id-->
+                <div
 
+                    v-if="
+                        form.errors
+                        .warehouse_id
+                    "
+
+                    class="
+                        mt-1
+                        text-sm
+                        text-red-500
+                    "
+
+                >
+
+                    {{
+
+                        form.errors
+                        .warehouse_id
+
+                    }}
+
+                </div>
+                <!-- end warehouse id-->
             </div>
 
             <div>

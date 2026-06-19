@@ -419,11 +419,22 @@ const formatCurrency = (
                                     class="flex justify-center gap-2"
                                 >
 
-                                    <button
+                                  <Link
+
+                                        :href="
+                                            route(
+                                                'purchase-orders.show',
+                                                po.id
+                                            )
+                                        "
+
                                         class="rounded-lg bg-blue-500 px-3 py-2 text-white"
+
                                     >
+
                                         View
-                                    </button>
+
+                                    </Link>
 
                                     <button
                                         class="rounded-lg bg-amber-500 px-3 py-2 text-white"
@@ -431,11 +442,24 @@ const formatCurrency = (
                                         Edit
                                     </button>
 
-                                    <button
-                                        class="rounded-lg bg-red-500 px-3 py-2 text-white"
+                                   <Link
+
+                                        method="delete"
+
+                                        as="button"
+
+                                        :href="
+                                            route(
+                                                'purchase-orders.destroy',
+                                                po.id
+                                            )
+                                        "
+
                                     >
-                                        Delete
-                                    </button>
+
+                                    Delete
+
+                                    </Link>
 
                                 </div>
 

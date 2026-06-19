@@ -181,6 +181,21 @@ Route::prefix('purchasing')
             PurchaseOrderController::class
         );
 
+        Route::patch(
+    'purchase-orders/{purchaseOrder}/submit',
+    [PurchaseOrderController::class, 'submit']
+        )->name('purchase-orders.submit');
+
+        Route::patch(
+            'purchase-orders/{purchaseOrder}/approve',
+            [PurchaseOrderController::class, 'approve']
+        )->name('purchase-orders.approve');
+
+        Route::patch(
+            'purchase-orders/{purchaseOrder}/reject',
+            [PurchaseOrderController::class, 'reject']
+        )->name('purchase-orders.reject');
+
     });
 /**  customer prefix  */
 
