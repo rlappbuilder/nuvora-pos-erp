@@ -4,7 +4,7 @@ import {
     Head,
     Link
 } from '@inertiajs/vue3'
-
+import { computed } from 'vue'
 import AuthenticatedLayout
 from '@/Layouts/AuthenticatedLayout.vue'
 
@@ -27,7 +27,41 @@ const formatCurrency = (
         )
 
 }
+const totalQty = computed(() => {
 
+    return props.goodsReceipt.details.reduce(
+
+        (total,item) =>
+
+            total +
+
+            Number(
+                item.qty_received
+            ),
+
+        0
+
+    )
+
+})
+
+const grandTotal = computed(() => {
+
+    return props.goodsReceipt.details.reduce(
+
+        (total,item) =>
+
+            total +
+
+            Number(
+                item.line_total
+            ),
+
+        0
+
+    )
+
+})
 </script>
 
 <template>
@@ -46,78 +80,172 @@ const formatCurrency = (
 
             <!-- Header -->
 
-            <div
-                class="
-                    mb-6
-                    rounded-xl
-                    bg-white
-                    p-6
-                    shadow
-                "
-            >
-
-                <div
-                    class="
-                        flex
-                        items-center
-                        justify-between
-                    "
-                >
-
-                    <div>
-
-                        <h1
-                            class="
-                                text-2xl
-                                font-bold
-                            "
-                        >
-
-                            {{
-                                goodsReceipt
-                                .grn_number
-                            }}
-
-                        </h1>
-
-                        <p
-                            class="
-                                text-gray-500
-                            "
-                        >
-
-                            Goods Receipt
-
-                        </p>
-
-                    </div>
-
-                    <Link
-
-                        :href="
-                            route(
-                                'goods-receipts.index'
-                            )
-                        "
-
+                            <div
                         class="
-                            rounded-lg
-                            bg-gray-600
-                            px-4
-                            py-2
-                            text-white
+                            mb-6
+                            rounded-xl
+                            bg-white
+                            p-6
+                            shadow
                         "
-
                     >
 
-                        Back
+                        <div
+                            class="
+                                flex
+                                items-center
+                                justify-between
+                            "
+                        >
 
-                    </Link>
+                            <!-- Kiri -->
 
-                </div>
+                            <div>
 
-            </div>
+                                <h1
+                                    class="
+                                        text-2xl
+                                        font-bold
+                                    "
+                                >
 
+                                    {{
+                                        goodsReceipt
+                                        .grn_number
+                                    }}
+
+                                </h1>
+
+                                <p
+                                    class="
+                                        text-gray-500
+                                    "
+                                >
+
+                                    Goods Receipt
+
+                                </p>
+
+                            </div>
+
+                            <!-- Kanan -->
+
+                            <div
+                                class="
+                                    flex
+                                    items-center
+                                    gap-2
+                                "
+                            >
+
+                                <Link
+
+                                    v-if="
+                                        goodsReceipt.status
+                                        === 'Draft'
+                                    "
+
+                                    method="patch"
+
+                                    as="button"
+
+                                    :href="
+                                        route(
+                                            'goods-receipts.post',
+                                            goodsReceipt.id
+                                        )
+                                    "
+
+                                    class="
+                                        rounded-lg
+                                        bg-green-600
+                                        px-4
+                                        py-2
+                                        text-white
+                                    "
+
+                                >
+
+                                    Post
+
+                                </Link>
+
+                                <Link
+
+                                    v-if="
+                                        goodsReceipt.status
+                                        === 'Draft'
+                                    "
+
+                                    method="patch"
+
+                                    as="button"
+
+                                    :href="
+                                        route(
+                                            'goods-receipts.cancel',
+                                            goodsReceipt.id
+                                        )
+                                    "
+
+                                    class="
+                                        rounded-lg
+                                        bg-red-600
+                                        px-4
+                                        py-2
+                                        text-white
+                                    "
+
+                                >
+
+                                    Cancel
+
+                                </Link>
+
+                                <button
+
+                                    class="
+                                        rounded-lg
+                                        bg-slate-600
+                                        px-4
+                                        py-2
+                                        text-white
+                                    "
+
+                                >
+
+                                    Print
+
+                                </button>
+
+                                <Link
+
+                                    :href="
+                                        route(
+                                            'goods-receipts.index'
+                                        )
+                                    "
+
+                                    class="
+                                        rounded-lg
+                                        bg-blue-600
+                                        px-4
+                                        py-2
+                                        text-white
+                                    "
+
+                                >
+
+                                    Back
+
+                                </Link>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+            <!-- end header -->
             <!-- Document Information -->
 
             <div
@@ -434,40 +562,107 @@ const formatCurrency = (
             <!-- Summary -->
 
             <div
-                class="
-                    rounded-xl
-                    bg-white
-                    p-6
-                    shadow
-                "
-            >
+    class="
+        rounded-xl
+        bg-white
+        p-6
+        shadow
+    "
+>
 
-                <h2
-                    class="
-                        mb-4
-                        text-lg
-                        font-semibold
-                    "
-                >
+    <h2
+        class="
+            mb-4
+            text-lg
+            font-semibold
+        "
+    >
 
-                    Summary
+        Summary
 
-                </h2>
+                        </h2>
 
-                <div>
+                        <div
+                            class="
+                                space-y-3
+                            "
+                        >
 
-                    Total Items :
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                "
+                            >
 
-                    {{
-                        goodsReceipt
-                        .details
-                        .length
-                    }}
+                                <span>
+                                    Total Items
+                                </span>
 
-                </div>
+                                <span>
 
-            </div>
+                                    {{
+                                        goodsReceipt
+                                        .details
+                                        .length
+                                    }}
 
+                                </span>
+
+                            </div>
+
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                "
+                            >
+
+                                <span>
+                                    Total Qty
+                                </span>
+
+                                <span>
+
+                                    {{
+                                        totalQty
+                                    }}
+
+                                </span>
+
+                            </div>
+
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                    border-t
+                                    pt-3
+                                    text-lg
+                                    font-bold
+                                "
+                            >
+
+                                <span>
+                                    Grand Total
+                                </span>
+
+                                <span>
+
+                                    {{
+                                        formatCurrency(
+                                            grandTotal
+                                        )
+                                    }}
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+            <!-- end summary card-->
         </div>
 
     </AuthenticatedLayout>

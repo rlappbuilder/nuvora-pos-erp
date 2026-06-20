@@ -252,6 +252,26 @@ Route::prefix('purchasing')
         )->name(
             'goods-receipts.post'
         );
+
+        Route::patch(
+            'goods-receipts/{goodsReceipt}/post',
+            [
+                GoodsReceiptController::class,
+                'post'
+            ]
+        )->name(
+            'goods-receipts.post'
+        );
+
+        Route::patch(
+            'goods-receipts/{goodsReceipt}/cancel',
+            [
+                GoodsReceiptController::class,
+                'cancel'
+            ]
+        )->name(
+            'goods-receipts.cancel'
+        );
     });
 /** stock balance stock card */
 Route::prefix(

@@ -31,6 +31,13 @@ class GoodsReceipt extends Model
         'created_by',
 
         'updated_by',
+        'posted_at',
+        'posted_by',
+
+        'cancelled_at',
+        'cancelled_by',
+
+        'cancel_reason',
 
     ];
 

@@ -150,31 +150,7 @@ class GoodsReceiptController extends Controller
                                     );
                                 }
 
-                public function post(
-                        GoodsReceipt $goodsReceipt
-                    )
-                    {
-                        if (
-                            $goodsReceipt->status
-                            !== 'Draft'
-                        ) {
-
-                            return back();
-
-                        }
-
-                        $goodsReceipt->update([
-
-                            'status' => 'Posted',
-
-                            'posted_at' => now(),
-
-                            'posted_by' => auth()->id(),
-
-                        ]);
-
-                        return back();
-                    }
+           
 
             public function createFromPurchaseOrder(
                 PurchaseOrder $purchaseOrder
@@ -377,5 +353,75 @@ class GoodsReceiptController extends Controller
         ]
 
     );
+}
+public function post(
+    GoodsReceipt $goodsReceipt
+)
+{
+    if (
+        $goodsReceipt->status
+        !== 'Draft'
+    ) {
+
+        return back();
+
+    }
+
+    $goodsReceipt->update([
+
+        'status' => 'Posted',
+
+        'posted_at' => now(),
+
+        'posted_by' => auth()->id(),
+
+    ]);
+
+    return back()
+
+        ->with(
+
+            'success',
+
+            'Goods Receipt posted successfully.'
+
+        );
+}
+public function cancel(
+    GoodsReceipt $goodsReceipt
+)
+{
+    if (
+        $goodsReceipt->status
+        !== 'Draft'
+    ) {
+
+        return back();
+
+    }
+
+    $goodsReceipt->update([
+
+        'status' => 'Cancelled',
+
+        'cancelled_at' => now(),
+
+        'cancelled_by' => auth()->id(),
+
+        'cancel_reason' =>
+
+            'Cancelled by user',
+
+    ]);
+
+    return back()
+
+        ->with(
+
+            'success',
+
+            'Goods Receipt cancelled.'
+
+        );
 }
 }
