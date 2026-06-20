@@ -35,7 +35,19 @@ const formatCurrency = (
 }
 const form = useForm({
 
-    receipt_date: '',
+    purchase_order_id:
+        props.purchaseOrder.id,
+
+    supplier_id:
+        props.purchaseOrder.supplier_id,
+
+    warehouse_id:
+        props.purchaseOrder.warehouse_id,
+
+    receipt_date:
+        new Date()
+            .toISOString()
+            .split('T')[0],
 
     supplier_do_number: '',
 
@@ -48,7 +60,8 @@ const form = useForm({
                 item.product_id,
 
             product_name:
-                item.product.name,
+                item.product_name ??
+                item.product?.name,
 
             qty_po:
                 Number(item.qty),
@@ -109,6 +122,17 @@ computed(() => {
     )
 
 })
+const saveDraft = () => {
+
+    form.post(
+
+        route(
+            'goods-receipts.store'
+        )
+
+    )
+
+}
 </script>
 
 <template>
@@ -194,15 +218,47 @@ computed(() => {
                             <label>
                                 Receipt Date
                             </label>
-
+                            <!-- tanggal receipt-->
                             <input
+                             
 
                                 type="date"
 
-                                class="mt-1 w-full rounded-lg border"
+                                v-model="
+                                    form.receipt_date
+                                "
+
+                                class="
+                                    mt-1 w-full
+                                    rounded-lg border
+                                "
+
+                            >
+                            <!-- end tanggal receipt-->
+                            <!-- meessage Error ketika Tanggal kosong-->
+                             <div
+
+                                v-if="
+                                    form.errors
+                                    .receipt_date
+                                "
+
+                                class="
+                                    mt-1 text-sm
+                                    text-red-500
+                                "
 
                             >
 
+                                {{
+
+                                    form.errors
+                                    .receipt_date
+
+                                }}
+
+                            </div>
+                            <!-- end error message date-->
                         </div>
 
                         <div>
@@ -253,18 +309,46 @@ computed(() => {
                                 Supplier DO Number
                             </label>
 
-                            <input
+                          <input
 
                                 type="text"
 
-                                class="mt-1 w-full rounded-lg border"
+                                v-model="
+                                    form.supplier_do_number
+                                "
 
-                                placeholder="Supplier Delivery Order Number"
-
+                                class="
+                                    mt-1 w-full
+                                    rounded-lg border
+                                "
+                                placeholder="Supplier PO Number"
                             >
 
                         </div>
+                        <!-- Message Supplier DO Number-->
+                         <div
 
+                            v-if="
+                                form.errors
+                                .supplier_do_number
+                            "
+
+                            class="
+                                mt-1 text-sm
+                                text-red-500
+                            "
+
+                        >
+
+                            {{
+
+                                form.errors
+                                .supplier_do_number
+
+                            }}
+
+                        </div>
+                         <!-- end message -->
                     </div>
 
                 </div>
@@ -413,6 +497,9 @@ computed(() => {
                                     </h2>
 
                                     <textarea
+                                    v-model="
+                                            form.remarks
+                                        "
 
                                         rows="4"
 
@@ -581,13 +668,17 @@ computed(() => {
 
                                     <button
 
+                                        @click="
+                                            saveDraft
+                                        "
+
                                         class="
                                             rounded-lg
                                             bg-blue-600
-                                            px-5
-                                            py-3
+                                            px-5 py-3
                                             text-white
                                         "
+
                                     >
 
                                         Save Draft

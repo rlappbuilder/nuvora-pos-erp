@@ -55,10 +55,10 @@ class GoodsReceipt extends Model
         );
     }
 
-    public function details()
-    {
-        return $this->hasMany(
-            GoodsReceiptDetail::class
-        );
-    }
+public function details()
+{
+    return $this->hasMany(
+        GoodsReceiptDetail::class
+    );
+}
 }

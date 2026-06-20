@@ -239,6 +239,19 @@ Route::prefix('purchasing')
                 'goods-receipts.create-from-po'
             );
 
+            Route::resource(
+            'goods-receipts',
+            GoodsReceiptController::class
+        );
+        Route::patch(
+            'goods-receipts/{goodsReceipt}/post',
+            [
+                GoodsReceiptController::class,
+                'post'
+            ]
+        )->name(
+            'goods-receipts.post'
+        );
     });
 /** stock balance stock card */
 Route::prefix(
