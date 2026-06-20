@@ -214,15 +214,41 @@ public function show(
 
         'details.product',
 
-        'submittedBy',
-
-        'approvedBy',
-
-        'rejectedBy',
-
-        'cancelledBy',
+        'goodsReceipts.details',
 
     ]);
+
+    $totalOrderedQty =
+
+        $purchaseOrder
+            ->details
+            ->sum('qty');
+
+    $totalReceivedQty =
+
+        $purchaseOrder
+            ->goodsReceipts
+            ->where(
+                'status',
+                'Posted'
+            )
+            ->sum(function (
+                $grn
+            ) {
+
+                return $grn
+                    ->details
+                    ->sum(
+                        'qty_received'
+                    );
+
+            });
+
+    $remainingQty =
+
+        $totalOrderedQty
+        -
+        $totalReceivedQty;
 
     return Inertia::render(
 
@@ -230,7 +256,21 @@ public function show(
 
         [
 
-            'purchaseOrder' => $purchaseOrder
+            'purchaseOrder' =>
+
+                $purchaseOrder,
+
+            'totalOrderedQty' =>
+
+                $totalOrderedQty,
+
+            'totalReceivedQty' =>
+
+                $totalReceivedQty,
+
+            'remainingQty' =>
+
+                $remainingQty,
 
         ]
 

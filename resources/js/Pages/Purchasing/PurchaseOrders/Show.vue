@@ -24,7 +24,13 @@ const cancelReason =
 
 const props = defineProps({
 
-    purchaseOrder: Object
+    purchaseOrder: Object,
+
+    totalOrderedQty: Number,
+
+    totalReceivedQty: Number,
+
+    remainingQty: Number,
 
 })
 const submitReject = () => {
@@ -286,33 +292,48 @@ const formatCurrency = (
                             </button>
                                 <!-- good receipt button-->
                                             
-                                <Link
+                             <Link
 
-                                    v-if="
+                                v-if="
+
+                                    remainingQty > 0
+
+                                    &&
+
+                                    [
+
+                                        'Approved',
+
+                                        'Partially Received'
+
+                                    ].includes(
+
                                         purchaseOrder.status
-                                        === 'Approved'
-                                    "
 
-                                    :href="
-                                        route(
-                                            'goods-receipts.create-from-po',
-                                            purchaseOrder.id
-                                        )
-                                    "
+                                    )
 
-                                    class="
-                                        rounded-lg
-                                        bg-green-600
-                                        px-4
-                                        py-2
-                                        text-white
-                                    "
+                                "
 
-                                >
+                                :href="
+                                    route(
+                                        'goods-receipts.create-from-po',
+                                        purchaseOrder.id
+                                    )
+                                "
 
-                                    Create Goods Receipt
+                                class="
+                                    rounded-lg
+                                    bg-green-600
+                                    px-4
+                                    py-2
+                                    text-white
+                                "
 
-                                </Link>
+                            >
+
+                                Create Goods Receipt
+
+                            </Link>
                         
                         </div>
                     <!-- end approval submit rijeck-->
@@ -401,7 +422,94 @@ const formatCurrency = (
                 </div>
 
             </div>
-           
+            <br>
+            <!-- receiving progress-->
+                                <div
+                        class="
+                            rounded-xl
+                            bg-white
+                            p-6
+                            shadow
+                        "
+                    >
+
+                        <h2
+                            class="
+                                mb-4
+                                text-lg
+                                font-semibold
+                            "
+                        >
+
+                            Receiving Progress
+
+                        </h2>
+
+                        <div
+                            class="
+                                space-y-3
+                            "
+                        >
+
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                "
+                            >
+
+                                <span>
+                                    Ordered Qty
+                                </span>
+
+                                <span>
+                                    {{ totalOrderedQty }}
+                                </span>
+
+                            </div>
+
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                "
+                            >
+
+                                <span>
+                                    Received Qty
+                                </span>
+
+                                <span>
+                                    {{ totalReceivedQty }}
+                                </span>
+
+                            </div>
+
+                            <div
+                                class="
+                                    flex
+                                    justify-between
+                                    border-t
+                                    pt-3
+                                    font-bold
+                                "
+                            >
+
+                                <span>
+                                    Remaining Qty
+                                </span>
+
+                                <span>
+                                    {{ remainingQty }}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <br>
+             <!-- end receiving progress-->
                 <!-- Workflow History -->
 
                 <div
@@ -720,7 +828,7 @@ const formatCurrency = (
                 </table>
 
             </div>
-
+            
             <!-- Summary -->
 
             <div

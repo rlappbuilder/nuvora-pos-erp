@@ -60,17 +60,30 @@ const form = useForm({
                 item.product_id,
 
             product_name:
-                item.product_name ??
-                item.product?.name,
+                item.product.name,
 
             qty_po:
                 Number(item.qty),
 
+            received_qty:
+                Number(
+                    item.received_qty || 0
+                ),
+
+            remaining_qty:
+                Number(
+                    item.remaining_qty || 0
+                ),
+
             qty_received:
-                Number(item.qty),
+                Number(
+                    item.remaining_qty || 0
+                ),
 
             unit_cost:
-                Number(item.unit_cost),
+                Number(
+                    item.unit_cost
+                ),
 
         })
     )
@@ -429,25 +442,28 @@ const saveDraft = () => {
                                     </td>
 
                                     <td class="p-3">
-
+                                    <!-- field item qty receive-->
                                         <input
 
-                                            type="number"
+                                                v-model="
+                                                    item.qty_received
+                                                "
 
-                                            v-model="
-                                                item.qty_received
-                                            "
+                                                type="number"
 
-                                            class="
-                                                w-24
-                                                rounded
-                                                border
-                                            "
+                                                :disabled="
+                                                    item.remaining_qty <= 0
+                                                "
 
-                                        >
+                                             :class="{
+                                                'bg-gray-100 text-gray-500':
+                                                    item.remaining_qty <= 0
+                                            }"
+
+                                            >
 
                                     </td>
-
+                                    <!-- end item qty-->
                                     <td
                                         class="p-3 text-right"
                                     >

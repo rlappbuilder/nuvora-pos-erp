@@ -152,177 +152,367 @@ class GoodsReceiptController extends Controller
 
            
 
-            public function createFromPurchaseOrder(
-                PurchaseOrder $purchaseOrder
-            )
-            {
-                
-                if (
-                    $purchaseOrder->status
-                    !== 'Approved'
-                ) {
+           public function createFromPurchaseOrder(
+    PurchaseOrder $purchaseOrder
+)
+{
+    if (
 
-                    return back();
+        ! in_array(
 
-                }
+            $purchaseOrder->status,
 
-                $purchaseOrder->load(
+            [
 
-                    'supplier',
+                'Approved',
 
-                    'warehouse',
+                'Partially Received'
 
-                    'details.product'
+            ]
 
-                );
-
-                return Inertia::render(
-
-                    'Purchasing/GoodsReceipts/Create',
-
-                    [
-
-                        'purchaseOrder' =>
-
-                            $purchaseOrder
-
-                    ]
-
-                );
-            }
-    
-    
-        public function store(
-            Request $request
         )
-        {
-            $request->validate([
 
-                'receipt_date' =>
-                    'required|date',
+    ) {
 
-                'supplier_do_number' =>
-                    'required|string|max:100',
+        return back()
 
-                'items' =>
-                    'required|array|min:1',
+            ->with(
 
-            ]);
+                'error',
 
-            foreach (
-                $request->items
-                as $item
-            ) {
+                'Purchase Order tidak dapat dibuatkan GRN.'
 
-                if (
-                    $item['qty_received']
-                    <= 0
-                ) {
+            );
 
-                    return back()
-                        ->withErrors([
+    }
 
-                            'items' =>
-                            'Qty Received harus lebih besar dari 0'
+    $purchaseOrder->load([
 
-                        ]);
+        'supplier',
 
-                }
+        'warehouse',
 
-            }
+        'details.product',
 
-            $last = GoodsReceipt::withTrashed()
-                ->latest('id')
-                ->first();
+        'goodsReceipts.details',
 
-            $number = $last
-                ? $last->id + 1
-                : 1;
+    ]);
 
-            $grnNumber =
-                'GRN' .
-                str_pad(
-                    $number,
-                    5,
-                    '0',
-                    STR_PAD_LEFT
-                );
+    foreach (
 
-            $goodsReceipt =
-                GoodsReceipt::create([
+        $purchaseOrder->details
 
-                    'grn_number' =>
-                        $grnNumber,
+        as $detail
 
-                    'purchase_order_id' =>
-                        $request->purchase_order_id,
+    ) {
 
-                    'supplier_id' =>
-                        $request->supplier_id,
+        $receivedQty = 0;
 
-                    'warehouse_id' =>
-                        $request->warehouse_id,
+        foreach (
 
-                    'receipt_date' =>
-                        $request->receipt_date,
+            $purchaseOrder->goodsReceipts
 
-                    'supplier_do_number' =>
-                        $request->supplier_do_number,
-
-                    'remarks' =>
-                        $request->remarks,
-
-                    'status' =>
-                        'Draft',
-
-                    'created_by' =>
-                        auth()->id(),
-
-                ]);
-
-            foreach (
-                $request->items
-                as $item
-            ) {
-
-                GoodsReceiptDetail::create([
-
-                    'goods_receipt_id' =>
-                        $goodsReceipt->id,
-
-                    'product_id' =>
-                        $item['product_id'],
-
-                    'qty_received' =>
-                        $item['qty_received'],
-
-                    'unit_cost' =>
-                        $item['unit_cost'],
-
-                    'line_total' =>
-
-                        $item['qty_received']
-                        *
-                        $item['unit_cost'],
-
-                ]);
-
-            }
-
-            return redirect()
-
-                ->route(
-                    'goods-receipts.index'
+                ->where(
+                    'status',
+                    'Posted'
                 )
 
-                ->with(
+            as $grn
 
-                    'success',
+        ) {
 
-                    'Goods Receipt berhasil dibuat.'
+            $grnDetail =
 
-                );
+                $grn->details
+
+                    ->where(
+                        'product_id',
+                        $detail->product_id
+                    )
+
+                    ->first();
+
+            if (
+
+                $grnDetail
+
+            ) {
+
+                $receivedQty +=
+
+                    $grnDetail
+                        ->qty_received;
+
+            }
+
         }
+
+        $detail->received_qty =
+
+            $receivedQty;
+
+        $detail->remaining_qty =
+
+            $detail->qty
+            -
+            $receivedQty;
+
+    }
+
+    return Inertia::render(
+
+        'Purchasing/GoodsReceipts/Create',
+
+        [
+
+            'purchaseOrder' =>
+
+                $purchaseOrder
+
+        ]
+
+    );
+}
+    
+    
+       public function store(
+    Request $request
+)
+{
+    $request->validate([
+
+        'purchase_order_id' =>
+
+            'required|exists:purchase_orders,id',
+
+        'supplier_id' =>
+
+            'required|exists:suppliers,id',
+
+        'warehouse_id' =>
+
+            'required|exists:warehouses,id',
+
+        'receipt_date' =>
+
+            'required|date',
+
+        'supplier_do_number' =>
+
+            'required|string|max:100',
+
+        'items' =>
+
+            'required|array|min:1',
+
+    ]);
+
+    foreach (
+
+        $request->items
+
+        as $item
+
+    ) {
+
+        if (
+
+            $item['remaining_qty']
+
+            <= 0
+
+        ) {
+
+            continue;
+
+        }
+
+        if (
+
+            $item['qty_received']
+
+            <= 0
+
+        ) {
+
+            return back()
+
+                ->withErrors([
+
+                    'items' =>
+
+                    'Qty Received harus lebih besar dari 0.'
+
+                ]);
+
+        }
+
+        if (
+
+            $item['qty_received']
+
+            >
+
+            $item['remaining_qty']
+
+        ) {
+
+            return back()
+
+                ->withErrors([
+
+                    'items' =>
+
+                    'Qty melebihi sisa penerimaan.'
+
+                ]);
+
+        }
+
+    }
+
+    $last = GoodsReceipt::withTrashed()
+
+        ->latest('id')
+
+        ->first();
+
+    $number =
+
+        $last
+
+        ? $last->id + 1
+
+        : 1;
+
+    $grnNumber =
+
+        'GRN'
+
+        .
+
+        str_pad(
+
+            $number,
+
+            5,
+
+            '0',
+
+            STR_PAD_LEFT
+
+        );
+
+    $goodsReceipt =
+
+        GoodsReceipt::create([
+
+            'grn_number' =>
+
+                $grnNumber,
+
+            'purchase_order_id' =>
+
+                $request->purchase_order_id,
+
+            'supplier_id' =>
+
+                $request->supplier_id,
+
+            'warehouse_id' =>
+
+                $request->warehouse_id,
+
+            'receipt_date' =>
+
+                $request->receipt_date,
+
+            'supplier_do_number' =>
+
+                $request->supplier_do_number,
+
+            'remarks' =>
+
+                $request->remarks,
+
+            'status' =>
+
+                'Draft',
+
+            'created_by' =>
+
+                auth()->id(),
+
+        ]);
+
+    foreach (
+
+        $request->items
+
+        as $item
+
+    ) {
+
+        if (
+
+            $item['qty_received']
+
+            <= 0
+
+        ) {
+
+            continue;
+
+        }
+
+        GoodsReceiptDetail::create([
+
+            'goods_receipt_id' =>
+
+                $goodsReceipt->id,
+
+            'product_id' =>
+
+                $item['product_id'],
+
+            'qty_received' =>
+
+                $item['qty_received'],
+
+            'unit_cost' =>
+
+                $item['unit_cost'],
+
+            'line_total' =>
+
+                $item['qty_received']
+
+                *
+
+                $item['unit_cost'],
+
+        ]);
+
+    }
+
+    return redirect()
+
+        ->route(
+
+            'goods-receipts.show',
+
+            $goodsReceipt->id
+
+        )
+
+        ->with(
+
+            'success',
+
+            'Goods Receipt berhasil dibuat.'
+
+        );
+}
 
         public function show(
     GoodsReceipt $goodsReceipt
@@ -355,38 +545,113 @@ class GoodsReceiptController extends Controller
     );
 }
 public function post(
-    GoodsReceipt $goodsReceipt
+GoodsReceipt $goodsReceipt
 )
 {
-    if (
-        $goodsReceipt->status
-        !== 'Draft'
+if (
+$goodsReceipt->status
+!== 'Draft'
+) {
+
+
+    return back();
+
+}
+
+$goodsReceipt->update([
+
+    'status' => 'Posted',
+
+    'posted_at' => now(),
+
+    'posted_by' => auth()->id(),
+
+]);
+
+$purchaseOrder =
+
+    $goodsReceipt
+        ->purchaseOrder;
+
+$totalOrderedQty =
+
+    $purchaseOrder
+        ->details
+        ->sum('qty');
+
+$totalReceivedQty =
+
+    GoodsReceipt::where(
+
+        'purchase_order_id',
+
+        $purchaseOrder->id
+
+    )
+    ->where(
+
+        'status',
+
+        'Posted'
+
+    )
+    ->with('details')
+    ->get()
+    ->sum(function (
+        $grn
     ) {
 
-        return back();
+        return $grn
+            ->details
+            ->sum(
+                'qty_received'
+            );
 
-    }
+    });
 
-    $goodsReceipt->update([
+if (
 
-        'status' => 'Posted',
+    $totalReceivedQty
 
-        'posted_at' => now(),
+    >=
 
-        'posted_by' => auth()->id(),
+    $totalOrderedQty
+
+) {
+
+    $purchaseOrder->update([
+
+        'status' =>
+
+            'Fully Received'
 
     ]);
 
-    return back()
+} else {
 
-        ->with(
+    $purchaseOrder->update([
 
-            'success',
+        'status' =>
 
-            'Goods Receipt posted successfully.'
+            'Partially Received'
 
-        );
+    ]);
+
 }
+
+return back()
+
+    ->with(
+
+        'success',
+
+        'Goods Receipt posted successfully.'
+
+    );
+
+
+}
+
 public function cancel(
     GoodsReceipt $goodsReceipt
 )
