@@ -5,8 +5,14 @@ import {
     Link
 } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 import AuthenticatedLayout
 from '@/Layouts/AuthenticatedLayout.vue'
+import { ref } from 'vue'
+
+const showCancelModal = ref(false)
+
+const cancelReason = ref('')
 
 const props = defineProps({
 
@@ -14,6 +20,39 @@ const props = defineProps({
 
 })
 
+const submitCancel = () => {
+
+    router.patch(
+
+        route(
+            'goods-receipts.cancel',
+            props.goodsReceipt.id
+        ),
+
+        {
+
+            cancel_reason:
+                cancelReason.value
+
+        },
+
+        {
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showCancelModal.value = false
+
+                cancelReason.value = ''
+
+            }
+
+        }
+
+    )
+
+}
 const formatCurrency = (
     value
 ) => {
@@ -169,23 +208,16 @@ const grandTotal = computed(() => {
                                     Post
 
                                 </Link>
-
-                                <Link
+                                <!-- cancell BUttong-->
+                                <button
 
                                     v-if="
                                         goodsReceipt.status
                                         === 'Draft'
                                     "
 
-                                    method="patch"
-
-                                    as="button"
-
-                                    :href="
-                                        route(
-                                            'goods-receipts.cancel',
-                                            goodsReceipt.id
-                                        )
+                                    @click="
+                                        showCancelModal = true
                                     "
 
                                     class="
@@ -200,8 +232,8 @@ const grandTotal = computed(() => {
 
                                     Cancel
 
-                                </Link>
-
+                                </button>
+                                <!-- end cancell button -->
                                 <button
 
                                     class="
@@ -561,24 +593,24 @@ const grandTotal = computed(() => {
 
             <!-- Summary -->
 
-            <div
-    class="
-        rounded-xl
-        bg-white
-        p-6
-        shadow
-    "
->
+                        <div
+                class="
+                    rounded-xl
+                    bg-white
+                    p-6
+                    shadow
+                "
+            >
 
-    <h2
-        class="
-            mb-4
-            text-lg
-            font-semibold
-        "
-    >
+                    <h2
+                        class="
+                            mb-4
+                            text-lg
+                            font-semibold
+                        "
+                    >
 
-        Summary
+                        Summary
 
                         </h2>
 
@@ -663,8 +695,381 @@ const grandTotal = computed(() => {
 
                     </div>
             <!-- end summary card-->
+                    <!-- autdit trail -->
+<div
+    class="
+        mt-6
+        rounded-xl
+        bg-white
+        p-6
+        shadow
+    "
+>
+
+    <h2
+        class="
+            mb-4
+            text-lg
+            font-semibold
+        "
+    >
+
+        Audit Trail
+
+    </h2>
+
+    <div
+        class="
+            grid
+            grid-cols-2
+            gap-4
+        "
+    >
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Created By
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .creator
+                    ?.name
+                    ?? '-'
+                }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Created At
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .created_at
+                }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Posted By
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .poster
+                    ?.name
+                    ?? '-'
+                }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Posted At
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .posted_at
+                    ?? '-'
+                }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Cancelled By
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .canceller
+                    ?.name
+                    ?? '-'
+                }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <p
+                class="
+                    text-sm
+                    text-gray-500
+                "
+            >
+
+                Cancelled At
+
+            </p>
+
+            <p
+                class="
+                    font-semibold
+                "
+            >
+
+                {{
+                    goodsReceipt
+                    .cancelled_at
+                    ?? '-'
+                }}
+
+            </p>
+
+        </div>
+
+    </div>
+
+    <div
+        v-if="
+            goodsReceipt
+            .cancel_reason
+        "
+        class="
+            mt-4
+            rounded-lg
+            bg-red-50
+            p-4
+        "
+    >
+
+        <p
+            class="
+                text-sm
+                text-gray-500
+            "
+        >
+
+            Cancel Reason
+
+        </p>
+
+        <p
+            class="
+                mt-1
+                text-red-700
+            "
+        >
+
+            {{
+                goodsReceipt
+                .cancel_reason
+            }}
+
+        </p>
+
+    </div>
+
+</div>
+                    <!-- end audit trail-->
         </div>
 
     </AuthenticatedLayout>
+<div
 
+    v-if="
+        showCancelModal
+    "
+
+    class="
+        fixed
+        inset-0
+        z-50
+        flex
+        items-center
+        justify-center
+        bg-black/50
+    "
+
+>
+
+    <div
+        class="
+            w-full
+            max-w-lg
+            rounded-xl
+            bg-white
+            p-6
+            shadow-xl
+        "
+    >
+
+        <h2
+            class="
+                mb-4
+                text-lg
+                font-bold
+            "
+        >
+
+            Cancel Goods Receipt
+
+        </h2>
+
+        <p
+            class="
+                mb-4
+                text-sm
+                text-gray-500
+            "
+        >
+
+            Alasan pembatalan wajib diisi.
+
+        </p>
+
+        <textarea
+
+            v-model="
+                cancelReason
+            "
+
+            rows="4"
+
+            class="
+                w-full
+                rounded-lg
+                border
+            "
+
+        />
+
+        <div
+            class="
+                mt-6
+                flex
+                justify-end
+                gap-2
+            "
+        >
+
+            <button
+
+                @click="
+                    showCancelModal = false
+                "
+
+                class="
+                    rounded-lg
+                    bg-gray-500
+                    px-4
+                    py-2
+                    text-white
+                "
+
+            >
+
+                Close
+
+            </button>
+
+            <button
+
+                @click="
+                    submitCancel()
+                "
+
+                class="
+                    rounded-lg
+                    bg-red-600
+                    px-4
+                    py-2
+                    text-white
+                "
+
+            >
+
+                Confirm Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
 </template>

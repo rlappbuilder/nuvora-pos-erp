@@ -572,17 +572,23 @@ class GoodsReceiptController extends Controller
 )
 {
 
-    $goodsReceipt->load([
+   $goodsReceipt->load([
 
-        'supplier',
+    'supplier',
 
-        'warehouse',
+    'warehouse',
 
-        'purchaseOrder',
+    'purchaseOrder',
 
-        'details.product',
+    'details.product',
 
-    ]);
+    'creator',
+
+    'poster',
+
+    'canceller',
+
+]);
 
     return Inertia::render(
 
@@ -707,40 +713,45 @@ return back()
 }
 
 public function cancel(
+    Request $request,
     GoodsReceipt $goodsReceipt
 )
 {
-    if (
-        $goodsReceipt->status
-        !== 'Draft'
-    ) {
-
-        return back();
-
-    }
-
-    $goodsReceipt->update([
-
-        'status' => 'Cancelled',
-
-        'cancelled_at' => now(),
-
-        'cancelled_by' => auth()->id(),
+    $request->validate([
 
         'cancel_reason' =>
 
-            'Cancelled by user',
+            'required|string|max:500'
 
     ]);
 
-    return back()
+    $goodsReceipt->update([
 
-        ->with(
+        'status' =>
 
-            'success',
+            'Cancelled',
 
-            'Goods Receipt cancelled.'
+        'cancel_reason' =>
 
-        );
+            $request->cancel_reason,
+
+        'cancelled_at' =>
+
+            now(),
+
+        'cancelled_by' =>
+
+            auth()->id(),
+
+    ]);
+
+    return back()->with(
+
+        'success',
+
+        'Goods Receipt berhasil dibatalkan.'
+
+    );
 }
+
 }

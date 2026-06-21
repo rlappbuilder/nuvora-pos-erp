@@ -69,4 +69,28 @@ public function details()
         GoodsReceiptDetail::class
     );
 }
+
+public function creator()
+{
+    return $this->belongsTo(
+        User::class,
+        'created_by'
+    );
+}
+
+public function poster()
+{
+    return $this->belongsTo(
+        User::class,
+        'posted_by'
+    );
+}
+
+public function canceller()
+{
+    return $this->belongsTo(
+        User::class,
+        'cancelled_by'
+    );
+}
 }
