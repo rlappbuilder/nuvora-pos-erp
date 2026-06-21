@@ -17,6 +17,7 @@ import { computed } from 'vue'
 const props = defineProps({
 
     purchaseOrder: Object,
+     errors: Object,
 
 })
 
@@ -146,6 +147,53 @@ const saveDraft = () => {
     )
 
 }
+const totalOrderedQty = computed(() => {
+
+    return form.items.reduce(
+
+        (total, item) =>
+
+            total +
+
+            Number(item.qty_po || 0),
+
+        0
+
+    )
+
+})
+
+const totalReceivedQty = computed(() => {
+
+    return form.items.reduce(
+
+        (total, item) =>
+
+            total +
+
+            Number(item.received_qty || 0),
+
+        0
+
+    )
+
+})
+
+const remainingQty = computed(() => {
+
+    return form.items.reduce(
+
+        (total, item) =>
+
+            total +
+
+            Number(item.remaining_qty || 0),
+
+        0
+
+    )
+
+})
 </script>
 
 <template>
@@ -160,32 +208,69 @@ const saveDraft = () => {
     class="p-6"
 >
             <!-- template header -->
-            <div
-                class="mb-6 flex items-center justify-between"
-            >
+                <div
+                    class="
+                        mb-6
+                        rounded-xl
+                        bg-white
+                        p-6
+                        shadow
+                    "
+                >
 
-                <div>
-
-                    <h1
-                        class="text-2xl font-bold"
+                    <div
+                        class="
+                            flex
+                            items-center
+                            justify-between
+                        "
                     >
 
-                        Goods Receipt
+                        <div>
 
-                    </h1>
+                            <h1
+                                class="
+                                    text-2xl
+                                    font-bold
+                                "
+                            >
 
-                    <p
-                        class="text-gray-500"
-                    >
+                                Create Goods Receipt
 
-                        Create Goods Receipt
-                        from Purchase Order
+                            </h1>
 
-                    </p>
+                            <p
+                                class="
+                                    text-gray-500
+                                "
+                            >
+
+                                Purchase Order
+                                {{ purchaseOrder.po_number }}
+
+                            </p>
+
+                        </div>
+
+                        <span
+                            class="
+                                rounded-full
+                                bg-yellow-100
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-yellow-700
+                            "
+                        >
+
+                            Draft
+
+                        </span>
+
+                    </div>
 
                 </div>
-
-            </div>
             <!-- end template header -->
 
             <!-- card information documetn-->
@@ -201,32 +286,7 @@ const saveDraft = () => {
                         Document Information
 
                     </h2>
-
-                    <div
-                        class="grid grid-cols-2 gap-4"
-                    >
-
-                        <div>
-
-                            <label>
-                                PO Number
-                            </label>
-
-                            <input
-
-                                :value="
-                                    purchaseOrder.po_number
-                                "
-
-                                disabled
-
-                                class="mt-1 w-full rounded-lg border bg-gray-100"
-
-                            >
-
-                        </div>
-
-                        <div>
+                    <div>
 
                             <label>
                                 Receipt Date
@@ -248,72 +308,10 @@ const saveDraft = () => {
 
                             >
                             <!-- end tanggal receipt-->
-                            <!-- meessage Error ketika Tanggal kosong-->
-                             <div
-
-                                v-if="
-                                    form.errors
-                                    .receipt_date
-                                "
-
-                                class="
-                                    mt-1 text-sm
-                                    text-red-500
-                                "
-
-                            >
-
-                                {{
-
-                                    form.errors
-                                    .receipt_date
-
-                                }}
-
-                            </div>
-                            <!-- end error message date-->
+                           
                         </div>
-
-                        <div>
-
-                            <label>
-                                Supplier
-                            </label>
-
-                            <input
-
-                                :value="
-                                    purchaseOrder.supplier.name
-                                "
-
-                                disabled
-
-                                class="mt-1 w-full rounded-lg border bg-gray-100"
-
-                            >
-
-                        </div>
-
-                        <div>
-
-                            <label>
-                                Warehouse
-                            </label>
-
-                            <input
-
-                                :value="
-                                    purchaseOrder.warehouse.name
-                                "
-
-                                disabled
-
-                                class="mt-1 w-full rounded-lg border bg-gray-100"
-
-                            >
-
-                        </div>
-
+                        <br>
+                        <!-- Do nuber -->
                         <div
                             class="col-span-2"
                         >
@@ -334,10 +332,250 @@ const saveDraft = () => {
                                     mt-1 w-full
                                     rounded-lg border
                                 "
-                                placeholder="Supplier PO Number"
+                                placeholder="Supplier DO Number Reference"
                             >
 
                         </div>
+                        <!-- end do number-->
+                         <br>
+                    <div
+                        class="grid grid-cols-2 gap-4"
+                    >
+ 
+                        <!-- PO summary card-->
+                         <div
+                                class="
+                                    mb-6
+                                    grid
+                                    grid-cols-4
+                                    gap-4
+                                "
+                            >
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-4
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        PO Number
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            font-bold
+                                        "
+                                    >
+                                        {{ purchaseOrder.po_number }}
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-4
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        Supplier
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            font-bold
+                                        "
+                                    >
+                                        {{ purchaseOrder.supplier.name }}
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-4
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        Warehouse
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            font-bold
+                                        "
+                                    >
+                                        {{ purchaseOrder.warehouse.name }}
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-4
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        PO Status
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            font-bold
+                                            text-blue-600
+                                        "
+                                    >
+                                        {{ purchaseOrder.status }}
+                                    </p>
+
+                                </div>
+                                <!-- po qty-->
+                               
+                            </div>
+                         <!-- end po summary card-->
+                          <!-- receiving statistic-->
+                           <div
+                                class="
+                                    mb-6
+                                    grid
+                                    grid-cols-3
+                                    gap-4
+                                "
+                            >
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-5
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        Ordered Qty
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            text-2xl
+                                            font-bold
+                                        "
+                                    >
+                                        {{ totalOrderedQty }}
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-5
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        Received Qty
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            text-2xl
+                                            font-bold
+                                            text-green-600
+                                        "
+                                    >
+                                        {{ totalReceivedQty }}
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded-xl
+                                        bg-white
+                                        p-5
+                                        shadow
+                                    "
+                                >
+
+                                    <p
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+                                    >
+                                        Remaining Qty
+                                    </p>
+
+                                    <p
+                                        class="
+                                            mt-2
+                                            text-2xl
+                                            font-bold
+                                            text-orange-600
+                                        "
+                                    >
+                                        {{ remainingQty }}
+                                    </p>
+
+                                </div>
+
+                            </div>
+                           <!-- end receiving statistic-->
                         <!-- Message Supplier DO Number-->
                          <div
 
@@ -365,8 +603,50 @@ const saveDraft = () => {
                     </div>
 
                 </div>
+                <!-- error message Qty receipts-->
+                 <div
+                        class="
+                            mb-4
+                            h-14
+                        "
+                    >
+
+                        <div
+
+                            v-if="
+                                form.items.some(
+                                    item =>
+                                        Number(item.qty_received)
+                                        >
+                                        Number(item.remaining_qty)
+                                )
+                            "
+
+                            class="
+                                flex
+                                items-center
+                                rounded-xl
+                                border
+                                border-red-200
+                                bg-red-50
+                                px-4
+                                py-3
+                                text-sm
+                                font-medium
+                                text-red-600
+                            "
+
+                        >
+
+                            ⚠ Qty Receipt tidak boleh melebihi Remaining Qty.
+
+                        </div>
+
+                    </div>
+
+                 <!-- end error message Receipts-->
                 <!-- tabel item-->
-                                    <div
+                    <div
                         class="rounded-xl bg-white p-6 shadow"
                     >
 
@@ -377,9 +657,14 @@ const saveDraft = () => {
                             Receipt Items
 
                         </h2>
-
+                       <!-- error message Qty Remaining-->
+                     
+                        <!-- end error message Qty remaining-->
                         <table
-                            class="w-full border-collapse"
+                           class="
+                                w-full
+                                table-fixed
+                            "
                         >
 
                             <thead>
@@ -388,26 +673,31 @@ const saveDraft = () => {
                                     class="bg-gray-100"
                                 >
 
-                                    <th class="p-3 text-left">
+                                    <th class="w-64" >
                                         Product
                                     </th>
 
-                                    <th class="p-3 text-right">
-                                        Qty PO
+                                    <th class="w-24">
+                                        Ordered
                                     </th>
 
-                                    <th class="p-3 text-right">
-                                        Qty Received
+                                    <th class="w-24">
+                                        Receive
                                     </th>
 
-                                    <th class="p-3 text-right">
+                                    <th class="w-24">
+                                        Remaining
+                                    </th>
+
+                                    <th class="w-32">
+                                        Receipt Qty
+                                    </th>
+                                     <th class="w-32">
                                         Unit Cost
                                     </th>
-
-                                    <th class="p-3 text-right">
-                                        Total
+                                    <th class="w-32">
+                                        Amount
                                     </th>
-
                                 </tr>
 
                             </thead>
@@ -436,34 +726,61 @@ const saveDraft = () => {
                                     >
 
                                         {{
-                                            item.qty
+                                            item.qty_po
                                         }}
 
                                     </td>
 
                                     <td class="p-3">
                                     <!-- field item qty receive-->
+                               <div class="relative">
+                                        <!-- error message Remaining-->
                                         <input
 
-                                                v-model="
-                                                    item.qty_received
-                                                "
+                                            v-model.number="
+                                                item.qty_received
+                                            "
 
-                                                type="number"
+                                            type="number"
 
-                                                :disabled="
-                                                    item.remaining_qty <= 0
-                                                "
+                                            :disabled="
+                                                item.remaining_qty <= 0
+                                            "
 
-                                             :class="{
-                                                'bg-gray-100 text-gray-500':
-                                                    item.remaining_qty <= 0
-                                            }"
+                                            :class="[
+                                                'w-full rounded-lg border px-3 py-2',
 
-                                            >
+                                                item.remaining_qty <= 0
+                                                    ? 'bg-gray-100 text-gray-500'
+                                                    : '',
+
+                                                Number(item.qty_received)
+                                                >
+                                                Number(item.remaining_qty)
+                                                   ? 'border-red-300 bg-red-50'
+                                                  : 'border-gray-300'
+
+                                            ]"
+
+                                        />
+
+                                        <!-- error message remaining-->
+                                    </div>
 
                                     </td>
                                     <!-- end item qty-->
+                                    <td class="p-3 text-right">
+
+                                        {{ item.remaining_qty }}
+
+                                    </td>
+                                    <td class="p-3 text-right">
+
+                                        {{ item.received_qty }}
+
+                                    </td>
+
+                                  
                                     <td
                                         class="p-3 text-right"
                                     >
@@ -499,6 +816,7 @@ const saveDraft = () => {
                                 </tr>
 
                             </tbody>
+                            
                             <!-- summary remark-->
                                 <div
                                     class="mt-6 rounded-xl bg-white p-6 shadow"
@@ -533,6 +851,8 @@ const saveDraft = () => {
 
                                 </div>
                             <!-- end summary remark-->
+                                       <!-- end error message date-->
+                               
                              <!-- summary grand total-->
                               <div
                                 class="
@@ -650,7 +970,11 @@ const saveDraft = () => {
                                 </div>
 
                             </div>
-                              <!-- end summary grand total-->
+                             
+                           
+                        </table>
+                        <!-- Tombol Save dan Back-->
+                          <!-- end summary grand total-->
                                <div
                                     class="
                                         mt-6
@@ -681,29 +1005,61 @@ const saveDraft = () => {
                                         Back
 
                                     </Link>
+                                <!-- meessage Error ketika Tanggal kosong-->
+                             <div
 
-                                    <button
+                                v-if="
+                                    form.errors
+                                    .receipt_date
+                                "
 
-                                        @click="
-                                            saveDraft
-                                        "
+                                class="
+                                    mt-1 text-sm
+                                    text-red-500
+                                "
 
-                                        class="
-                                            rounded-lg
-                                            bg-blue-600
-                                            px-5 py-3
-                                            text-white
-                                        "
+                            >
 
-                                    >
+                                {{
 
-                                        Save Draft
+                                    form.errors
+                                    .receipt_date
 
-                                    </button>
+                                }}
 
-                                </div>
-                        </table>
+                            </div>
+                       
+                                  <button
 
+                                @click="saveDraft"
+
+                                :disabled="
+                                    form.items.some(
+                                        item =>
+                                            Number(item.qty_received)
+                                            >
+                                            Number(item.remaining_qty)
+                                    )
+                                "
+
+                                class="
+                                    rounded-lg
+                                    bg-blue-600
+                                    px-5
+                                    py-3
+                                    text-white
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+
+                            >
+
+                                Save Draft
+
+                            </button>
+
+                        </div>
+                         <!-- end tombol save dan back-->
                     </div>
 </div>
 

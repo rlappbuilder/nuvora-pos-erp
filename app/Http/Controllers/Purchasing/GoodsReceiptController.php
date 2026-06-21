@@ -152,7 +152,7 @@ class GoodsReceiptController extends Controller
 
            
 
-           public function createFromPurchaseOrder(
+          public function createFromPurchaseOrder(
     PurchaseOrder $purchaseOrder
 )
 {
@@ -180,7 +180,51 @@ class GoodsReceiptController extends Controller
 
                 'error',
 
-                'Purchase Order tidak dapat dibuatkan GRN.'
+                'Purchase Order tidak dapat dibuatkan Goods Receipt.'
+
+            );
+
+    }
+
+    $draftGrn = GoodsReceipt::where(
+
+        'purchase_order_id',
+
+        $purchaseOrder->id
+
+    )
+
+    ->where(
+
+        'status',
+
+        'Draft'
+
+    )
+
+    ->first();
+
+    if (
+
+        $draftGrn
+
+    ) {
+
+        return redirect()
+
+            ->route(
+
+                'goods-receipts.show',
+
+                $draftGrn->id
+
+            )
+
+            ->with(
+
+                'warning',
+
+                'Masih ada Draft Goods Receipt untuk Purchase Order ini. Silakan Post atau Cancel terlebih dahulu.'
 
             );
 
@@ -226,8 +270,11 @@ class GoodsReceiptController extends Controller
                 $grn->details
 
                     ->where(
+
                         'product_id',
+
                         $detail->product_id
+
                     )
 
                     ->first();
@@ -253,9 +300,15 @@ class GoodsReceiptController extends Controller
 
         $detail->remaining_qty =
 
-            $detail->qty
-            -
-            $receivedQty;
+            max(
+
+                0,
+
+                $detail->qty
+                -
+                $receivedQty
+
+            );
 
     }
 
@@ -267,7 +320,7 @@ class GoodsReceiptController extends Controller
 
             'purchaseOrder' =>
 
-                $purchaseOrder
+                $purchaseOrder,
 
         ]
 
@@ -363,7 +416,7 @@ class GoodsReceiptController extends Controller
 
                     'items' =>
 
-                    'Qty melebihi sisa penerimaan.'
+                    'Tidak dapat Menyimpan Data : Qty melebihi sisa penerimaan.'
 
                 ]);
 
@@ -518,6 +571,7 @@ class GoodsReceiptController extends Controller
     GoodsReceipt $goodsReceipt
 )
 {
+
     $goodsReceipt->load([
 
         'supplier',

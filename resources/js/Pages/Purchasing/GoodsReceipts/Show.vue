@@ -347,14 +347,14 @@ const grandTotal = computed(() => {
                         <br>
 
                         {{
-                            goodsReceipt
-                            .purchaseOrder
+                             goodsReceipt
+                            .purchase_order
                             ?.po_number
+
                         }}
 
                     </div>
-
-                    <div>
+     <div>
 
                         <strong>
                             Status
