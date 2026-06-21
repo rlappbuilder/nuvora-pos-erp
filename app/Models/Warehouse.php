@@ -60,4 +60,16 @@ public function stockMovements()
         StockMovement::class
     );
 }
+public function movements()
+{
+    return $this->hasMany(
+        InventoryMovement::class
+    );
+}
+public function inventoryMovements()
+{
+    return $this->hasMany(
+        InventoryMovement::class
+    );
+}
 }

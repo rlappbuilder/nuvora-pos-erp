@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptDetail;
+use App\Models\InventoryMovement;
 class GoodsReceiptController extends Controller
 {
                 public function create(
@@ -605,13 +606,16 @@ class GoodsReceiptController extends Controller
     );
 }
 public function post(
+   
 GoodsReceipt $goodsReceipt
 )
+
 {
-if (
+if ( 
 $goodsReceipt->status
 !== 'Draft'
 ) {
+   
 
 
     return back();
@@ -627,6 +631,73 @@ $goodsReceipt->update([
     'posted_by' => auth()->id(),
 
 ]);
+
+$goodsReceipt->load('details');
+
+foreach (
+
+    $goodsReceipt->details
+
+    as $detail
+
+) {
+
+    $lastMovement =
+
+        InventoryMovement::where(
+            'product_id',
+            $detail->product_id
+        )
+        ->where(
+            'warehouse_id',
+            $goodsReceipt->warehouse_id
+        )
+        ->latest('id')
+        ->first();
+
+    $currentBalance =
+
+        $lastMovement
+            ? $lastMovement->balance_qty
+            : 0;
+
+    InventoryMovement::create([
+
+        'product_id' =>
+            $detail->product_id,
+
+        'warehouse_id' =>
+            $goodsReceipt->warehouse_id,
+
+        'reference_type' =>
+            'GRN',
+
+        'reference_id' =>
+            $goodsReceipt->id,
+
+        'reference_number' =>
+            $goodsReceipt->grn_number,
+
+        'qty_in' =>
+            $detail->qty_received,
+
+        'qty_out' =>
+            0,
+
+        'balance_qty' =>
+            $currentBalance +
+            $detail->qty_received,
+
+        'transaction_date' =>
+            now(),
+
+        'created_by' =>
+            auth()->id(),
+
+    ]);
+
+}
+
 
 $purchaseOrder =
 

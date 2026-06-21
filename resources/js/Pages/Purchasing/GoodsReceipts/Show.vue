@@ -946,6 +946,280 @@ const grandTotal = computed(() => {
 
 </div>
                     <!-- end audit trail-->
+                     <div
+    class="
+        mt-6
+        rounded-xl
+        bg-white
+        p-6
+        shadow
+    "
+>
+
+    <h2
+        class="
+            mb-6
+            text-lg
+            font-semibold
+        "
+    >
+
+        Workflow Timeline
+
+    </h2>
+
+    <div
+        class="
+            space-y-6
+        "
+    >
+
+        <!-- Draft -->
+
+        <div
+            class="
+                flex
+                items-start
+                gap-4
+            "
+        >
+
+            <div
+                class="
+                    h-4
+                    w-4
+                    rounded-full
+                    bg-blue-500
+                "
+            />
+
+            <div>
+
+                <p
+                    class="
+                        font-semibold
+                    "
+                >
+
+                    Draft Created
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                        text-gray-500
+                    "
+                >
+
+                    {{
+                        goodsReceipt.created_at
+                    }}
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                    "
+                >
+
+                    By
+
+                    {{
+
+                        goodsReceipt
+                        .creator
+                        ?.name
+
+                        ?? '-'
+
+                    }}
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- Posted -->
+
+        <div
+
+            v-if="
+                goodsReceipt.posted_at
+            "
+
+            class="
+                flex
+                items-start
+                gap-4
+            "
+
+        >
+
+            <div
+                class="
+                    h-4
+                    w-4
+                    rounded-full
+                    bg-green-500
+                "
+            />
+
+            <div>
+
+                <p
+                    class="
+                        font-semibold
+                    "
+                >
+
+                    Goods Receipt Posted
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                        text-gray-500
+                    "
+                >
+
+                    {{
+                        goodsReceipt.posted_at
+                    }}
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                    "
+                >
+
+                    By
+
+                    {{
+
+                        goodsReceipt
+                        .poster
+                        ?.name
+
+                        ?? '-'
+
+                    }}
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- Cancelled -->
+
+        <div
+
+            v-if="
+                goodsReceipt.cancelled_at
+            "
+
+            class="
+                flex
+                items-start
+                gap-4
+            "
+
+        >
+
+            <div
+                class="
+                    h-4
+                    w-4
+                    rounded-full
+                    bg-red-500
+                "
+            />
+
+            <div>
+
+                <p
+                    class="
+                        font-semibold
+                    "
+                >
+
+                    Goods Receipt Cancelled
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                        text-gray-500
+                    "
+                >
+
+                    {{
+                        goodsReceipt.cancelled_at
+                    }}
+
+                </p>
+
+                <p
+                    class="
+                        text-sm
+                    "
+                >
+
+                    By
+
+                    {{
+
+                        goodsReceipt
+                        .canceller
+                        ?.name
+
+                        ?? '-'
+
+                    }}
+
+                </p>
+
+                <p
+
+                    v-if="
+                        goodsReceipt
+                        .cancel_reason
+                    "
+
+                    class="
+                        mt-2
+                        rounded-lg
+                        bg-red-50
+                        p-3
+                        text-sm
+                        text-red-700
+                    "
+
+                >
+
+                    Reason:
+
+                    {{
+                        goodsReceipt
+                        .cancel_reason
+                    }}
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
         </div>
 
     </AuthenticatedLayout>
