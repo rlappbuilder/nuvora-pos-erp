@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptDetail;
 use App\Models\InventoryMovement;
+use App\Models\ProductStock;
 class GoodsReceiptController extends Controller
 {
                 public function create(
@@ -695,6 +696,31 @@ foreach (
             auth()->id(),
 
     ]);
+                $stock = ProductStock::firstOrNew([
+
+                'product_id' =>
+                    $detail->product_id,
+
+                'warehouse_id' =>
+                    $goodsReceipt->warehouse_id,
+
+            ]);
+
+            $stock->qty = (
+
+                $stock->exists
+                    ? $stock->qty
+                    : 0
+
+            ) + $detail->qty_received;
+
+            $stock->created_by ??=
+                auth()->id();
+
+            $stock->updated_by =
+                auth()->id();
+
+            $stock->save();
 
 }
 

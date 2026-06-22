@@ -4,85 +4,173 @@ namespace App\Http\Controllers\Inventory;
 
 use Inertia\Inertia;
 
-use App\Models\StockMovement;
-
+use App\Models\InventoryMovement;
+use App\Models\Product;
+use App\Models\Warehouse;
 use App\Http\Controllers\Controller;
 
 class StockCardController extends Controller
 {
     public function index()
     {
-        $movements = StockMovement::with(
+       $movements = InventoryMovement::with(
 
-            'product',
-            'warehouse'
+    'product',
+    'warehouse'
 
-        )
+)
 
-        ->when(
+->when(
 
-            request('search'),
+    request('product_id'),
 
-            function ($query) {
+    function ($query) {
 
-                $query->whereHas(
+        $query->where(
 
-                    'product',
+            'product_id',
 
-                    function ($q) {
+            request('product_id')
 
-                        $q->where(
+        );
 
-                            'name',
+    }
 
-                            'like',
+)
 
-                            '%' . request('search') . '%'
+->when(
 
-                        )
+    request('warehouse_id'),
 
-                        ->orWhere(
+    function ($query) {
 
-                            'sku',
+        $query->where(
 
-                            'like',
+            'warehouse_id',
 
-                            '%' . request('search') . '%'
+            request('warehouse_id')
 
-                        );
+        );
 
-                    }
+    }
 
-                );
+)
 
-            }
+->when(
 
-        )
+    request('date_from'),
 
-        ->latest()
+    function ($query) {
 
-        ->paginate(20)
+        $query->whereDate(
 
-        ->withQueryString();
+            'transaction_date',
 
-        return Inertia::render(
+            '>=',
 
-            'Inventory/StockCard/Index',
+            request('date_from')
 
-            [
+        );
 
-                'movements' => $movements,
+    }
 
-                'filters' => [
+)
 
-                    'search' => request(
-                        'search'
+->when(
+
+    request('date_to'),
+
+    function ($query) {
+
+        $query->whereDate(
+
+            'transaction_date',
+
+            '<=',
+
+            request('date_to')
+
+        );
+
+    }
+
+)
+
+->latest()
+
+->paginate(20)
+
+->withQueryString();
+         return Inertia::render(
+
+                'Inventory/StockCard/Index',
+
+                [
+
+                    'movements' => $movements,
+
+                    'products' => collect([
+
+                                [
+
+                                        'id' => '',
+
+                                        'name' => 'Semua Produk',
+
+                                    ]
+
+                                ])
+
+                                ->merge(
+
+                                    Product::orderBy('name')->get()
+
+                                )
+
+                                ->values(),
+
+                   'warehouses' => collect([
+
+                        [
+
+                            'id' => '',
+
+                            'name' => 'Semua Gudang',
+
+                        ]
+
+                    ])
+
+                    ->merge(
+
+                        Warehouse::orderBy('name')->get()
+
                     )
+
+                    ->values(),
+
+                   'filters' => [
+
+                    'product_id' => request(
+                        'product_id'
+                    ),
+
+                    'warehouse_id' => request(
+                        'warehouse_id'
+                    ),
+
+                    'date_from' => request(
+                        'date_from'
+                    ),
+
+                    'date_to' => request(
+                        'date_to'
+                    ),
+
+                ],
 
                 ]
 
-            ]
-
-        );
+            );
     }
 }

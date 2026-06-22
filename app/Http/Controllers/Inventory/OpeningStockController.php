@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
+use App\Models\InventoryMovement;
 class OpeningStockController extends Controller
 {
    public function create()
@@ -111,25 +112,79 @@ class OpeningStockController extends Controller
 
         $stock->save();
 
-        StockMovement::create([
+      $lastMovement =
 
-            'product_id' => $request->product_id,
+    InventoryMovement::where(
 
-            'warehouse_id' => $request->warehouse_id,
+        'product_id',
 
-            'transaction_type' => 'OPENING',
+        $request->product_id
 
-            'reference_no' => null,
+    )
 
-            'qty' => $request->qty,
+    ->where(
 
-            'unit_cost' => $request->unit_cost,
+        'warehouse_id',
 
-            'remarks' => $request->remarks,
+        $request->warehouse_id
 
-            'created_by' => auth()->id(),
+    )
 
-        ]);
+    ->latest('id')
+
+    ->first();
+
+$currentBalance =
+
+    $lastMovement
+        ? $lastMovement->balance_qty
+        : 0;
+
+            InventoryMovement::create([
+
+                'product_id' =>
+
+                    $request->product_id,
+
+                'warehouse_id' =>
+
+                    $request->warehouse_id,
+
+                'reference_type' =>
+
+                    'OPENING',
+
+                'reference_id' =>
+
+                    0,
+
+                'reference_number' =>
+
+                    'OPENING',
+
+                'qty_in' =>
+
+                    $request->qty,
+
+                'qty_out' =>
+
+                    0,
+
+                'balance_qty' =>
+
+                    $currentBalance
+                    +
+                    $request->qty,
+
+                'transaction_date' =>
+
+                    now(),
+
+                'created_by' =>
+
+                    auth()->id(),
+
+            ]);
 
     });
 

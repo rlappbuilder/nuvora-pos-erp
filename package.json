@@ -26,7 +26,10 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "@headlessui/vue": "^1.7.23",
+        "flatpickr": "^4.6.13",
         "lucide": "^1.18.0",
-        "lucide-vue-next": "^1.0.0"
+        "lucide-vue-next": "^1.0.0",
+        "vue-flatpickr-component": "^12.0.0"
     }
 }
