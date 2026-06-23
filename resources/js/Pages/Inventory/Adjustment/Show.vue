@@ -64,14 +64,61 @@ const confirmCancel = () => {
 
             cancel_reason:
 
-                cancelReason.value,
+                cancelReason.value
+
+        },
+
+        {
+
+            onSuccess: () => {
+
+                showCancelModal.value = false
+
+                cancelReason.value = ''
+
+            }
 
         }
 
     )
 
 }
+const cancelAdjustment = () => {
 
+    showCancelModal.value = true
+
+}
+const formatDateTime = (date) => {
+
+    if (!date) {
+
+        return '-'
+
+    }
+
+    return new Date(date)
+
+        .toLocaleString(
+
+            'id-ID',
+
+            {
+
+                day: '2-digit',
+
+                month: 'short',
+
+                year: 'numeric',
+
+                hour: '2-digit',
+
+                minute: '2-digit',
+
+            }
+
+        )
+
+}
 </script>
 <template>
 
@@ -205,81 +252,7 @@ const confirmCancel = () => {
                                             {{ adjustment.status }}
 
                                         </span>
-                                        <!-- Action Buttons -->
-
-                                            <div
-
-                                                v-if="
-                                                    adjustment.status
-                                                    === 'Draft'
-                                                "
-
-                                                class="
-                                                    mt-6
-                                                    flex
-                                                    justify-end
-                                                    gap-3
-                                                "
-
-                                            >
-
-                                                <!-- Cancel -->
-
-                                                <button
-
-                                                    @click="
-                                                        cancelAdjustment
-                                                    "
-
-                                                    type="button"
-
-                                                    class="
-                                                        rounded-2xl
-                                                        bg-red-600
-                                                        px-6
-                                                        py-3
-                                                        font-medium
-                                                        text-white
-                                                        transition
-                                                        hover:bg-red-700
-                                                    "
-
-                                                >
-
-                                                    Cancel
-
-                                                </button>
-
-                                                <!-- Post -->
-
-                                                <button
-
-                                                    @click="
-                                                        postAdjustment
-                                                    "
-
-                                                    type="button"
-
-                                                    class="
-                                                        rounded-2xl
-                                                        bg-green-600
-                                                        px-6
-                                                        py-3
-                                                        font-medium
-                                                        text-white
-                                                        transition
-                                                        hover:bg-green-700
-                                                    "
-
-                                                >
-
-                                                    Post
-
-                                                </button>
-
-                                            </div>
-
-                                            <!-- End Action Buttons -->
+                                       
 
                                 </div>
                                     
@@ -738,7 +711,105 @@ const confirmCancel = () => {
                                 </div>
 
                             </div>
+ <!-- Action Buttons -->
+                                            <div
 
+                                                class="
+                                                    mt-6
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                "
+
+                                            >
+
+                                                <!-- Back -->
+
+                                                <button
+
+                                                    @click="
+                                                        $inertia.visit(
+                                                            route(
+                                                                'inventory-adjustments.index'
+                                                            )
+                                                        )
+                                                    "
+
+                                                    class="
+                                                        rounded-2xl
+                                                        border
+                                                        px-6
+                                                        py-3
+                                                        font-medium
+                                                    "
+
+                                                >
+
+                                                    Back
+
+                                                </button>
+
+                                                <!-- Right Side -->
+
+                                                <div
+
+                                                    v-if="
+                                                        adjustment.status
+                                                        === 'Draft'
+                                                    "
+
+                                                    class="
+                                                        flex
+                                                        items-center
+                                                        gap-3
+                                                    "
+
+                                                >
+
+                                                    <button
+
+                                                        @click="
+                                                            cancelAdjustment
+                                                        "
+
+                                                        class="
+                                                            rounded-2xl
+                                                            bg-red-600
+                                                            px-6
+                                                            py-3
+                                                            text-white
+                                                        "
+
+                                                    >
+
+                                                        Cancel
+
+                                                    </button>
+
+                                                    <button
+
+                                                        @click="
+                                                            postAdjustment
+                                                        "
+
+                                                        class="
+                                                            rounded-2xl
+                                                            bg-green-600
+                                                            px-6
+                                                            py-3
+                                                            text-white
+                                                        "
+
+                                                    >
+
+                                                        Post
+
+                                                    </button>
+
+                                                </div>
+
+                                            </div>
+                                            <!-- End Action Buttons -->
                             <!-- End Detail Table -->
                            
                              <!-- Audit Trail -->
@@ -811,11 +882,9 @@ const confirmCancel = () => {
 
                                             <p class="font-semibold">
 
-                                                {{
-
+                                                {{ formatDateTime(
                                                     adjustment.created_at
-
-                                                }}
+                                                ) }}
 
                                             </p>
 
@@ -853,13 +922,9 @@ const confirmCancel = () => {
 
                                             <p class="font-semibold">
 
-                                                {{
-
+                                               {{ formatDateTime(
                                                     adjustment.posted_at
-
-                                                    ?? '-'
-
-                                                }}
+                                                ) }}
 
                                             </p>
 
@@ -897,13 +962,9 @@ const confirmCancel = () => {
 
                                             <p class="font-semibold">
 
-                                                {{
-
+                                                {{ formatDateTime(
                                                     adjustment.cancelled_at
-
-                                                    ?? '-'
-
-                                                }}
+                                                ) }}
 
                                             </p>
 
@@ -981,7 +1042,9 @@ const confirmCancel = () => {
                                         "
                                     >
 
-                                        {{ adjustment.created_at }}
+                                        {{ formatDateTime(
+                                            adjustment.created_at
+                                        ) }}
 
                                     </p>
 
@@ -1053,8 +1116,10 @@ const confirmCancel = () => {
                                             text-gray-500
                                         "
                                     >
-
-                                        {{ adjustment.posted_at }}
+ 
+                                      {{ formatDateTime(
+                                            adjustment.posted_at
+                                        ) }}
 
                                     </p>
 
@@ -1128,7 +1193,9 @@ const confirmCancel = () => {
                                         "
                                     >
 
-                                        {{ adjustment.cancelled_at }}
+                                       {{ formatDateTime(
+                                            adjustment.cancelled_at
+                                        ) }}
 
                                     </p>
 
@@ -1184,7 +1251,7 @@ const confirmCancel = () => {
                         <!-- End Audit Trail -->
                 
                  <!-- modal Cancel Reason-->
-                            <div
+                    <div
 
                         v-if="
                             showCancelModal
