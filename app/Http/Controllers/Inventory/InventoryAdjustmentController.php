@@ -28,6 +28,102 @@ class InventoryAdjustmentController extends Controller
 
         )
 
+        ->when(
+
+            request('search'),
+
+            function (
+
+                $query
+
+            ) {
+
+                $query->where(
+
+                    'adjustment_number',
+
+                    'like',
+
+                    '%' .
+                    request('search') .
+                    '%'
+
+                );
+
+            }
+
+        )
+
+        ->when(
+
+            request('status'),
+
+            function (
+
+                $query
+
+            ) {
+
+                $query->where(
+
+                    'status',
+
+                    request('status')
+
+                );
+
+            }
+
+        )
+
+        ->when(
+
+            request('date_from'),
+
+            function (
+
+                $query
+
+            ) {
+
+                $query->whereDate(
+
+                    'adjustment_date',
+
+                    '>=',
+
+                    request('date_from')
+
+                );
+
+            }
+
+        )
+
+        ->when(
+
+            request('date_to'),
+
+            function (
+
+                $query
+
+            ) {
+
+                $query->whereDate(
+
+                    'adjustment_date',
+
+                    '<=',
+
+                    request('date_to')
+
+                );
+
+            }
+
+        )
+
         ->latest()
 
         ->paginate(10)
@@ -43,6 +139,64 @@ class InventoryAdjustmentController extends Controller
             'adjustments' =>
 
                 $adjustments,
+
+            'summary' => [
+
+                'draft' =>
+
+                    InventoryAdjustment::where(
+
+                        'status',
+
+                        'Draft'
+
+                    )->count(),
+
+                'posted' =>
+
+                    InventoryAdjustment::where(
+
+                        'status',
+
+                        'Posted'
+
+                    )->count(),
+
+                'cancelled' =>
+
+                    InventoryAdjustment::where(
+
+                        'status',
+
+                        'Cancelled'
+
+                    )->count(),
+
+                'total' =>
+
+                    InventoryAdjustment::count(),
+
+            ],
+
+            'filters' => [
+
+                'search' =>
+
+                    request('search'),
+
+                'status' =>
+
+                    request('status'),
+
+                'date_from' =>
+
+                    request('date_from'),
+
+                'date_to' =>
+
+                    request('date_to'),
+
+            ],
 
         ]
 

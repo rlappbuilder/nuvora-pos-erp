@@ -49,7 +49,7 @@ const deleteSupplier = (id) => {
 
     <AuthenticatedLayout>
         
-
+        
         <!-- batas template -->
         <div class="space-y-6">
 
