@@ -688,6 +688,15 @@ foreach (
         'balance_qty' =>
             $currentBalance +
             $detail->qty_received,
+            'unit_cost' =>
+
+                $detail->unit_cost,
+
+            'total_cost' =>
+
+                $detail->qty_received
+                *
+                $detail->unit_cost,
 
         'transaction_date' =>
             now(),

@@ -176,6 +176,16 @@ $currentBalance =
                     +
                     $request->qty,
 
+                    'unit_cost' =>
+
+                    $request->unit_cost,
+
+                'total_cost' =>
+
+                    $request->qty
+                    *
+                    $request->unit_cost,
+
                 'transaction_date' =>
 
                     now(),

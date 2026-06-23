@@ -6,29 +6,33 @@ use Illuminate\Database\Eloquent\Model;
 
 class InventoryMovement extends Model
 {
-    protected $fillable = [
+ protected $fillable = [
 
-        'product_id',
+    'product_id',
 
-        'warehouse_id',
+    'warehouse_id',
 
-        'reference_type',
+    'reference_type',
 
-        'reference_id',
+    'reference_id',
 
-        'reference_number',
+    'reference_number',
 
-        'qty_in',
+    'qty_in',
 
-        'qty_out',
+    'qty_out',
 
-        'balance_qty',
+    'balance_qty',
 
-        'transaction_date',
+    'unit_cost',
 
-        'created_by',
+    'total_cost',
 
-    ];
+    'transaction_date',
+
+    'created_by',
+
+];
 
     public function product()
     {
