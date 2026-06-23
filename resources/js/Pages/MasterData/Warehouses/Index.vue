@@ -157,9 +157,9 @@ const deletewarehouse  = (id) => {
                     class="h-2 bg-blue-600"
                 ></div>
 
-                <div
-                    class="p-8"
-                >
+                    <div
+                        class="p-8"
+                    >
 
                     <!-- Logo -->
 
@@ -201,9 +201,133 @@ const deletewarehouse  = (id) => {
                         class="my-6 border-t"
                      >
                     </div>
-<div class="space-y-3">
+                <div class="space-y-3">
+                    <!-- tempel card analityc-->
+                     <div
+                            class="
+                                flex
+                                justify-between
+                                text-sm
+                            "
+                        >
 
-    <div class="flex">
+                            <span
+                                class="text-blue-600 font-bold"
+                            >
+                                Products
+                            </span>
+
+                            <span
+                                class="font-semibold"
+                            >
+                                {{
+                                    warehouse.total_products
+                                }}
+                            </span>
+
+                        </div>
+
+                        <div
+                            class="
+                                flex
+                                justify-between
+                                text-sm
+                            "
+                        >
+
+                            <span
+                                class=text-green-600 font-bold
+                            >
+                                Current Stock
+                            </span>
+
+                            <span
+                                class="
+                                    font-semibold
+                                    text-green-600
+                                "
+                            >
+                                {{
+                                    warehouse.current_stock
+                                }}  PCS
+                            </span>
+
+                        </div>
+
+                        <div
+                            class="
+                                flex
+                                justify-between
+                                text-sm
+                            "
+                        >
+
+                            <span
+                                class="text-red-600 font-bold"
+                            >
+                                Last Movement
+                            </span>
+
+                            <span
+                                class="
+                                    text-xs
+                                    text-gray-600
+                                "
+                            >
+
+                                {{
+
+                                    warehouse.last_movement
+
+                                        ? new Date(
+                                            warehouse.last_movement
+                                        ).toLocaleDateString(
+                                            'id-ID'
+                                        )
+
+                                        : '-'
+
+                                }}
+
+                            </span>
+
+                        </div>
+                        <!-- status -->
+                         <div
+                                class="
+                                    flex
+                                    justify-between
+                                    text-sm
+                                "
+                            >
+
+                                <span
+                                    class="text-yellow-600 font-bold"
+                                >
+                                    Status
+                                </span>
+
+                                <span
+                                    class="
+                                        rounded-full
+                                        bg-green-100
+                                        px-2
+                                        py-1
+                                        text-xs
+                                        font-medium
+                                        text-green-700
+                                    "
+                                >
+
+                                    Active
+
+                                </span>
+
+                            </div>
+                         <!-- end status-->
+                    <!-- card analitycs-->
+                     <hr>
+             <div class="flex">
 
         <div class="w-24 text-gray-500">
             Company

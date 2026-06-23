@@ -8,7 +8,8 @@ use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Http\Requests\WarehouseRequest;
 use Inertia\Inertia;
-
+use App\Models\ProductStock;
+use App\Models\InventoryMovement;
 class WarehouseController extends Controller
 {
     /**
@@ -56,6 +57,60 @@ class WarehouseController extends Controller
     ->paginate(10)
 
     ->withQueryString();
+
+    $warehouses->getCollection()
+
+    ->transform(
+
+        function ($warehouse) {
+
+            $warehouse->total_products =
+
+                ProductStock::where(
+
+                    'warehouse_id',
+
+                    $warehouse->id
+
+                )
+
+                ->distinct()
+
+                ->count(
+                    'product_id'
+                );
+
+            $warehouse->current_stock =
+
+                ProductStock::where(
+
+                    'warehouse_id',
+
+                    $warehouse->id
+
+                )
+
+                ->sum('qty');
+
+            $warehouse->last_movement =
+
+                InventoryMovement::where(
+
+                    'warehouse_id',
+
+                    $warehouse->id
+
+                )
+
+                ->max(
+                    'transaction_date'
+                );
+
+            return $warehouse;
+
+        }
+
+    );
 
     return Inertia::render(
 

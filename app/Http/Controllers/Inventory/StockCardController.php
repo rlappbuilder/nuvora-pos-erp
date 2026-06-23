@@ -101,6 +101,36 @@ class StockCardController extends Controller
 ->paginate(20)
 
 ->withQueryString();
+
+$currentStock =
+
+    $movements
+        ->getCollection()
+        ->sum('qty_in')
+
+    -
+
+    $movements
+        ->getCollection()
+        ->sum('qty_out');
+
+$totalIn =
+
+    $movements
+        ->getCollection()
+        ->sum('qty_in');
+
+$totalOut =
+
+    $movements
+        ->getCollection()
+        ->sum('qty_out');
+
+$totalTransactions =
+
+    $movements
+        ->total();
+
          return Inertia::render(
 
                 'Inventory/StockCard/Index',
@@ -108,6 +138,21 @@ class StockCardController extends Controller
                 [
 
                     'movements' => $movements,
+                    'summary' => [
+
+                        'current_stock' =>
+                            $currentStock,
+
+                        'total_in' =>
+                            $totalIn,
+
+                        'total_out' =>
+                            $totalOut,
+
+                        'transactions' =>
+                            $totalTransactions,
+
+                    ],
 
                     'products' => collect([
 

@@ -23,6 +23,8 @@ const props = defineProps({
 
     filters: Object,
 
+     summary: Object,
+
 })
 
 const selectedProduct = ref(
@@ -122,6 +124,157 @@ watch(
         <div
             class="rounded-2xl bg-white p-6 shadow-sm"
         >
+        <!-- summery card-->
+                            <div
+                        class="
+                            mb-6
+                            grid
+                            grid-cols-4
+                            gap-4
+                        "
+                    >
+
+                        <div
+                            class="
+                                rounded-xl
+                                bg-white
+                                p-4
+                                shadow
+                            "
+                        >
+
+                            <p
+                                class="
+                                    text-sm
+                                    text-gray-500
+                                "
+                            >
+
+                                Current Stock
+
+                            </p>
+
+                            <p
+                                class="
+                                    mt-2
+                                    text-2xl
+                                    font-bold
+                                    text-blue-600
+                                "
+                            >
+
+                                {{ summary.current_stock }}
+
+                            </p>
+
+                        </div>
+
+                        <div
+                            class="
+                                rounded-xl
+                                bg-white
+                                p-4
+                                shadow
+                            "
+                        >
+
+                            <p
+                                class="
+                                    text-sm
+                                    text-gray-500
+                                "
+                            >
+
+                                Total In
+
+                            </p>
+
+                            <p
+                                class="
+                                    mt-2
+                                    text-2xl
+                                    font-bold
+                                    text-green-600
+                                "
+                            >
+
+                                {{ summary.total_in }}
+
+                            </p>
+
+                        </div>
+
+                        <div
+                            class="
+                                rounded-xl
+                                bg-white
+                                p-4
+                                shadow
+                            "
+                        >
+
+                            <p
+                                class="
+                                    text-sm
+                                    text-gray-500
+                                "
+                            >
+
+                                Total Out
+
+                            </p>
+
+                            <p
+                                class="
+                                    mt-2
+                                    text-2xl
+                                    font-bold
+                                    text-red-600
+                                "
+                            >
+
+                                {{ summary.total_out }}
+
+                            </p>
+
+                        </div>
+
+                        <div
+                            class="
+                                rounded-xl
+                                bg-white
+                                p-4
+                                shadow
+                            "
+                        >
+
+                            <p
+                                class="
+                                    text-sm
+                                    text-gray-500
+                                "
+                            >
+
+                                Transactions
+
+                            </p>
+
+                            <p
+                                class="
+                                    mt-2
+                                    text-2xl
+                                    font-bold
+                                "
+                            >
+
+                                {{ summary.transactions }}
+
+                            </p>
+
+                        </div>
+
+                    </div>
+        <!-- end Summary Card -->
         <!-- filter area-->
           <div class="
                         mb-6
