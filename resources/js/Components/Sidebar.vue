@@ -365,6 +365,27 @@ const toggleSidebar = () => {
             </span>
 
         </Link>
+          <Link
+
+            :href="
+                route(
+                    'inventory-adjustments.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Inventory Adjusment
+
+            </span>
+
+        </Link>
         <Link
 
             :href="

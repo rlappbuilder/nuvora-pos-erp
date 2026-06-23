@@ -20,7 +20,7 @@ use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
-
+use App\Http\Controllers\Inventory\InventoryAdjustmentController;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -338,4 +338,145 @@ Route::prefix(
     );
 
 });
+
+/** route stock adjusment */
+Route::prefix(
+    'inventory'
+)
+
+->middleware([
+    'auth'
+])
+
+->group(function () {
+
+    Route::get(
+
+        '/adjustments',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'index'
+
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.index'
+    );
+
+    Route::get(
+
+        '/adjustments/create',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'create'
+
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.create'
+    );
+
+    Route::post(
+
+        '/adjustments',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'store'
+
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.store'
+    );
+
+    Route::get(
+
+        '/adjustments/{inventoryAdjustment}',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'show'
+
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.show'
+    );
+
+    Route::post(
+
+        '/adjustments/{inventoryAdjustment}/post',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'post'
+
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.post'
+    );
+
+    Route::post(
+
+        '/adjustments/{inventoryAdjustment}/cancel',
+
+        [
+
+            InventoryAdjustmentController::class,
+
+            'cancel'
+        ]
+
+    )
+
+    ->name(
+        'inventory-adjustments.cancel'
+    );
+
+
+   Route::get(
+
+    '/adjustments/warehouse/{warehouse}',
+
+    [
+
+        InventoryAdjustmentController::class,
+
+        'getWarehouseStocks'
+
+    ]
+
+)
+
+->name(
+    'inventory-adjustments.warehouse-stocks'
+);
+
+});
+
+/** end route stock adjusment */
 require __DIR__.'/auth.php';
