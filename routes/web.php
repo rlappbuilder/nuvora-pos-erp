@@ -21,6 +21,8 @@ use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Inventory\InventoryAdjustmentController;
+use App\Http\Controllers\Inventory\StockTransferController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -475,6 +477,163 @@ Route::prefix(
 ->name(
     'inventory-adjustments.warehouse-stocks'
 );
+
+});
+
+/** Stock Transfer */
+
+Route::prefix(
+    'inventory'
+)
+
+->middleware([
+    'auth'
+])
+
+->group(function () {
+
+    Route::get(
+
+        '/transfers',
+
+        [
+
+            StockTransferController::class,
+
+            'index'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.index'
+    );
+
+    Route::get(
+
+        '/transfers/create',
+
+        [
+
+            StockTransferController::class,
+
+            'create'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.create'
+    );
+
+    Route::post(
+
+        '/transfers',
+
+        [
+
+            StockTransferController::class,
+
+            'store'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.store'
+    );
+
+    Route::get(
+
+        '/transfers/{stockTransfer}',
+
+        [
+
+            StockTransferController::class,
+
+            'show'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.show'
+    );
+
+    Route::post(
+
+        '/transfers/{stockTransfer}/post',
+
+        [
+
+            StockTransferController::class,
+
+            'post'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.post'
+    );
+
+    Route::post(
+
+        '/transfers/{stockTransfer}/complete',
+
+        [
+
+            StockTransferController::class,
+
+            'complete'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.complete'
+    );
+
+    Route::post(
+
+        '/transfers/{stockTransfer}/cancel',
+
+        [
+
+            StockTransferController::class,
+
+            'cancel'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.cancel'
+    );
+        Route::get(
+
+        '/transfers/warehouse/{warehouse}',
+
+        [
+
+            StockTransferController::class,
+
+            'getWarehouseStocks'
+
+        ]
+
+    )
+
+    ->name(
+        'stock-transfers.warehouse-stocks'
+    );
 
 });
 
