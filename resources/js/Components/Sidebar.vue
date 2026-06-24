@@ -381,7 +381,70 @@ const toggleSidebar = () => {
 
             <span>
 
-                Inventory Adjusment
+                Stock Adjusment
+
+            </span>
+
+        </Link>
+         <Link
+
+            :href="
+                route(
+                    'inventory-adjustments.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Transfer
+
+            </span>
+
+        </Link>
+          <Link
+
+            :href="
+                route(
+                    'inventory-adjustments.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Issue
+
+            </span>
+
+        </Link>
+            <Link
+
+            :href="
+                route(
+                    'inventory-adjustments.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Card Report
 
             </span>
 

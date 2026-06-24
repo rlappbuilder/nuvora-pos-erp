@@ -875,41 +875,77 @@ const submit = () => {
 
                 </div>
                <!-- end teable-->
-                <!-- tombol simpn -->
-                 <div
+                                            <!-- tombol simpn -->
+                                            <div
 
-                        class="
-                            mt-6
-                            flex
-                            justify-end
-                        "
+                                                class="
+                                                    mt-6
+                                                    flex
+                                                    justify-end
+                                                    gap-3
+                                                "
 
-                    >
+                                            >
 
-                        <button
+                                                <!-- Back -->
 
-                            @click="submit"
+                                                <button
 
-                            type="button"
+                                                    @click="
+                                                        $inertia.visit(
+                                                            route(
+                                                                'inventory-adjustments.index'
+                                                            )
+                                                        )
+                                                    "
 
-                            class="
-                                rounded-2xl
-                                bg-blue-600
-                                px-6
-                                py-3
-                                font-medium
-                                text-white
-                                transition
-                                hover:bg-blue-700
-                            "
+                                                    type="button"
 
-                        >
+                                                    class="
+                                                        rounded-2xl
+                                                        border
+                                                        border-gray-300
+                                                        bg-white
+                                                        px-6
+                                                        py-3
+                                                        font-medium
+                                                        text-gray-700
+                                                        transition
+                                                        hover:bg-gray-50
+                                                    "
 
-                            Save Draft
+                                                >
 
-                        </button>
+                                                    Back
 
-                    </div>
+                                                </button>
+
+                                                <!-- Save Draft -->
+
+                                                <button
+
+                                                    @click="submit"
+
+                                                    type="button"
+
+                                                    class="
+                                                        rounded-2xl
+                                                        bg-blue-600
+                                                        px-6
+                                                        py-3
+                                                        font-medium
+                                                        text-white
+                                                        transition
+                                                        hover:bg-blue-700
+                                                    "
+
+                                                >
+
+                                                    Save Draft
+
+                                                </button>
+
+                                            </div>
                  <!-- end tombol simpan-->
            
         </AuthenticatedLayout>

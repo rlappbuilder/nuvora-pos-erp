@@ -266,7 +266,7 @@ const formatDateTime = (date) => {
                                 mt-6
                                 grid
                                 gap-6
-                                md:grid-cols-3
+                                md:grid-cols-4
                             "
 
                         >
@@ -368,29 +368,38 @@ const formatDateTime = (date) => {
                             </div>
 
                             <!-- Value -->
-
                             <div
+
                                 class="
                                     rounded-3xl
                                     bg-white
                                     p-6
                                     shadow-sm
                                 "
+
                             >
 
-                                <p class="text-sm text-gray-500">
+                                <p
+                                    class="
+                                        text-sm
+                                        text-gray-500
+                                    "
+                                >
 
-                                    Adjustment Value
+                                    Adjusted Value
 
                                 </p>
 
                                 <h3
+
                                     class="
                                         mt-2
-                                        text-3xl
+                                        text-2xl
                                         font-bold
-                                        text-green-600
+                                        
+                                        text-blue-500
                                     "
+
                                 >
 
                                     Rp
@@ -442,6 +451,129 @@ const formatDateTime = (date) => {
                                 </h3>
 
                             </div>
+                            <!-- net impact-->
+                           <div
+
+                                    class="
+                                        rounded-3xl
+                                        bg-white
+                                        p-6
+                                        shadow-sm
+                                    "
+
+                                >
+
+                                    <p
+
+                                        class="
+                                            text-sm
+                                            text-gray-500
+                                        "
+
+                                    >
+
+                                        Net Impact
+
+                                    </p>
+
+                                    <h3
+
+                                        class="
+                                         mt-2
+                                        whitespace-nowrap
+                                        text-2xl
+                                        font-bold
+                                        "
+
+                                        :class="
+
+                                            adjustment.details
+
+                                            .reduce(
+
+                                                (
+
+                                                    total,
+
+                                                    item
+
+                                                ) =>
+
+                                                    total +
+
+                                                    (
+
+                                                        Number(
+                                                            item.difference_qty
+                                                        )
+
+                                                        *
+
+                                                        Number(
+                                                            item.unit_cost
+                                                        )
+
+                                                    ),
+
+                                                0
+
+                                            ) >= 0
+
+                                            ? 'text-green-600'
+
+                                            : 'text-red-600'
+
+                                        "
+
+                                    >
+
+                                        Rp
+
+                                        {{
+
+                                            adjustment.details
+
+                                            .reduce(
+
+                                                (
+
+                                                    total,
+
+                                                    item
+
+                                                ) =>
+
+                                                    total +
+
+                                                    (
+
+                                                        Number(
+                                                            item.difference_qty
+                                                        )
+
+                                                        *
+
+                                                        Number(
+                                                            item.unit_cost
+                                                        )
+
+                                                    ),
+
+                                                0
+
+                                            )
+
+                                            .toLocaleString(
+                                                'id-ID'
+                                            )
+
+                                        }}
+
+                                    </h3>
+
+                                </div>
+                            <!-- end net impact-->
+                            <!-- end diffrent adjustmen-->
 
                         </div>
                     <!-- end summary card-->
@@ -711,7 +843,7 @@ const formatDateTime = (date) => {
                                 </div>
 
                             </div>
- <!-- Action Buttons -->
+                                    <!-- Action Buttons -->
                                             <div
 
                                                 class="

@@ -268,7 +268,7 @@ const applyFilter = () => {
                             >
 
                                 {{ summary.total }}
-                                    {{ summary.total }}
+                               
 
                             </h3>
 
