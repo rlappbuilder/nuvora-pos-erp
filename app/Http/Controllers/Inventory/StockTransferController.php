@@ -10,6 +10,8 @@ use App\Models\Product;
 use App\Models\Warehouse;
 
 use App\Models\ProductStock;
+use Illuminate\Support\Facades\DB;
+
 
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetail;
@@ -287,14 +289,14 @@ public function show(
     );
 }
 public function post(
-    StockTransfer
-    $stockTransfer
+    StockTransfer $stockTransfer
 )
 {
     if (
 
         $stockTransfer->status
-        !== 'Draft'
+        !==
+        'Draft'
 
     ) {
 
@@ -302,147 +304,254 @@ public function post(
 
     }
 
-    foreach (
+    DB::transaction(
 
-        $stockTransfer->details
+        function ()
 
-        as $detail
+        use (
 
-    ) {
-
-        $stock =
-
-            ProductStock::where(
-
-                'product_id',
-
-                $detail->product_id
-
-            )
-
-            ->where(
-
-                'warehouse_id',
-
-                $stockTransfer->from_warehouse_id
-
-            )
-
-            ->first();
-
-        if (
-
-            !$stock ||
-
-            $stock->qty
-            <
-            $detail->qty
+            $stockTransfer
 
         ) {
 
-            return back()
+            foreach (
 
-                ->with(
+                $stockTransfer->details
 
-                    'error',
+                as $detail
 
-                    'Insufficient stock.'
+            ) {
+
+                $sourceStock =
+
+                    ProductStock::where(
+
+                        'product_id',
+
+                        $detail->product_id
+
+                    )
+
+                    ->where(
+
+                        'warehouse_id',
+
+                        $stockTransfer
+                        ->from_warehouse_id
+
+                    )
+
+                    ->first();
+
+                if (
+
+                    !$sourceStock ||
+
+                    $sourceStock->qty
+                    <
+                    $detail->qty
+
+                ) {
+
+                    throw new \Exception(
+
+                        'Insufficient stock.'
+
+                    );
+
+                }
+
+                $sourceStock->decrement(
+
+                    'qty',
+
+                    $detail->qty
 
                 );
 
+                InventoryMovement::create([
+
+                    'product_id' =>
+
+                        $detail->product_id,
+
+                    'warehouse_id' =>
+
+                        $stockTransfer
+                        ->from_warehouse_id,
+
+                    'reference_type' =>
+
+                        'TRANSFER_OUT',
+
+                    'reference_id' =>
+
+                        $stockTransfer->id,
+
+                    'reference_number' =>
+
+                        $stockTransfer
+                        ->transfer_number,
+
+                    'qty_in' => 0,
+
+                    'qty_out' =>
+
+                        $detail->qty,
+
+                    'balance_qty' =>
+
+                        $sourceStock
+                        ->fresh()
+                        ->qty,
+
+                    'unit_cost' =>
+
+                        $detail->unit_cost,
+
+                    'total_cost' =>
+
+                        $detail->total_cost,
+
+                    'transaction_date' =>
+
+                        now(),
+
+                    'created_by' =>
+
+                        auth()->id(),
+
+                ]);
+
+                $destinationStock =
+
+                    ProductStock::firstOrCreate(
+
+                        [
+
+                            'product_id' =>
+
+                                $detail->product_id,
+
+                            'warehouse_id' =>
+
+                                $stockTransfer
+                                ->to_warehouse_id,
+
+                        ],
+
+                        [
+
+                            'qty' => 0,
+
+                        ]
+
+                    );
+
+                $destinationStock->increment(
+
+                    'qty',
+
+                    $detail->qty
+
+                );
+
+                InventoryMovement::create([
+
+                    'product_id' =>
+
+                        $detail->product_id,
+
+                    'warehouse_id' =>
+
+                        $stockTransfer
+                        ->to_warehouse_id,
+
+                    'reference_type' =>
+
+                        'TRANSFER_IN',
+
+                    'reference_id' =>
+
+                        $stockTransfer->id,
+
+                    'reference_number' =>
+
+                        $stockTransfer
+                        ->transfer_number,
+
+                    'qty_in' =>
+
+                        $detail->qty,
+
+                    'qty_out' => 0,
+
+                    'balance_qty' =>
+
+                        $destinationStock
+                        ->fresh()
+                        ->qty,
+
+                    'unit_cost' =>
+
+                        $detail->unit_cost,
+
+                    'total_cost' =>
+
+                        $detail->total_cost,
+
+                    'transaction_date' =>
+
+                        now(),
+
+                    'created_by' =>
+
+                        auth()->id(),
+
+                ]);
+
+            }
+
+            $stockTransfer->update([
+
+                'status' =>
+
+                    'Posted',
+
+                'posted_by' =>
+
+                    auth()->id(),
+
+                'posted_at' =>
+
+                    now(),
+
+            ]);
+
         }
 
-        $stock->decrement(
+    );
 
-            'qty',
+    return redirect()
 
-            $detail->qty
+    ->route(
 
-        );
+        'stock-transfers.show',
 
-        InventoryMovement::create([
+        $stockTransfer
 
-            'product_id' =>
+    )
 
-                $detail->product_id,
+    ->with(
 
-            'warehouse_id' =>
+        'success',
 
-                $stockTransfer
-                ->from_warehouse_id,
+        'Transfer posted successfully.'
 
-            'reference_type' =>
-
-                'TRANSFER_OUT',
-
-            'reference_id' =>
-
-                $stockTransfer->id,
-
-            'reference_number' =>
-
-                $stockTransfer
-                ->transfer_number,
-
-            'qty_in' => 0,
-
-            'qty_out' =>
-
-                $detail->qty,
-
-            'balance_qty' =>
-
-                $stock->fresh()->qty,
-
-            'unit_cost' =>
-
-                $detail->unit_cost,
-
-            'total_cost' =>
-
-                $detail->total_cost,
-
-            'transaction_date' =>
-
-                now(),
-
-            'created_by' =>
-
-                auth()->id(),
-
-        ]);
-
-    }
-
-    $stockTransfer->update([
-
-        'status' =>
-
-            'Posted',
-
-        'posted_by' =>
-
-            auth()->id(),
-
-        'posted_at' =>
-
-            now(),
-
-    ]);
-
-    return back()
-
-        ->with(
-
-            'success',
-
-            'Transfer posted.'
-
-        );
+    );
 }
 public function complete(
-    StockTransfer
-    $stockTransfer
+    StockTransfer $stockTransfer
 )
 {
     if (
@@ -456,130 +565,34 @@ public function complete(
 
     }
 
-    foreach (
-
-        $stockTransfer->details
-
-        as $detail
-
-    ) {
-
-        $stock =
-
-            ProductStock::firstOrCreate(
-
-                [
-
-                    'product_id' =>
-
-                        $detail->product_id,
-
-                    'warehouse_id' =>
-
-                        $stockTransfer
-                        ->to_warehouse_id,
-
-                ],
-
-                [
-
-                    'qty' => 0,
-
-                    'created_by' =>
-
-                        auth()->id(),
-
-                ]
-
-            );
-
-        $stock->increment(
-
-            'qty',
-
-            $detail->qty
-
-        );
-
-        InventoryMovement::create([
-
-            'product_id' =>
-
-                $detail->product_id,
-
-            'warehouse_id' =>
-
-                $stockTransfer
-                ->to_warehouse_id,
-
-            'reference_type' =>
-
-                'TRANSFER_IN',
-
-            'reference_id' =>
-
-                $stockTransfer->id,
-
-            'reference_number' =>
-
-                $stockTransfer
-                ->transfer_number,
-
-            'qty_in' =>
-
-                $detail->qty,
-
-            'qty_out' => 0,
-
-            'balance_qty' =>
-
-                $stock->fresh()->qty,
-
-            'unit_cost' =>
-
-                $detail->unit_cost,
-
-            'total_cost' =>
-
-                $detail->total_cost,
-
-            'transaction_date' =>
-
-                now(),
-
-            'created_by' =>
-
-                auth()->id(),
-
-        ]);
-
-    }
-
     $stockTransfer->update([
 
-        'status' =>
+        'status' => 'Completed',
 
-            'Completed',
+        'completed_by' => auth()->id(),
 
-        'completed_by' =>
-
-            auth()->id(),
-
-        'completed_at' =>
-
-            now(),
+        'completed_at' => now(),
 
     ]);
 
-    return back()
+    return redirect()
+
+        ->route(
+
+            'stock-transfers.show',
+
+            $stockTransfer
+
+        )
 
         ->with(
 
             'success',
 
-            'Transfer completed.'
+            'Transfer completed successfully.'
 
         );
+
 }
 public function cancel(
     Request $request,
@@ -589,23 +602,36 @@ public function cancel(
     if (
 
         $stockTransfer->status
-        !== 'Draft'
+        !==
+        'Draft'
 
     ) {
 
-        return back();
+        return back()
+
+            ->with(
+
+                'error',
+
+                'Only draft transfers can be cancelled.'
+
+            );
 
     }
+
+    $request->validate([
+
+        'cancel_reason' =>
+
+            'required|string|max:500',
+
+    ]);
 
     $stockTransfer->update([
 
         'status' =>
 
             'Cancelled',
-
-        'cancel_reason' =>
-
-            $request->cancel_reason,
 
         'cancelled_by' =>
 
@@ -615,17 +641,30 @@ public function cancel(
 
             now(),
 
+        'cancel_reason' =>
+
+            $request->cancel_reason,
+
     ]);
 
-    return back()
+  return redirect()
 
-        ->with(
+    ->route(
 
-            'success',
+        'stock-transfers.show',
 
-            'Transfer cancelled.'
+        $stockTransfer
 
-        );
+    )
+
+    ->with(
+
+        'success',
+
+        'Transfer cancelled successfully.'
+
+    );
+
 }
 public function getWarehouseStocks(
     Warehouse $warehouse
@@ -721,4 +760,6 @@ public function getWarehouseStocks(
 
     );
 }
+
+
 }

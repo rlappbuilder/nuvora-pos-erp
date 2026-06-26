@@ -584,21 +584,12 @@ Route::prefix(
 
     Route::post(
 
-        '/transfers/{stockTransfer}/complete',
+    '/inventory/transfers/{stockTransfer}/complete',
 
-        [
-
-            StockTransferController::class,
-
-            'complete'
-
-        ]
-
-    )
-
-    ->name(
-        'stock-transfers.complete'
-    );
+    [
+        StockTransferController::class, 'complete'
+    ]
+        )->name('stock-transfers.complete');
 
     Route::post(
 
@@ -634,6 +625,24 @@ Route::prefix(
     ->name(
         'stock-transfers.warehouse-stocks'
     );
+
+            Route::post(
+
+            '/inventory/transfers/{stockTransfer}/cancel',
+
+            [
+
+                StockTransferController::class,
+
+                'cancel'
+
+            ]
+
+        )->name(
+
+            'stock-transfers.cancel'
+
+        );
 
 });
 

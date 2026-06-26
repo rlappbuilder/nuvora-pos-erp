@@ -101,6 +101,46 @@ const grandTotal = computed(() => {
     )
 
 })
+
+const formatDateTime = (
+    value
+) => {
+
+    if (
+
+        !value
+
+    ) {
+
+        return '-'
+
+    }
+
+    return new Date(
+
+        value
+
+    ).toLocaleString(
+
+        'en-GB',
+
+        {
+
+            day: '2-digit',
+
+            month: 'short',
+
+            year: 'numeric',
+
+            hour: '2-digit',
+
+            minute: '2-digit',
+
+        }
+
+    )
+
+}
 </script>
 
 <template>
@@ -744,14 +784,15 @@ const grandTotal = computed(() => {
                     font-semibold
                 "
             >
-
                 {{
-                    goodsReceipt
-                    .creator
-                    ?.name
-                    ?? '-'
-                }}
 
+                    formatDateTime(
+
+                    goodsReceipt.created_by
+
+                    )
+                }}
+             
             </p>
 
         </div>
@@ -776,8 +817,12 @@ const grandTotal = computed(() => {
             >
 
                 {{
-                    goodsReceipt
-                    .created_at
+
+                    formatDateTime(
+
+                    goodsReceipt.created_at
+
+                    )
                 }}
 
             </p>
@@ -833,10 +878,14 @@ const grandTotal = computed(() => {
                 "
             >
 
+               
                 {{
-                    goodsReceipt
-                    .posted_at
-                    ?? '-'
+
+                    formatDateTime(
+
+                    goodsReceipt.posted_at
+
+                    )
                 }}
 
             </p>
@@ -892,10 +941,15 @@ const grandTotal = computed(() => {
                 "
             >
 
+            
+                
                 {{
-                    goodsReceipt
-                    .cancelled_at
-                    ?? '-'
+
+                    formatDateTime(
+
+                    goodsReceipt.cancelled_at
+
+                    )
                 }}
 
             </p>
@@ -1012,9 +1066,16 @@ const grandTotal = computed(() => {
                     "
                 >
 
+                    
                     {{
-                        goodsReceipt.created_at
-                    }}
+
+                     formatDateTime(
+
+                       goodsReceipt.created_at
+
+                     )
+
+                     }}
 
                 </p>
 
@@ -1086,9 +1147,17 @@ const grandTotal = computed(() => {
                     "
                 >
 
-                    {{
-                        goodsReceipt.posted_at
-                    }}
+                
+                      {{
+
+                     formatDateTime(
+
+                       goodsReceipt.posted_at
+
+                     )
+
+                     }}
+                    
 
                 </p>
 
@@ -1160,9 +1229,15 @@ const grandTotal = computed(() => {
                     "
                 >
 
+                    
                     {{
-                        goodsReceipt.cancelled_at
-                    }}
+
+                      formatDateTime(
+
+                       goodsReceipt.cancelled_at
+                       )
+
+                      }}
 
                 </p>
 
