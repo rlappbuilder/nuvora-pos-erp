@@ -1023,7 +1023,10 @@ const completeTransfer = () => {
                                                 "
 
                                             >
-                                                 <thead>
+                                                 <thead class="
+                                                            border-b
+                                                            bg-gray-100
+                                                        ">
 
                                                     <tr
 
@@ -1035,11 +1038,7 @@ const completeTransfer = () => {
 
                                                         <th
 
-                                                            class="
-                                                                px-4
-                                                                py-3
-                                                                text-left
-                                                            "
+                                                           class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500"
 
                                                         >
 
@@ -1049,11 +1048,7 @@ const completeTransfer = () => {
 
                                                         <th
 
-                                                            class="
-                                                                px-4
-                                                                py-3
-                                                                text-right
-                                                            "
+                                                            class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500"
 
                                                         >
 
@@ -1063,11 +1058,7 @@ const completeTransfer = () => {
 
                                                         <th
 
-                                                            class="
-                                                                px-4
-                                                                py-3
-                                                                text-right
-                                                            "
+                                                           class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500"
 
                                                         >
 
@@ -1077,11 +1068,7 @@ const completeTransfer = () => {
 
                                                         <th
 
-                                                            class="
-                                                                px-4
-                                                                py-3
-                                                                text-right
-                                                            "
+                                                           class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500"
 
                                                         >
 
@@ -1091,11 +1078,7 @@ const completeTransfer = () => {
 
                                                         <th
 
-                                                            class="
-                                                                px-4
-                                                                py-3
-                                                                text-left
-                                                            "
+                                                           class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500"
 
                                                         >
 

@@ -12,7 +12,7 @@ use App\Models\Warehouse;
 use App\Models\ProductStock;
 use Illuminate\Support\Facades\DB;
 
-
+use Carbon\Carbon;
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetail;
 use App\Models\InventoryMovement;
@@ -20,21 +20,291 @@ class StockTransferController extends Controller
 {
     public function index()
 {
-    $transfers =
+    $startDate =
 
-        StockTransfer::with(
+    Carbon::now()
 
-            'fromWarehouse',
+    ->startOfMonth()
 
-            'toWarehouse',
+    ->format(
 
-            'creator'
+        'Y-m-d'
+
+    );
+
+$endDate =
+
+    Carbon::now()
+
+    ->endOfMonth()
+
+    ->format(
+
+        'Y-m-d'
+
+    );
+    $query = StockTransfer::query()
+
+        ->with([
+
+                'fromWarehouse',
+
+                'toWarehouse',
+
+                'creator',
+
+                'details',
+
+            ])
+
+        ->withCount(
+
+            'details'
 
         )
 
-        ->latest()
+        ->when(
+
+            request('search'),
+
+            function (
+
+                $q
+
+            ) {
+
+                $q->where(
+
+                    'transfer_number',
+
+                    'like',
+
+                    '%' .
+
+                    request(
+
+                        'search'
+
+                    )
+
+                    . '%'
+
+                );
+
+            }
+
+        )
+
+        ->when(
+
+            request('status'),
+
+            function (
+
+                $q
+
+            ) {
+
+                $q->where(
+
+                    'status',
+
+                    request(
+
+                        'status'
+
+                    )
+
+                );
+
+            }
+
+        )
+        
+   ->when(
+
+    request('date'),
+
+    function (
+
+        $query
+
+    ) {
+
+        $dates = explode(
+
+            ' to ',
+
+            request('date')
+
+        );
+
+        $from = $dates[0];
+
+        $to = $dates[1] ?? $dates[0];
+
+        $query->whereBetween(
+
+            'transfer_date',
+
+            [
+
+                $from,
+
+                $to,
+
+            ]
+
+        );
+
+    
+
+
+
+        $query->whereBetween(
+
+            'transfer_date',
+
+            [
+
+                $from,
+
+                $to,
+
+            ]
+
+        );
+
+    }
+
+)
+->when(
+
+    !request('date'),
+
+    function (
+
+        $query
+
+    ) use (
+
+        $startDate,
+
+        $endDate
+
+    ) {
+
+        $query->whereBetween(
+
+            'transfer_date',
+
+            [
+
+                $startDate,
+
+                $endDate,
+
+            ]
+
+        );
+
+    }
+
+)
+
+        ->latest();
+$summaryQuery = clone $query;
+    $transfers =
+
+        $query
 
         ->paginate(10)
+
+        ->through(
+
+            function (
+
+                $transfer
+
+            ) {
+
+                return [
+
+                    'id' =>
+
+                        $transfer->id,
+
+                    'transfer_number' =>
+
+                        $transfer->transfer_number,
+
+                    'transfer_date' =>
+
+                        $transfer->transfer_date,
+
+                    'from_warehouse' =>
+
+                        $transfer
+
+                        ->fromWarehouse
+
+                        ?->name,
+
+                    'to_warehouse' =>
+
+                        $transfer
+
+                        ->toWarehouse
+
+                        ?->name,
+
+                    'status' =>
+
+                        $transfer->status,
+
+                    'items' =>
+
+                        $transfer
+
+                        ->details_count,
+
+                    'total_qty' =>
+
+                        $transfer
+
+                        ->details
+
+                        ->sum(
+
+                            'qty'
+
+                        ),
+
+                    'total_value' =>
+
+                        $transfer
+
+                        ->details
+
+                        ->sum(
+
+                            'total_cost'
+
+                        ),
+
+                    'creator' =>
+
+                        $transfer
+
+                        ->creator
+
+                        ?->name,
+
+                ];
+
+            }
+
+        )
 
         ->withQueryString();
 
@@ -48,47 +318,106 @@ class StockTransferController extends Controller
 
                 $transfers,
 
-            'summary' => [
+            'filters' => [
 
-                'draft' =>
+                'search' =>
 
-                    StockTransfer::where(
+                    request(
 
-                        'status',
+                        'search'
 
-                        'Draft'
+                    ),
 
-                    )->count(),
+                'status' =>
 
-                'posted' =>
+                    request(
 
-                    StockTransfer::where(
+                        'status'
 
-                        'status',
-
-                        'Posted'
-
-                    )->count(),
-
-                'completed' =>
-
-                    StockTransfer::where(
-
-                        'status',
-
-                        'Completed'
-
-                    )->count(),
-
-                'total' =>
-
-                    StockTransfer::count(),
+                    ),
 
             ],
+
+            'summary' => [
+
+    'draft' =>
+
+        (
+
+            clone $summaryQuery
+
+        )
+
+        ->where(
+
+            'status',
+
+            'Draft'
+
+        )
+
+        ->count(),
+
+    'posted' =>
+
+        (
+
+            clone $summaryQuery
+
+        )
+
+        ->where(
+
+            'status',
+
+            'Posted'
+
+        )
+
+        ->count(),
+
+    'completed' =>
+
+        (
+
+            clone $summaryQuery
+
+        )
+
+        ->where(
+
+            'status',
+
+            'Completed'
+
+        )
+
+        ->count(),
+
+    'cancelled' =>
+
+        (
+
+            clone $summaryQuery
+
+        )
+
+        ->where(
+
+            'status',
+
+            'Cancelled'
+
+        )
+
+        ->count(),
+
+]
 
         ]
 
     );
+
 }
 public function create()
 {

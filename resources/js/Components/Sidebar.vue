@@ -390,7 +390,7 @@ const toggleSidebar = () => {
 
              :href="
                 route(
-                    'inventory-adjustments.index'
+                    'stock-transfers.index'
                 )
             " 
             
@@ -411,7 +411,7 @@ const toggleSidebar = () => {
 
             :href="
                 route(
-                    'inventory-adjustments.index'
+                    'stock-transfers.index'
                 )
             "
 
