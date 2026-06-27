@@ -411,7 +411,7 @@ const toggleSidebar = () => {
 
             :href="
                 route(
-                    'stock-transfers.index'
+                    'stock-issues.index'
                 )
             "
 
@@ -428,11 +428,32 @@ const toggleSidebar = () => {
             </span>
 
         </Link>
+         <Link
+
+            :href="
+                route(
+                    'stock-issues.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Stock Valuation
+
+            </span>
+
+        </Link>
             <Link
 
             :href="
                 route(
-                    'inventory-adjustments.index'
+                    'stock-issues.index'
                 )
             "
 

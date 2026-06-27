@@ -12,14 +12,14 @@ from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
 
-    transfer: Object,
+    issue: Object,
 
 })
 
 
-const transfer =
+const issue =
 
-    props.transfer 
+    props.issue 
 
 
     
@@ -29,7 +29,7 @@ const showCancelModal = ref(
 
 const cancelReason = ref('')
 
-const cancelTransfer = () => {
+const cancelIssue = () => {
 
     showCancelModal.value = true
 
@@ -41,9 +41,9 @@ const confirmCancel = () => {
 
         route(
 
-            'stock-transfers.cancel',
+            'stock-issues.cancel',
 
-            transfer.id
+            issue.id
 
         ),
 
@@ -56,9 +56,7 @@ const confirmCancel = () => {
         },
 
         {
-
             preserveState: false,
-
             preserveScroll: true,
 
             onSuccess: () => {
@@ -66,6 +64,12 @@ const confirmCancel = () => {
                 showCancelModal.value = false
 
                 cancelReason.value = ''
+
+            },
+
+            onError: () => {
+
+                showCancelModal.value = false
 
             }
 
@@ -94,7 +98,7 @@ const getStatusClass =
             return
             'bg-green-100 text-green-800'
 
-        case 'Completed':
+        case 'Complete':
 
             return
             'bg-blue-100 text-blue-800'
@@ -115,7 +119,7 @@ const getStatusClass =
 
 const totalQty = () => {
 
-    return props.transfer.details
+    return props.issue.details
 
     .reduce(
 
@@ -141,7 +145,7 @@ const totalQty = () => {
 
 const totalValue = () => {
 
-    return props.transfer.details
+    return props.issue.details
 
     .reduce(
 
@@ -205,19 +209,18 @@ const formatDateTime = (
 }
 
 
-const postTransfer = () => {
+const postIssue = () => {
 
     router.post(
 
         route(
 
-            'stock-transfers.post',
+            'stock-issues.post',
 
-            transfer.id
+            issue.id
 
         ),
-
-        {},
+           {},
 
         {
 
@@ -230,15 +233,15 @@ const postTransfer = () => {
     )
 
 }
-const completeTransfer = () => {
+const completeIssue = () => {
 
     router.post(
 
         route(
 
-            'stock-transfers.complete',
+            'stock-issues.complete',
 
-            transfer.id
+            issue.id
 
         ),
 
@@ -261,7 +264,7 @@ const completeTransfer = () => {
 
         <Head
 
-            title="Stock Transfer"
+            title="Stock Issue"
 
         />
 
@@ -281,7 +284,7 @@ const completeTransfer = () => {
 
                     >
 
-                        Stock Transfer
+                        Stock Issue
 
                     </h2>
 
@@ -295,7 +298,7 @@ const completeTransfer = () => {
 
                     >
 
-                        Transfer detail.
+                        Issue detail.
 
                     </p>
 
@@ -357,7 +360,7 @@ const completeTransfer = () => {
 
                                         {{
 
-                                            transfer.transfer_number
+                                            issue.issue_number
 
                                         }}
 
@@ -372,7 +375,7 @@ const completeTransfer = () => {
 
                                     >
 
-                                        Stock Transfer Document
+                                        Stock Issue Document
 
                                     </p>
 
@@ -392,7 +395,7 @@ const completeTransfer = () => {
 
                                     :class="
                                         getStatusClass(
-                                            transfer.status
+                                            issue.status
                                         )
                                     "
 
@@ -411,7 +414,7 @@ const completeTransfer = () => {
 
                                         {{
 
-                                            transfer.status
+                                            issue.status
 
                                         }}
 
@@ -420,7 +423,7 @@ const completeTransfer = () => {
 
                                             v-if="
 
-                                                transfer.status
+                                                issue.status
 
                                                 ===
 
@@ -430,7 +433,7 @@ const completeTransfer = () => {
 
                                             @click="
 
-                                                completeTransfer
+                                                completeIssue
 
                                             "
 
@@ -461,7 +464,7 @@ const completeTransfer = () => {
 
                                                 route(
 
-                                                    'stock-transfers.index'
+                                                    'stock-issues.index'
 
                                                 )
 
@@ -484,13 +487,13 @@ const completeTransfer = () => {
                                 <button
 
                                     v-if="
-                                        transfer.status
+                                        issue.status
                                         ===
                                         'Draft'
                                     "
 
                                     @click="
-                                        cancelTransfer
+                                        cancelIssue
                                     "
 
                                     type="button"
@@ -514,13 +517,13 @@ const completeTransfer = () => {
                                     <button
 
                                         v-if="
-                                            transfer.status
+                                            issue.status
                                             ===
                                             'Draft'
                                         "
 
                                         @click="
-                                            postTransfer
+                                            postIssue
                                         "
 
                                         type="button"
@@ -593,7 +596,7 @@ const completeTransfer = () => {
 
                                                 {{
 
-                                                    transfer.details.length
+                                                    issue.details.length
 
                                                 }}
 
@@ -620,7 +623,7 @@ const completeTransfer = () => {
 
                                                 >
 
-                                                    Transfer Qty
+                                                    Issue Qty
 
                                                 </p>
 
@@ -665,7 +668,7 @@ const completeTransfer = () => {
 
                                                     >
 
-                                                        Transfer Value
+                                                        Issue Value
 
                                                     </p>
 
@@ -706,7 +709,7 @@ const completeTransfer = () => {
                                             <!-- end trf value-->
                                     </div>
                             <!-- end summary card-->
-                            <!-- trf information card-->
+                            <!-- issue information card-->
                              <div
 
                                     class="
@@ -729,7 +732,7 @@ const completeTransfer = () => {
 
                                     >
 
-                                        Transfer Information
+                                        Stock Issue Information
 
                                     </h2>
 
@@ -754,7 +757,7 @@ const completeTransfer = () => {
 
                                             >
 
-                                                Transfer Number
+                                                Issue Number
 
                                             </p>
 
@@ -769,7 +772,7 @@ const completeTransfer = () => {
 
                                                 {{
 
-                                                    transfer.transfer_number
+                                                    issue.issue_number
 
                                                 }}
 
@@ -787,7 +790,7 @@ const completeTransfer = () => {
 
                                             >
 
-                                                Transfer Date
+                                               Issue  Date
 
                                             </p>
 
@@ -799,12 +802,16 @@ const completeTransfer = () => {
                                                 "
 
                                             >
+                                                    {{
 
-                                                {{
+                                                        formatDateTime(
 
-                                                    transfer.transfer_date
+                                                            issue.issue_date
+                                                        )
 
-                                                }}
+                                                    }}
+
+                                                
 
                                             </p>
 
@@ -812,78 +819,33 @@ const completeTransfer = () => {
                                         <div>
 
                                             <p
+                                            class="
+                                                text-sm
+                                                text-gray-500
+                                            "
+                                        >
+                                            Warehouse
+                                        </p>
 
-                                                class="
-                                                    text-sm
-                                                    text-gray-500
-                                                "
+                                        <p
+                                            class="
+                                                mt-1
+                                                font-semibold
+                                            "
+                                        >
+                                            {{
 
-                                            >
+                                                issue
 
-                                                From Warehouse
+                                                .warehouse
 
-                                            </p>
+                                                ?.name
 
-                                            <p
-
-                                                class="
-                                                    mt-1
-                                                    font-semibold
-                                                "
-
-                                            >
-
-                                                {{
-
-                                                    transfer
-
-                                                    .from_warehouse
-
-                                                    ?.name
-
-                                                }}
-
-                                            </p>
-
-                                        </div>
-                                        <div>
-
-                                            <p
-
-                                                class="
-                                                    text-sm
-                                                    text-gray-500
-                                                "
-
-                                            >
-
-                                                To Warehouse
-
-                                            </p>
-
-                                            <p
-
-                                                class="
-                                                    mt-1
-                                                    font-semibold
-                                                "
-
-                                            >
-
-                                                {{
-
-                                                    transfer
-
-                                                    .to_warehouse
-
-                                                    ?.name
-
-                                                }}
-
-                                            </p>
-
-                                        </div>
-                                        <div
+                                            }}
+                                        </p>
+                                        <!-- remark-->
+                                         <br>
+                                         <div
 
                                                 class="
                                                     md:col-span-2
@@ -915,7 +877,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.remarks
+                                                        issue.remarks
 
                                                         ||
 
@@ -926,6 +888,62 @@ const completeTransfer = () => {
                                                 </p>
 
                                             </div>
+                                            <!-- end remark-->
+                                        </div>
+                                        <div>
+
+                                       <p
+                                            class="
+                                                text-sm
+                                                text-gray-500
+                                            "
+                                        >
+                                            Issue Type
+                                        </p>
+
+                                        <p
+                                            class="
+                                                mt-1
+                                                font-semibold
+                                            "
+                                        >
+                                            {{
+
+                                                issue.issue_type
+
+                                            }}
+                                        </p>
+                                        <br></br>
+                                        <div>
+                                        <p
+                                            class="
+                                                text-sm
+                                                text-gray-500
+                                            "
+                                        >
+                                            Reference Number
+                                        </p>
+
+                                        <p
+                                            class="
+                                                mt-1
+                                                font-semibold
+                                            "
+                                        >
+                                            {{
+
+                                                issue.reference_number
+
+                                                ||
+
+                                                '-'
+
+                                            }}
+                                        </p>
+                                        </div>
+                                        </div>
+                                     
+                                        
                                     </div>
                                 </div>
                             <!-- end tr information card-->
@@ -964,7 +982,7 @@ const completeTransfer = () => {
 
                                             >
 
-                                                Transfer Items
+                                                Issue Items
 
                                             </h2>
 
@@ -977,7 +995,7 @@ const completeTransfer = () => {
 
                                             >
 
-                                                Products included in this transfer.
+                                                Products included in this Issue.
 
                                             </p>
 
@@ -999,7 +1017,7 @@ const completeTransfer = () => {
 
                                             {{
 
-                                                transfer.details.length
+                                                issue.details.length
 
                                             }}
 
@@ -1052,7 +1070,7 @@ const completeTransfer = () => {
 
                                                         >
 
-                                                            Transfer Qty
+                                                            Issue Qty
 
                                                         </th>
 
@@ -1099,7 +1117,7 @@ const completeTransfer = () => {
 
                                                             in
 
-                                                            transfer.details
+                                                            issue.details
 
                                                         "
 
@@ -1137,7 +1155,7 @@ const completeTransfer = () => {
                                                             class="
                                                                 px-4
                                                                 py-3
-                                                               text-left
+                                                                text-left
                                                                 font-medium
                                                             "
 
@@ -1215,7 +1233,6 @@ const completeTransfer = () => {
                                                                 class="
                                                                     px-4
                                                                     py-3
-                                                                    text-left
                                                                 "
 
                                                             >
@@ -1300,7 +1317,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.creator?.name
+                                                        issue.creator?.name
 
                                                         ||
 
@@ -1339,7 +1356,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.created_at
+                                                            issue.created_at
 
                                                         )
 
@@ -1374,7 +1391,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.poster?.name
+                                                        issue.poster?.name
 
                                                         ||
 
@@ -1413,7 +1430,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.posted_at
+                                                            issue.posted_at
 
                                                         )
 
@@ -1448,7 +1465,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.completer?.name
+                                                        issue.completer?.name
 
                                                         ||
 
@@ -1487,7 +1504,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.completed_at
+                                                            issue.completed_at
 
                                                         )
 
@@ -1522,7 +1539,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.canceller?.name
+                                                        issue.canceller?.name
 
                                                         ||
 
@@ -1561,7 +1578,7 @@ const completeTransfer = () => {
 
                                                             formatDateTime(
 
-                                                                transfer.cancelled_at
+                                                                issue.cancelled_at
 
                                                             )
 
@@ -1660,7 +1677,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.created_at
+                                                            issue.created_at
 
                                                         )
 
@@ -1680,7 +1697,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.creator?.name
+                                                        issue.creator?.name
 
                                                         ||
 
@@ -1696,7 +1713,7 @@ const completeTransfer = () => {
                                         <div
 
                                             v-if="
-                                                transfer.posted_at
+                                                issue.posted_at
                                             "
 
                                             class="
@@ -1729,7 +1746,7 @@ const completeTransfer = () => {
 
                                                 >
 
-                                                    Transfer Posted
+                                                    issue Posted
 
                                                 </h3>
 
@@ -1745,7 +1762,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.posted_at
+                                                            issue.posted_at
 
                                                         )
 
@@ -1765,7 +1782,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.poster?.name
+                                                        issue.poster?.name
 
                                                         ||
 
@@ -1781,7 +1798,7 @@ const completeTransfer = () => {
                                         <div
 
                                             v-if="
-                                                transfer.completed_at
+                                                issue.completed_at
                                             "
 
                                             class="
@@ -1814,7 +1831,7 @@ const completeTransfer = () => {
 
                                                 >
 
-                                                    Transfer Completed
+                                                    issue Completed
 
                                                 </h3>
 
@@ -1830,7 +1847,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.completed_at
+                                                            issue.completed_at
 
                                                         )
 
@@ -1850,7 +1867,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.completer?.name
+                                                        issue.completer?.name
 
                                                         ||
 
@@ -1863,11 +1880,11 @@ const completeTransfer = () => {
                                             </div>
 
                                         </div>
-                                        <!-- transfer cancelled at-->
+                                        <!-- issue cancelled at-->
                                         <div
 
                                             v-if="
-                                                transfer.cancelled_at
+                                                issue.cancelled_at
                                             "
 
                                             class="
@@ -1901,7 +1918,7 @@ const completeTransfer = () => {
 
                                                 >
 
-                                                    Transfer Cancelled
+                                                    issue Cancelled
 
                                                 </h3>
 
@@ -1917,7 +1934,7 @@ const completeTransfer = () => {
 
                                                         formatDateTime(
 
-                                                            transfer.cancelled_at
+                                                            issue.cancelled_at
 
                                                         )
 
@@ -1937,7 +1954,7 @@ const completeTransfer = () => {
 
                                                     {{
 
-                                                        transfer.canceller?.name
+                                                        issue.canceller?.name
 
                                                         ||
 
@@ -1950,7 +1967,7 @@ const completeTransfer = () => {
                                                 <div
 
                                                     v-if="
-                                                        transfer.cancel_reason
+                                                        issue.cancel_reason
                                                     "
 
                                                     class="
@@ -1965,14 +1982,14 @@ const completeTransfer = () => {
 
                                                 >
 
-                                                    {{ transfer.cancel_reason }}
+                                                    {{ issue.cancel_reason }}
 
                                                 </div>
 
                                             </div>
 
                                         </div>
-                                        <!-- transfer cancelled at-->
+                                        <!-- issue cancelled at-->
                                     </div>
                                 </div>
                                      <!-- end workflow timline-->
@@ -2013,7 +2030,7 @@ const completeTransfer = () => {
             "
         >
 
-            Cancel Stock Transfer
+            Cancel Stock issue
 
         </h3>
 

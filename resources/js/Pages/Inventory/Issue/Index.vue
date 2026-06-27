@@ -34,7 +34,7 @@ import {
 } from '@heroicons/vue/24/outline'
 const props = defineProps({
 
-    transfers: Object,
+    issues: Object,
 
     filters: Object,
 
@@ -61,12 +61,87 @@ const status = ref(
     props.filters.status ?? ''
 
 )
+const showCancelModal = ref(
+    false
+)
 
+const cancelReason = ref('')
+
+const cancelTransfer = () => {
+
+    showCancelModal.value = true
+
+}
+
+const confirmCancel = () => {
+
+    router.post(
+
+        route(
+
+            'stock-transfers.cancel',
+
+            transfer.id
+
+        ),
+
+        {
+
+            cancel_reason:
+
+                cancelReason.value
+
+        },
+
+        {
+
+            preserveState: false,
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showCancelModal.value = false
+
+                cancelReason.value = ''
+
+            }
+
+        }
+
+    )
+
+}
 const dateRange = ref(
 
     props.filters.date ?? ''
 
 )
+const totalValue = () => {
+
+    return props.issue.details
+
+    .reduce(
+
+        (
+
+            total,
+
+            item
+
+        ) =>
+
+            total +
+
+            Number(
+                item.total_cost
+            ),
+
+        0
+
+    )
+
+}
 
 const searchData = () => {
 
@@ -74,7 +149,7 @@ const searchData = () => {
 
         route(
 
-            'stock-transfers.index'
+            'stock-issues.index'
 
         ),
 
@@ -258,7 +333,7 @@ const formatDate = (
 <template>
   
         <Head
-            title="Inventory Transfer"
+            title="Inventory Issue"
         />
 
         <AuthenticatedLayout>
@@ -286,7 +361,7 @@ const formatDate = (
 
                             >
 
-                                Stock Transfers
+                                Stock Issues
 
                             </h2>
 
@@ -300,7 +375,7 @@ const formatDate = (
 
                             >
 
-                                Manage inventory transfers between warehouses.
+                                Manage inventory Issues between warehouses.
 
                             </p>
 
@@ -310,7 +385,7 @@ const formatDate = (
 
                             :href="
                                 route(
-                                    'stock-transfers.create'
+                                    'stock-issues.create'
                                 )
                             "
 
@@ -327,7 +402,7 @@ const formatDate = (
 
                         >
 
-                            + New Transfer
+                            + New Issues
 
                         </Link>
 
@@ -581,7 +656,7 @@ const formatDate = (
 
                                         type="text"
 
-                                        placeholder="Transfer Number..."
+                                        placeholder="issues Number..."
 
                                         class="
                                             w-full
@@ -799,58 +874,45 @@ const formatDate = (
 
                                                 <th class="w-36 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
 
-                                                    Transfer No
+                                                    Issues No
 
                                                 </th>
 
-                                                <th class="w-32 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
+                                                <th class="w-48 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
 
                                                     Date
 
                                                 </th>
 
-                                                <th class="w-48 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
+                                                <th class="w-30 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
 
-                                                    From Warehouse
+                                                     Issue Type
 
                                                 </th>
 
                                                 <th class="w-48 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
 
-                                                    To Warehouse
+                                                    Warehouse
 
                                                 </th>
 
                                                 <th class="w-24 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
 
-                                                    Items
+                                                    Issue Value
+
 
                                                 </th>
 
                                                 <th class="w-40 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
 
-                                                     Transfer Value
-
+                                                    Issue Type
                                                 </th>
 
                                                 <th class="w-32 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
 
-                                                   Status
+                                                   Action
 
                                                 </th>
-
-                                                <th class="w-24 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                    Action
-
-                                                </th>
-
-                                              <!--  <th class="w-24 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                    
-
-                                                </th> -->
-
                                             </tr>
 
                                         </thead>
@@ -861,7 +923,7 @@ const formatDate = (
 
                                                 v-if="
 
-                                                    !transfers.data.length
+                                                    !issues.data.length
 
                                                 "
 
@@ -879,7 +941,7 @@ const formatDate = (
 
                                                 >
 
-                                                    No Stock Transfer Found
+                                                    No Stock Issues Found
 
                                                 </td>
 
@@ -889,15 +951,15 @@ const formatDate = (
 
                                                 v-for="
                                                     (
-                                                        transfer,
+                                                        issue,
                                                         index
                                                     )
                                                     in
-                                                    transfers.data
+                                                    issues.data
                                                 "
 
                                                 :key="
-                                                    transfer.id
+                                                    issue.id
                                                 "
 
                                                 :class="
@@ -933,13 +995,13 @@ const formatDate = (
 
                                                             (
 
-                                                                transfers.current_page - 1
+                                                                issues.current_page - 1
 
                                                             )
 
                                                             *
 
-                                                            transfers.per_page
+                                                            issues.per_page
 
                                                         )
 
@@ -960,8 +1022,8 @@ const formatDate = (
 
                                                     :href="
                                                         route(
-                                                            'stock-transfers.show',
-                                                            transfer.id
+                                                            'stock-issues.show',
+                                                            issue.id
                                                         )
                                                     "
 
@@ -976,7 +1038,7 @@ const formatDate = (
 
                                                     {{
 
-                                                        transfer.transfer_number
+                                                        issue.issue_number
 
                                                     }}
 
@@ -997,54 +1059,51 @@ const formatDate = (
 
                                                         formatDate(
 
-                                                            transfer.transfer_date
+                                                            issue.issue_date
 
                                                         )
 
                                                     }}
 
                                                 </td>
-
+  
                                                 <td
+                                                class="
+                                                    px-4
+                                                    py-4
+                                                    text-center
+                                                "
+                                            >
 
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                    "
-
-                                                >
-
-                                                    {{
-
-                                                        transfer.from_warehouse
-
-                                                    }}
-
-                                                </td>
-
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                    "
-
-                                                >
-
-                                                    {{
-
-                                                        transfer.to_warehouse
-
-                                                    }}
-
-                                                </td>
                                                 <div
-
                                                     class="
-                                                        text-center
+                                                        font-semibold
+                                                    "
+                                                >
+
+                                                    {{
+
+                                                        issue.issue_type
+
+                                                    }}
+
+                                                </div>
+
+                                            </td>
+                                            <td
+                                                    class="
+                                                        px-4
+                                                        py-4
                                                     "
 
                                                 >
+                                                    <div
+
+                                                            class="
+                                                                text-center
+                                                            "
+
+                                                        >
 
                                                     <div
 
@@ -1056,65 +1115,14 @@ const formatDate = (
 
                                                         {{
 
-                                                            transfer.items
+                                                            issue.warehouse
 
                                                         }}
 
                                                     </div>
 
-                                                    <div
-
-                                                        class="
-                                                            text-xs
-                                                            text-gray-500
-                                                        "
-
-                                                    >
-
-                                                        SKU
-
-                                                    </div>
-
                                                 </div>
-
-                                             <div
-
-                                                    class="
-                                                        text-center
-                                                    "
-
-                                                >
-
-                                                    <div
-
-                                                        class="
-                                                            font-semibold
-                                                        "
-
-                                                    >
-
-                                                        {{
-
-                                                            transfer.total_qty
-
-                                                        }}
-
-                                                    </div>
-
-                                                    <div
-
-                                                        class="
-                                                            text-xs
-                                                            text-gray-500
-                                                        "
-
-                                                    >
-                                                       Pcs
-
-                                                    </div>
-
-                                                </div>
-
+                                            </td>
                                                 <td
 
                                                     class="
@@ -1133,7 +1141,7 @@ const formatDate = (
 
                                                         formatCurrency(
 
-                                                            transfer.total_value
+                                                            issue.total_cost
 
                                                         )
 
@@ -1155,7 +1163,7 @@ const formatDate = (
 
                                                     :class="
                                                         getStatusClass(
-                                                            transfer.status
+                                                            issue.status
                                                         )
                                                     "
 
@@ -1185,7 +1193,7 @@ const formatDate = (
 
                                                     {{
 
-                                                        transfer.status
+                                                        issue.status
 
                                                     }}
 
@@ -1206,8 +1214,8 @@ const formatDate = (
 
                                                     :href="
                                                         route(
-                                                            'stock-transfers.show',
-                                                            transfer.id
+                                                            'stock-issues.show',
+                                                            issue.id
                                                         )
                                                     "
 
@@ -1281,7 +1289,7 @@ const formatDate = (
 
                                     >
 
-                                        {{ transfers.from }}
+                                        {{ issues.from }}
 
                                     </span>
 
@@ -1295,7 +1303,7 @@ const formatDate = (
 
                                     >
 
-                                        {{ transfers.to }}
+                                        {{ issues.to }}
 
                                     </span>
 
@@ -1309,11 +1317,11 @@ const formatDate = (
 
                                     >
 
-                                        {{ transfers.total }}
+                                        {{ issues.total }}
 
                                     </span>
 
-                                    Transfers
+                                    issues
 
                                 </div>
 
@@ -1335,7 +1343,7 @@ const formatDate = (
 
                                             in
 
-                                            transfers.links
+                                            issues.links
 
                                         "
 

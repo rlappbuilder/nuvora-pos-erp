@@ -22,6 +22,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Inventory\InventoryAdjustmentController;
 use App\Http\Controllers\Inventory\StockTransferController;
+use App\Http\Controllers\Inventory\StockIssueController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -647,4 +648,184 @@ Route::prefix(
 });
 
 /** end route stock adjusment */
+
+/** route issue */
+/** route stock issue */
+
+Route::prefix(
+
+    'inventory'
+
+)
+
+->middleware([
+
+    'auth'
+
+])
+
+->group(function () {
+
+    Route::get(
+
+        '/issues',
+
+        [
+
+            StockIssueController::class,
+
+            'index'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.index'
+
+    );
+
+    Route::get(
+
+        '/issues/create',
+
+        [
+
+            StockIssueController::class,
+
+            'create'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.create'
+
+    );
+
+    Route::post(
+
+        '/issues',
+
+        [
+
+            StockIssueController::class,
+
+            'store'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.store'
+
+    );
+
+    Route::get(
+
+        '/issues/{stockIssue}',
+
+        [
+
+            StockIssueController::class,
+
+            'show'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.show'
+
+    );
+
+    Route::post(
+
+        '/issues/{stockIssue}/post',
+
+        [
+
+            StockIssueController::class,
+
+            'post'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.post'
+
+    );
+
+    Route::post(
+
+        '/issues/{stockIssue}/complete',
+
+        [
+
+            StockIssueController::class,
+
+            'complete'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.complete'
+
+    );
+
+    Route::post(
+
+        '/issues/{stockIssue}/cancel',
+
+        [
+
+            StockIssueController::class,
+
+            'cancel'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.cancel'
+
+    );
+
+    Route::get(
+
+        '/issues/warehouse/{warehouse}',
+
+        [
+
+            StockIssueController::class,
+
+            'getWarehouseStocks'
+
+        ]
+
+    )
+
+    ->name(
+
+        'stock-issues.warehouse-stocks'
+
+    );
+
+});
+/** end route issue */
 require __DIR__.'/auth.php';

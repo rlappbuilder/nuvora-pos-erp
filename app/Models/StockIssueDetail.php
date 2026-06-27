@@ -4,17 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class StockTransferDetail extends Model
+class StockIssueDetail extends Model
 {
     protected $fillable = [
 
-        'stock_transfer_id',
+        'stock_issue_id',
 
         'product_id',
 
         'qty',
-
-        'unit',
 
         'unit_cost',
 
@@ -24,13 +22,11 @@ class StockTransferDetail extends Model
 
     ];
 
-    public function transfer()
+    public function stockIssue()
     {
         return $this->belongsTo(
 
-            StockTransfer::class,
-
-            'stock_transfer_id'
+            StockIssue::class
 
         );
     }
