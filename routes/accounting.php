@@ -6,9 +6,9 @@ use App\Http\Controllers\Accounting\CashBankController;
 
 Route::middleware('auth')
 
-->group(
+    ->prefix('accounting')
 
-    function () {
+    ->group(function () {
 
         /*
         |--------------------------------------------------------------------------
@@ -24,6 +24,4 @@ Route::middleware('auth')
 
         );
 
-    }
-
-);
+    });

@@ -8,80 +8,160 @@ use Inertia\Inertia;
 
 class CashBankController extends Controller
 {
-    public function index(Request $request)
-    {
-        $cashBanks = CashBank::query()
+   public function index(Request $request)
+{
+    $cashBanks = CashBank::query()
 
-            ->when(
+        ->when(
 
-                $request->search,
+            $request->search,
 
-                function (
+            function ($query) use ($request) {
 
-                    $query,
+                $query->where(
 
-                    $search
+                    function ($q) use ($request) {
 
-                ) {
+                        $q->where(
 
-                    $query->where(
+                            'code',
 
-                        'code',
+                            'like',
 
-                        'like',
+                            '%' . $request->search . '%'
 
-                        "%{$search}%"
+                        )
 
-                    )
+                        ->orWhere(
 
-                    ->orWhere(
+                            'name',
 
-                        'name',
+                            'like',
 
-                        'like',
+                            '%' . $request->search . '%'
 
-                        "%{$search}%"
+                        )
 
-                    )
+                        ->orWhere(
 
-                    ->orWhere(
+                            'bank_name',
 
-                        'bank_name',
+                            'like',
 
-                        'like',
+                            '%' . $request->search . '%'
 
-                        "%{$search}%"
+                        )
 
-                    );
+                        ->orWhere(
 
-                }
+                            'account_number',
 
-            )
+                            'like',
 
-            ->latest()
+                            '%' . $request->search . '%'
 
-            ->paginate(10)
+                        );
 
-            ->withQueryString();
+                    }
 
-        return Inertia::render(
+                );
 
-            'CashBank/Index',
+            }
 
-            [
+        )
 
-                'cashBanks' => $cashBanks,
+        ->when(
 
-                'filters' => [
+            $request->type,
 
-                    'search' => $request->search,
+            function ($query) use ($request) {
 
-                ],
+                $query->where(
 
-            ]
+                    'type',
 
-        );
-    }
+                    $request->type
+
+                );
+
+            }
+
+        )
+
+        ->when(
+
+            $request->filled('status'),
+
+            function ($query) use ($request) {
+
+                $query->where(
+
+                    'status',
+
+                    $request->status
+
+                );
+
+            }
+
+        )
+
+        ->latest()
+
+        ->paginate(10)
+
+        ->withQueryString();
+
+    return Inertia::render(
+
+        'Accounting/CashBank/Index',
+
+        [
+
+            'cashBanks' => $cashBanks,
+
+            'filters' => [
+
+                'search' => $request->search,
+
+                'type' => $request->type,
+
+                'status' => $request->status,
+
+            ],
+
+            'summary' => [
+
+                'total_accounts' => CashBank::count(),
+
+                'cash_accounts' => CashBank::where(
+
+                    'type',
+
+                    'Cash'
+
+                )->count(),
+
+                'bank_accounts' => CashBank::where(
+
+                    'type',
+
+                    'Bank'
+
+                )->count(),
+
+                'current_balance' => CashBank::sum(
+
+                    'opening_balance'
+
+                ),
+
+            ],
+
+        ]
+
+    );
+}
 
     public function create()
     {

@@ -919,33 +919,105 @@ const formatDate = (
 
                                         <tbody>
 
-                                            <tr
+                                        <tr v-if="stock-issues.data.length === 0">
 
-                                                v-if="
+                                            <td
 
-                                                    !issues.data.length
+                                                colspan="9"
 
-                                                "
+                                                class="px-6 py-16"
 
                                             >
 
-                                                <td
+                                                <div
 
-                                                    colspan="10"
-
-                                                    class="
-                                                        py-16
-                                                        text-center
-                                                        text-gray-500
-                                                    "
+                                                    class="flex flex-col items-center justify-center"
 
                                                 >
 
-                                                    No Stock Issues Found
+                                                    <svg
 
-                                                </td>
+                                                        xmlns="http://www.w3.org/2000/svg"
 
-                                            </tr>
+                                                        fill="none"
+
+                                                        viewBox="0 0 24 24"
+
+                                                        stroke-width="1.5"
+
+                                                        stroke="currentColor"
+
+                                                        class="h-16 w-16 text-gray-300"
+
+                                                    >
+
+                                                        <path
+
+                                                            stroke-linecap="round"
+
+                                                            stroke-linejoin="round"
+
+                                                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+
+                                                        />
+
+                                                        <path
+
+                                                            stroke-linecap="round"
+
+                                                            stroke-linejoin="round"
+
+                                                            d="M9.75 9.75h4.5v4.5h-4.5z"
+
+                                                        />
+
+                                                    </svg>
+
+                                                    <h3
+
+                                                        class="mt-4 text-lg font-semibold text-gray-700"
+
+                                                    >
+
+                                                        No Stock Issue Found
+
+                                                    </h3>
+
+                                                    <p
+
+                                                        class="mt-2 text-sm text-gray-500"
+
+                                                    >
+
+                                                        Click the button below to create your first Cash Bank.
+
+                                                    </p>
+
+                                                    <Link
+
+                                                        :href="route('stock-issues.create')"
+
+                                                        class="
+                                                            mt-6
+                                                            rounded-xl
+                                                            bg-indigo-600
+                                                            px-5
+                                                            py-3
+                                                            text-white
+                                                            hover:bg-indigo-700
+                                                        "
+
+                                                    >
+
+                                                        + New Issue
+
+                                                    </Link>
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
 
                                            <tr
 
