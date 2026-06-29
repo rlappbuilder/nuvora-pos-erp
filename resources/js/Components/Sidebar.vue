@@ -531,7 +531,46 @@ const toggleSidebar = () => {
             </span>
 
         </Link>
+        <Link
 
+            :href="
+                route(
+                    'goods-receipts.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Purchase Payment
+            </span>
+
+        </Link>
+         <Link
+
+            :href="
+                route(
+                    'goods-receipts.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Purchase Invoice
+            </span>
+
+        </Link>
     </div>
     
 </div>

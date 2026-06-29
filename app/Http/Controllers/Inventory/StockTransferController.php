@@ -6,16 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-use App\Models\Product;
-use App\Models\Warehouse;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Warehouse;
 
-use App\Models\ProductStock;
+use App\Models\Inventory\ProductStock;
 use Illuminate\Support\Facades\DB;
 
 use Carbon\Carbon;
-use App\Models\StockTransfer;
-use App\Models\StockTransferDetail;
-use App\Models\InventoryMovement;
+use App\Models\Inventory\StockTransfer;
+use App\Models\Inventory\StockTransferDetail;
+use App\Models\Inventory\InventoryMovement;
 class StockTransferController extends Controller
 {
     public function index()

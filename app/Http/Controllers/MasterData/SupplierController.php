@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use Inertia\Inertia;
-use App\Models\Supplier;
+use App\Models\MasterData\Supplier;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 

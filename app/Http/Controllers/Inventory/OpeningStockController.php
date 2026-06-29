@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Inventory;
 
 use Inertia\Inertia;
-use App\Models\Product;
-use App\Models\Warehouse;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Warehouse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\ProductStock;
-use App\Models\StockMovement;
+use App\Models\Inventory\ProductStock;
+use App\Models\Inventory\StockMovement;
 use Illuminate\Support\Facades\DB;
-use App\Models\InventoryMovement;
+use App\Models\Inventory\InventoryMovement;
 class OpeningStockController extends Controller
 {
    public function create()

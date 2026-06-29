@@ -4,7 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\Size;
+use App\Models\MasterData\Size;
 
 use App\Http\Requests\SizeRequest;
 

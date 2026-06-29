@@ -4,8 +4,8 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Branch;
-use App\Models\Company;
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Company;
 use App\Http\Requests\BranchRequest;
 use Inertia\Inertia;
 

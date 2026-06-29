@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Inventory;
 
 use Inertia\Inertia;
 
-use App\Models\InventoryMovement;
-use App\Models\Product;
-use App\Models\Warehouse;
+use App\Models\Inventory\InventoryMovement;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Warehouse;
 use App\Http\Controllers\Controller;
 
 class StockCardController extends Controller

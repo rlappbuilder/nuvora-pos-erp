@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
-use App\Models\Color;
+use App\Models\MasterData\Color;
 use App\Http\Requests\ColorRequest;
 use Inertia\Inertia;
 

@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Purchasing;
 
 use Inertia\Inertia;
 
-use App\Models\Product;
-use App\Models\Supplier;
-use App\Models\Warehouse;
-use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderDetail;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Supplier;
+use App\Models\MasterData\Warehouse;
+use App\Models\Purchasing\PurchaseOrder;
+use App\Models\Purchasing\PurchaseOrderDetail;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 

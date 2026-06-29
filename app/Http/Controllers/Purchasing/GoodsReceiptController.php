@@ -4,20 +4,21 @@ namespace App\Http\Controllers\Purchasing;
 
 
 use Inertia\Inertia;
-use App\Models\PurchaseOrder;
+use App\Models\Purchasing\PurchaseOrder;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\GoodsReceipt;
-use App\Models\GoodsReceiptDetail;
-use App\Models\InventoryMovement;
-use App\Models\ProductStock;
+use App\Models\Purchasing\GoodsReceipt;
+use App\Models\Purchasing\GoodsReceiptDetail;
+use App\Models\Innventory\InventoryMovement;
+use App\Models\Inventory\ProductStock;
+use App\Models\User;
 class GoodsReceiptController extends Controller
 {
                 public function create(
                 PurchaseOrder $purchaseOrder
             )
             {
-                dd($purchaseOrder);
+               
             }
                           public function index()
                                 {
@@ -154,7 +155,7 @@ class GoodsReceiptController extends Controller
 
            
 
-          public function createFromPurchaseOrder(
+public function createFromPurchaseOrder(
     PurchaseOrder $purchaseOrder
 )
 {

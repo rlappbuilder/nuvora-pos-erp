@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Models\Inventory;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Warehouse;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class ProductStock extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+
+        'product_id',
+
+        'warehouse_id',
+
+        'qty',
+
+        'created_by',
+
+        'updated_by',
+    ];
+
+    public function product()
+    {
+        return $this->belongsTo(
+            Product::class
+        );
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(
+            Warehouse::class
+        );
+    }
+}

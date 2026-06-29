@@ -4,12 +4,12 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Warehouse;
-use App\Models\Branch;
+use App\Models\MasterData\Warehouse;
+use App\Models\MasterData\Branch;
 use App\Http\Requests\WarehouseRequest;
 use Inertia\Inertia;
-use App\Models\ProductStock;
-use App\Models\InventoryMovement;
+use App\Models\Inventory\ProductStock;
+use App\Models\Inventory\InventoryMovement;
 class WarehouseController extends Controller
 {
     /**

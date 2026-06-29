@@ -890,7 +890,7 @@ const formatDate = (
 
                                                 </th>
 
-                                                <th class="w-48 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
+                                                <th class="w-48 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
 
                                                     Warehouse
 

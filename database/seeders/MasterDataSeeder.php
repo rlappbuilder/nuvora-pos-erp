@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Unit;
-use App\Models\Color;
-use App\Models\Size;
-use App\Models\Branch;
-use App\Models\Warehouse;
+use App\Models\MasterData\Unit;
+use App\Models\MasterData\Color;
+use App\Models\MasterData\Size;
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Warehouse;
 
 class MasterDataSeeder extends Seeder
 {

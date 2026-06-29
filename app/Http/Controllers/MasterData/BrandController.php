@@ -4,7 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\Brand;
+use App\Models\MasterData\Brand;
 
 use App\Http\Requests\BrandRequest;
 

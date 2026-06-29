@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Inventory;
 
 use Inertia\Inertia;
 
-use App\Models\Product;
-use App\Models\Warehouse;
-use App\Models\InventoryMovement;
-use App\Models\ProductStock;
+use App\Models\MasterData\Product;
+use App\Models\MasterData\Warehouse;
+use App\Models\Inventory\InventoryMovement;
+use App\Models\Inventory\ProductStock;
 
-use App\Models\InventoryAdjustment;
-use App\Models\InventoryAdjustmentDetail;
+use App\Models\Inventory\InventoryAdjustment;
+use App\Models\Inventory\InventoryAdjustmentDetail;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;

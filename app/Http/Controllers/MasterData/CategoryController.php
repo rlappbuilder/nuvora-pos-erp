@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 use App\Http\Controllers\Controller;
-use App\Models\Category;
+use App\Models\MasterData\Category;
 use App\Http\Requests\CategoryRequest;
 use Inertia\Inertia;
 

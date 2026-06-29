@@ -4,7 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\Company;
+use App\Models\MasterData\Company;
 
 use App\Http\Requests\CompanyRequest;
 
