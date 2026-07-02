@@ -531,6 +531,26 @@ const toggleSidebar = () => {
             </span>
 
         </Link>
+                 <Link
+
+            :href="
+                route(
+                    'cash-banks.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Cash & Bank
+            </span>
+
+        </Link>
         <Link
 
             :href="
@@ -634,26 +654,7 @@ const toggleSidebar = () => {
                 </span>
 
             </Link>
-               <Link
-
-            :href="
-                route(
-                    'cash-banks.index'
-                )
-            "
-
-            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
-
-        >
-
-            <Package :size="18" />
-
-            <span>
-
-                Cash & Bank
-            </span>
-
-        </Link>
+      
             <!-- Reports -->
 
             <Link

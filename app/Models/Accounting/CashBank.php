@@ -1,52 +1,62 @@
 <?php
 
 namespace App\Models\Accounting;
-
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\MasterData\Company;
+use App\Models\MasterData\Branch;
 class CashBank extends Model
 {
     use HasFactory;
+     use SoftDeletes;
 
-    protected $fillable = [
+protected $fillable = [
 
-        'code',
+    'company_id',
 
-        'name',
+    'branch_id',
 
-        'type',
+    'coa_id',
 
-        'bank_name',
+    'code',
 
-        'account_number',
+    'name',
 
-        'account_holder',
+    'type',
 
-        'opening_balance',
+    'bank_name',
 
-        'current_balance',
+    'bank_branch',
 
-        'is_active',
+    'account_number',
 
-        'remarks',
+    'account_holder',
 
-        'created_by',
+    'opening_balance',
 
-        'updated_by',
+    'current_balance',
 
-    ];
+    'description',
+
+    'status',
+
+    'created_by',
+
+    'updated_by',
+
+];
 
     protected $casts = [
 
-        'opening_balance' => 'decimal:2',
+    'opening_balance' => 'decimal:2',
 
-        'current_balance' => 'decimal:2',
+    'current_balance' => 'decimal:2',
 
-        'is_active' => 'boolean',
+    'status' => 'boolean',
 
-    ];
-
+];
     public function creator()
     {
         return $this->belongsTo(
@@ -79,4 +89,21 @@ class CashBank extends Model
 
         );
     }
+    public function company()
+{
+    return $this->belongsTo(
+
+        Company::class
+
+    );
+}
+
+public function branch()
+{
+    return $this->belongsTo(
+
+        Branch::class
+
+    );
+}
 }

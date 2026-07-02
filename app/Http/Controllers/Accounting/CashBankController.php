@@ -5,7 +5,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Accounting\CashBank;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+ use App\Models\MasterData\Company;
+use App\Models\MasterData\Branch;
+use App\Services\CodeGeneratorService;
 class CashBankController extends Controller
 {
    public function index(Request $request)
@@ -152,7 +154,7 @@ class CashBankController extends Controller
 
                 'current_balance' => CashBank::sum(
 
-                    'opening_balance'
+                    'current_balance'
 
                 ),
 
@@ -163,67 +165,161 @@ class CashBankController extends Controller
     );
 }
 
-    public function create()
-    {
-        return Inertia::render(
 
-            'CashBank/Create'
+public function create()
+{
+    return Inertia::render(
 
-        );
-    }
+        'Accounting/CashBank/Create',
 
+        [
+
+            'generatedCode' =>
+
+                CodeGeneratorService::cashBank(),
+
+            'companies' =>
+
+                Company::query()
+
+                    ->where(
+
+                        'status',
+
+                        true
+
+                    )
+
+                    ->orderBy(
+
+                        'company_name'
+
+                    )
+
+                    ->get([
+
+                        'id',
+
+                        'company_name'
+
+                    ]),
+
+            'branches' =>
+
+                Branch::query()
+
+                    ->where(
+
+                        'status',
+
+                        true
+
+                    )
+
+                    ->orderBy(
+
+                        'name'
+
+                    )
+
+                    ->get([
+
+                        'id',
+
+                        'company_id',
+
+                        'name'
+
+                    ]),
+
+        ]
+
+    );
+}
     public function store(Request $request)
-    {
-        $validated = $request->validate([
+{
+    $validated = $request->validate(
 
-            'code' => 'required|unique:cash_banks',
+    [
 
-            'name' => 'required',
+        'code' => 'required|unique:cash_banks,code',
 
-            'type' => 'required',
+        'name' => 'required|max:150',
 
-            'bank_name' => 'nullable',
+        'type' => 'required|in:Cash,Bank',
 
-            'account_number' => 'nullable',
+        'company_id' => 'required|exists:companies,id',
 
-            'account_holder' => 'nullable',
+        'branch_id' => 'required|exists:branches,id',
 
-            'opening_balance' => 'required|numeric',
+        'bank_name' => 'required_if:type,Bank',
 
-            'remarks' => 'nullable',
+        'bank_branch' => 'nullable',
 
-        ]);
+        'account_number' => 'required_if:type,Bank',
 
-        $validated['current_balance'] =
+        'account_holder' => 'required_if:type,Bank',
 
-            $validated['opening_balance'];
+        'opening_balance' => 'required|numeric|min:0',
 
-        $validated['created_by'] =
+        'status' => 'required|boolean',
 
-            auth()->id();
+        'description' => 'nullable',
 
-        CashBank::create(
+    ],
 
-            $validated
+    [
+
+        'company_id.required' => 'Company is required.',
+
+        'branch_id.required' => 'Branch is required.',
+
+        'name.required' => 'Account Name is required.',
+
+        'bank_name.required_if' => 'Bank Name is required.',
+
+        'account_number.required_if' => 'Account Number is required.',
+
+        'account_holder.required_if' => 'Account Holder is required.',
+
+    ]
+
+);
+
+    $validated['code'] =
+
+        CodeGeneratorService::cashBank();
+
+    $validated['current_balance'] =
+
+        $validated['opening_balance'];
+
+    $validated['created_by'] =
+
+        auth()->id();
+
+    CashBank::create(
+
+        $validated
+
+    );
+
+    return redirect()
+
+        ->route(
+
+            'cash-banks.index'
+
+        )
+
+        ->with(
+
+            'success',
+
+            'Cash / Bank created successfully.'
 
         );
-
-        return redirect()
-
-            ->route(
-
-                'cash-banks.index'
-
-            )
-
-            ->with(
-
-                'success',
-
-                'Cash / Bank created successfully.'
-
-            );
-    }
+}
 
     public function show(CashBank $cashBank)
     {
@@ -255,43 +351,102 @@ class CashBankController extends Controller
         );
     }
 
-    public function update(Request $request, CashBank $cashBank)
-    {
-        $validated = $request->validate([
+    public function update(
+    Request $request,
+    CashBank $cashBank
+)
+{
+   $$validated = $request->validate([
 
-            'code' =>
+    'code' => 'required|unique:cash_banks,code',
 
-                'required|unique:cash_banks,code,'
+    'name' => 'required|max:150',
 
-                .
+    'type' => 'required|in:Cash,Bank',
 
-                $cashBank->id,
+    'company_id' => 'required|exists:companies,id',
 
-            'name' => 'required',
+    'branch_id' => 'required|exists:branches,id',
 
-            'type' => 'required',
+    'bank_name' => 'required_if:type,Bank',
 
-            'bank_name' => 'nullable',
+    'bank_branch' => 'nullable',
 
-            'account_number' => 'nullable',
+    'account_number' => 'required_if:type,Bank',
 
-            'account_holder' => 'nullable',
+    'account_holder' => 'required_if:type,Bank',
 
-            'remarks' => 'nullable',
+    'opening_balance' => 'required|numeric|min:0',
 
-            'is_active' => 'boolean',
+    'status' => 'required|boolean',
 
-        ]);
+    'description' => 'nullable',
 
-        $validated['updated_by'] =
+]);
 
-            auth()->id();
+    $validated['updated_by'] =
 
-        $cashBank->update(
+        auth()->id();
 
-            $validated
+    $cashBank->update(
+
+        $validated
+
+    );
+
+    return redirect()
+
+        ->route(
+
+            'cash-banks.index'
+
+        )
+
+        ->with(
+
+            'success',
+
+            'Cash / Bank updated successfully.'
 
         );
+}
+
+    public function destroy(
+    CashBank $cashBank
+)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Check Existing Transaction
+    |--------------------------------------------------------------------------
+    |
+    | TODO :
+    | Saat modul Accounting selesai,
+    | cek apakah Cash Bank sudah dipakai pada :
+    |
+    | - Journal Entry
+    | - Supplier Payment
+    | - Customer Payment
+    | - Cash Receipt
+    | - Cash Payment
+    |
+    */
+
+    $hasTransaction = false;
+
+    if (
+
+        $hasTransaction
+
+    ) {
+
+        $cashBank->update([
+
+            'status' => false,
+
+            'updated_by' => auth()->id(),
+
+        ]);
 
         return redirect()
 
@@ -303,25 +458,31 @@ class CashBankController extends Controller
 
             ->with(
 
-                'success',
+                'warning',
 
-                'Cash / Bank updated successfully.'
-
-            );
-    }
-
-    public function destroy(CashBank $cashBank)
-    {
-        $cashBank->delete();
-
-        return back()
-
-            ->with(
-
-                'success',
-
-                'Cash / Bank deleted successfully.'
+                'Cash / Bank has been used in transactions and has been set to Inactive.'
 
             );
+
     }
+
+    $cashBank->delete();
+
+    return redirect()
+
+        ->route(
+
+            'cash-banks.index'
+
+        )
+
+        ->with(
+
+            'success',
+
+            'Cash / Bank deleted successfully.'
+
+        );
+}
+
 }

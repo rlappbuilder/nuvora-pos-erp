@@ -26,7 +26,7 @@ from '@/Layouts/AuthenticatedLayout.vue'
 
 import SearchableSelect
 
-from '@/Components/SearchableSelect.vue'
+from '@/Components/Form/SearchableSelect.vue'
 import {
 
     EyeIcon,

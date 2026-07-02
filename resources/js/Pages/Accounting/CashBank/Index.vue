@@ -28,7 +28,7 @@ import {
 from 'vue'
 import SearchableSelect
 
-    from '@/Components/SearchableSelect.vue'
+    from '@/Components/Form/SearchableSelect.vue'
 
 import {
 
