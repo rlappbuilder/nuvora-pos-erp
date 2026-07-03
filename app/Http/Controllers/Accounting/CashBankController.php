@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Accounting;
 use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 use App\Models\Accounting\CashBank;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -165,74 +166,78 @@ class CashBankController extends Controller
     );
 }
 
+private function formData(): array
+{
+    return [
 
+        'companies' => Company::query()
+            ->where('status', true)
+            ->orderBy('company_name')
+            ->get([
+                'id',
+                'company_name',
+            ]),
+
+        'branches' => Branch::query()
+            ->where('status', true)
+            ->orderBy('name')
+            ->get([
+                'id',
+                'company_id',
+                'name',
+            ]),
+
+        /*
+        |--------------------------------------------------------------------------
+        | COA
+        |--------------------------------------------------------------------------
+        |
+        | Nanti kita isi ketika modul COA selesai.
+        |
+        */
+
+        'coaAccounts' => [],
+
+    ];
+}
 public function create()
 {
     return Inertia::render(
 
         'Accounting/CashBank/Create',
 
-        [
+        array_merge(
 
-            'generatedCode' =>
+            $this->formData(),
 
-                CodeGeneratorService::cashBank(),
+            [
 
-            'companies' =>
+                'generatedCode' => CodeGeneratorService::cashBank(),
 
-                Company::query()
+            ]
 
-                    ->where(
+        )
 
-                        'status',
+    );
+}
 
-                        true
+  public function edit(CashBank $cashBank)
+{
+    return Inertia::render(
 
-                    )
+        'Accounting/CashBank/Edit',
 
-                    ->orderBy(
+        array_merge(
 
-                        'company_name'
+            $this->formData(),
 
-                    )
+            [
 
-                    ->get([
+                'cashBank' => $cashBank,
 
-                        'id',
+            ]
 
-                        'company_name'
-
-                    ]),
-
-            'branches' =>
-
-                Branch::query()
-
-                    ->where(
-
-                        'status',
-
-                        true
-
-                    )
-
-                    ->orderBy(
-
-                        'name'
-
-                    )
-
-                    ->get([
-
-                        'id',
-
-                        'company_id',
-
-                        'name'
-
-                    ]),
-
-        ]
+        )
 
     );
 }
@@ -336,59 +341,58 @@ public function create()
         );
     }
 
-    public function edit(CashBank $cashBank)
-    {
-        return Inertia::render(
 
-            'CashBank/Edit',
-
-            [
-
-                'cashBank' => $cashBank,
-
-            ]
-
-        );
-    }
 
     public function update(
     Request $request,
     CashBank $cashBank
 )
+
 {
-   $$validated = $request->validate([
+    $validated = $request->validate([
 
-    'code' => 'required|unique:cash_banks,code',
+        'code' => [
 
-    'name' => 'required|max:150',
+            'required',
 
-    'type' => 'required|in:Cash,Bank',
+            Rule::unique(
+                'cash_banks',
+                'code'
+            )->ignore(
+                $cashBank->id
+            ),
 
-    'company_id' => 'required|exists:companies,id',
+        ],
 
-    'branch_id' => 'required|exists:branches,id',
+        'name' => 'required|max:150',
 
-    'bank_name' => 'required_if:type,Bank',
+        'type' => 'required|in:Cash,Bank',
 
-    'bank_branch' => 'nullable',
+        'company_id' => 'required|exists:companies,id',
 
-    'account_number' => 'required_if:type,Bank',
+        'branch_id' => 'required|exists:branches,id',
 
-    'account_holder' => 'required_if:type,Bank',
+        'bank_name' => 'required_if:type,Bank',
 
-    'opening_balance' => 'required|numeric|min:0',
+        'bank_branch' => 'nullable',
 
-    'status' => 'required|boolean',
+        'account_number' => 'required_if:type,Bank',
 
-    'description' => 'nullable',
+        'account_holder' => 'required_if:type,Bank',
 
-]);
+        'opening_balance' => 'required|numeric|min:0',
+
+        'status' => 'required|boolean',
+
+        'description' => 'nullable',
+
+    ]);
 
     $validated['updated_by'] =
 
         auth()->id();
 
-    $cashBank->update(
+ $cashBank->update(
 
         $validated
 

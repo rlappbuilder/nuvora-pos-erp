@@ -150,6 +150,7 @@ function cancel()
      
 
             <PageHeader
+            icon="🏦"
 
             title="Create Cash & Bank"
 
