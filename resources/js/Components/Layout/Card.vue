@@ -147,31 +147,37 @@ const cardClass = computed(() => [
 
                 <!-- Icon -->
 
-                <div
+             <div
+                v-if="icon || $slots.icon"
+                class="
+                    flex
+                    h-10
+                    w-10
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-primary-50
+                    text-primary-600
+                    shrink-0
+                "
+            >
 
-                    v-if="icon"
-
-                    class="
-                        flex
-                        h-10
-                        w-10
-                        items-center
-                        justify-center
-                        rounded-xl
-                        bg-indigo-50
-                        text-xl
-                    "
-
-                >
+                <slot name="icon">
 
                     {{ icon }}
 
-                </div>
+                </slot>
+
+            </div>
 
                 <!-- Title -->
 
                 <div>
+                    <slot
 
+                        name="header"
+
+                    />
                     <h3
 
                         v-if="title"
@@ -260,8 +266,9 @@ const cardClass = computed(() => [
             border-t
             border-gray-100
             bg-gray-50
-            px-6
-            py-4
+            px-5
+            py-5
+            lg:px-6
         "
 
     >

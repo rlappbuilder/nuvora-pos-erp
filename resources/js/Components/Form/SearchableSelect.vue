@@ -273,29 +273,7 @@ const filteredOptions = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-watch(
-    
-    selected,
 
-    value => {
- 
-        search.value =
-
-            value
-
-                ? optionLabel(value)
-
-                : ''
-
-    },
-
-    {
-
-        immediate: true
-
-    }
-
-)
 watch(
 
     selected,
@@ -326,29 +304,7 @@ watch(
 |--------------------------------------------------------------------------
 */
 
-watch(
 
-    () => props.options,
-
-    value => {
-
-        console.log(
-
-            'OPTIONS:',
-
-            value
-
-        )
-
-    },
-
-    {
-
-        immediate: true
-
-    }
-
-)
 /*
 |--------------------------------------------------------------------------
 | Methods
@@ -547,6 +503,13 @@ function onInput(event)
     )
 
 }
+
+function focus()
+{
+
+    inputRef.value?.focus()
+
+}
 /*
 |--------------------------------------------------------------------------
 | Lifecycle
@@ -605,6 +568,11 @@ onBeforeUnmount(
     }
 
 )
+defineExpose({
+
+    focus,
+
+})
 /*
 |--------------------------------------------------------------------------
 | Show Clear Button

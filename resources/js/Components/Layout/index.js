@@ -23,24 +23,8 @@ from './PageContainer.vue'
 
 export {
 
-    default as Breadcrumb
+    default as ActionBar
 
 }
 
-from './Breadcrumb.vue'
-
-export {
-
-    default as Divider
-
-}
-
-from './Divider.vue'
-
-export {
-
-    default as SectionTitle
-
-}
-
-from './SectionTitle.vue'
+from './ActionBar.vue'

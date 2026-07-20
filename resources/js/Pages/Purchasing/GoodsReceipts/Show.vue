@@ -6,8 +6,7 @@ import {
 } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { router } from '@inertiajs/vue3'
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref } from 'vue'
 
 const showCancelModal = ref(false)
@@ -149,7 +148,7 @@ const formatDateTime = (
         title="Goods Receipt Detail"
     />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <div
             class="
@@ -1297,7 +1296,7 @@ const formatDateTime = (
 </div>
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 <div
 
     v-if="

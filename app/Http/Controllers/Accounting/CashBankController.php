@@ -13,107 +13,133 @@ class CashBankController extends Controller
 {
    public function index(Request $request)
 {
-    $cashBanks = CashBank::query()
+   $query = CashBank::query()
 
-        ->when(
+    ->when(
 
-            $request->search,
+        $request->search,
 
-            function ($query) use ($request) {
+        function ($query) use ($request) {
 
-                $query->where(
+            $query->where(
 
-                    function ($q) use ($request) {
+                function ($q) use ($request) {
 
-                        $q->where(
+                    $q->where(
+                        'code',
+                        'like',
+                        '%' . $request->search . '%'
+                    )
+                    ->orWhere(
+                        'name',
+                        'like',
+                        '%' . $request->search . '%'
+                    )
+                    ->orWhere(
+                        'bank_name',
+                        'like',
+                        '%' . $request->search . '%'
+                    )
+                    ->orWhere(
+                        'account_number',
+                        'like',
+                        '%' . $request->search . '%'
+                    );
 
-                            'code',
+                }
 
-                            'like',
+            );
 
-                            '%' . $request->search . '%'
+        }
 
-                        )
+    )
 
-                        ->orWhere(
+    ->when(
 
-                            'name',
+        $request->type,
 
-                            'like',
+        function ($query) use ($request) {
 
-                            '%' . $request->search . '%'
+            $query->where(
 
-                        )
+                'type',
 
-                        ->orWhere(
+                $request->type
 
-                            'bank_name',
+            );
 
-                            'like',
+        }
 
-                            '%' . $request->search . '%'
+    )
 
-                        )
+    ->when(
 
-                        ->orWhere(
+        $request->filled('status'),
 
-                            'account_number',
+        function ($query) use ($request) {
 
-                            'like',
+            $query->where(
 
-                            '%' . $request->search . '%'
+                'status',
 
-                        );
+                $request->status
 
-                    }
+            );
 
-                );
+        }
 
-            }
+    );
+      
+    $summaryQuery = clone $query;
+                $sortable = [
 
-        )
+                'code',
 
-        ->when(
+                'name',
 
-            $request->type,
+                'type',
 
-            function ($query) use ($request) {
+                'current_balance',
 
-                $query->where(
+                'status',
 
-                    'type',
+                'created_at',
 
-                    $request->type
+            ];
 
-                );
+            $sort = in_array(
 
-            }
+                $request->sort,
 
-        )
+                $sortable
 
-        ->when(
+            )
 
-            $request->filled('status'),
+                ? $request->sort
 
-            function ($query) use ($request) {
+                : 'created_at';
 
-                $query->where(
+            $direction =
 
-                    'status',
+                $request->direction === 'asc'
 
-                    $request->status
+                    ? 'asc'
 
-                );
+                    : 'desc';
+                    
+    $cashBanks = $query
 
-            }
+    ->orderBy(
 
-        )
+        $sort,
 
-        ->latest()
+        $direction
 
-        ->paginate(10)
+    )
 
-        ->withQueryString();
+    ->paginate(10)
+
+    ->withQueryString();
 
     return Inertia::render(
 
@@ -130,36 +156,62 @@ class CashBankController extends Controller
                 'type' => $request->type,
 
                 'status' => $request->status,
+                
+                'sort' => $sort,
+
+                'direction' => $direction,
 
             ],
 
             'summary' => [
 
-                'total_accounts' => CashBank::count(),
+            'total_accounts' => $summaryQuery->count(),
 
-                'cash_accounts' => CashBank::where(
+            'cash_accounts' => (
 
-                    'type',
+                clone $summaryQuery
 
-                    'Cash'
+            )
 
-                )->count(),
+            ->where(
 
-                'bank_accounts' => CashBank::where(
+                'type',
 
-                    'type',
+                'Cash'
 
-                    'Bank'
+            )
 
-                )->count(),
+            ->count(),
 
-                'current_balance' => CashBank::sum(
+            'bank_accounts' => (
 
-                    'current_balance'
+                clone $summaryQuery
 
-                ),
+            )
 
-            ],
+            ->where(
+
+                'type',
+
+                'Bank'
+
+            )
+
+            ->count(),
+
+            'current_balance' => (
+
+                clone $summaryQuery
+
+            )
+
+            ->sum(
+
+                'current_balance'
+
+            ),
+
+        ],
 
         ]
 
@@ -309,6 +361,21 @@ public function create()
 
     );
 
+    if ($request->boolean('create_another')) {
+
+    return redirect()
+
+        ->route('cash-banks.create')
+
+        ->with(
+
+            'success',
+
+            'Cash / Bank created successfully.'
+
+        );
+
+}
     return redirect()
 
         ->route(
@@ -326,20 +393,34 @@ public function create()
         );
 }
 
-    public function show(CashBank $cashBank)
-    {
-        return Inertia::render(
+public function show(
+    CashBank $cashBank
+)
+{
+    $cashBank->load(
 
-            'CashBank/Show',
+        'company',
 
-            [
+        'branch',
 
-                'cashBank' => $cashBank,
+        'creator',
 
-            ]
+        'updater'
 
-        );
-    }
+    );
+
+    return Inertia::render(
+
+        'Accounting/CashBank/Show',
+
+        [
+
+            'cashBank' => $cashBank,
+
+        ]
+
+    );
+}
 
 
 
@@ -488,5 +569,124 @@ public function create()
 
         );
 }
+public function bulkDelete(Request $request)
+{
+    CashBank::whereIn(
+        'id',
+        $request->ids
+    )->delete();
 
+    return back()->with(
+        'success',
+        'Selected Cash Bank deleted successfully.'
+    );
+}
+public function bulkActivate(Request $request)
+{
+    CashBank::whereIn(
+        'id',
+        $request->ids
+    )->update([
+        'is_active' => true,
+    ]);
+
+    return back()->with(
+        'success',
+        'Selected Cash Bank activated successfully.'
+    );
+}
+
+public function bulkDeactivate(Request $request)
+{
+    CashBank::whereIn(
+        'id',
+        $request->ids
+    )->update([
+        'is_active' => false,
+    ]);
+
+    return back()->with(
+        'success',
+        'Selected Cash Bank deactivated successfully.'
+    );
+}
+public function duplicate(CashBank $cashBank)
+{
+    return Inertia::render(
+
+        'Accounting/CashBank/Create',
+
+        array_merge(
+
+            $this->formData(),
+
+            [
+
+                'generatedCode' => CodeGeneratorService::cashBank(),
+
+                'duplicate' => [
+
+                    'company_id'      => $cashBank->company_id,
+
+                    'branch_id'       => $cashBank->branch_id,
+
+                    'name'            => $cashBank->name . ' (Copy)',
+
+                    'type'            => $cashBank->type,
+
+                    'bank_name'       => $cashBank->bank_name,
+
+                    'bank_branch'     => $cashBank->bank_branch,
+
+                    'account_number'  => $cashBank->account_number,
+
+                    'account_holder'  => $cashBank->account_holder,
+
+                    'coa_id'          => $cashBank->coa_id,
+
+                    'description'     => $cashBank->description,
+
+                    'status'          => true,
+
+                ],
+
+            ]
+
+        )
+
+    );
+}
+public function print(
+    CashBank $cashBank
+)
+{
+    $cashBank->load(
+        'company',
+
+        'branch'
+
+    );
+
+    return Inertia::render(
+
+        'Accounting/CashBank/Print',
+
+        [
+
+            'cashBank' => $cashBank,
+
+        ]
+
+    );
+}
+public function export(CashBank $cashBank)
+{
+    return Excel::download(
+
+        new CashBankExport($cashBank),
+
+        'CashBank_'.$cashBank->code.'.xlsx'
+
+    );
+}
 }

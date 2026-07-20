@@ -5,8 +5,7 @@ import {
     Link
 } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 import { ref } from 'vue'
 
@@ -119,7 +118,7 @@ const formatCurrency = (
 
     <Head title="Purchase Order Detail" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <div class="py-6 px-6">
 
@@ -1124,6 +1123,6 @@ const formatCurrency = (
     </div>
 
 </div>
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

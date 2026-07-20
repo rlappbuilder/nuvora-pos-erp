@@ -3,7 +3,7 @@
 
 import { Head, Link,useForm } from '@inertiajs/vue3'
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
@@ -84,7 +84,7 @@ const removeItem = (index) => {
 </script>
 <template>
 
-<AuthenticatedLayout>
+<AppLayout>
 
     <Head title="Create Purchase Order" />
 
@@ -521,6 +521,6 @@ const removeItem = (index) => {
          <!-- end tombol back-->
     </div>
 
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>

@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models\Inventory;
-
+use App\Models\MasterData\Product;
 use Illuminate\Database\Eloquent\Model;
 
 class StockIssueDetail extends Model

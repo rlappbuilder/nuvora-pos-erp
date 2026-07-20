@@ -6,10 +6,8 @@ import { router } from '@inertiajs/vue3'
 
 import {  ref } from 'vue'
 
-import AuthenticatedLayout
 
-from '@/Layouts/AuthenticatedLayout.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
     transfer: Object,
@@ -265,7 +263,7 @@ const completeTransfer = () => {
 
         />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
             <template #header>
 
@@ -2083,7 +2081,7 @@ const completeTransfer = () => {
 
 </div>
 <!-- end modal cancell-->
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>
     
 

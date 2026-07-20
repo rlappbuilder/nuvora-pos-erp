@@ -24,10 +24,8 @@ from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
 import SearchableSelect
-from '@/Components/SearchableSelect.vue'
-
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
+from '@/Components/Form/SearchableSelect.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 import {
 
     TrashIcon
@@ -313,7 +311,7 @@ const hasInvalidQty = () => {
 />
 
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -1521,5 +1519,5 @@ const hasInvalidQty = () => {
 
                                 </div><!-- end button-->
                  </div>                          
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>

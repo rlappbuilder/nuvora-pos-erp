@@ -11,12 +11,10 @@ import FlatPickr
 from 'vue-flatpickr-component'
 
 import 'flatpickr/dist/flatpickr.css'
-
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 import SearchableSelect
-from '@/Components/SearchableSelect.vue'
+from '@/Components/Form/SearchableSelect.vue'
 
 const props = defineProps({
 
@@ -217,7 +215,7 @@ const submit = () => {
             title="Inventory Adjustment"
         />
 
-        <AuthenticatedLayout>
+        <AppLayout>
 
             <template #header>
 
@@ -948,6 +946,6 @@ const submit = () => {
                                             </div>
                  <!-- end tombol simpan-->
            
-        </AuthenticatedLayout>
+        </AppLayout>
 
 </template>

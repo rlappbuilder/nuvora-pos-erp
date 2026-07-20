@@ -5,21 +5,21 @@
  * ==========================================================
  */
 
-export {
+/** export {
 
     default as Alert
 
 }
 
-from './Alert.vue'
+ from './Alert.vue'
 
 export {
 
     default as Loading
 
 }
-
-from './Loading.vue'
+*/
+/** from './Loading.vue'
 
 export {
 
@@ -28,14 +28,8 @@ export {
 }
 
 from './Skeleton.vue'
-
-export {
-
-    default as Spinner
-
-}
-
-from './Spinner.vue'
+*/
+/**
 
 export {
 
@@ -44,3 +38,12 @@ export {
 }
 
 from './Toast.vue'
+*/  
+
+export {
+
+    default as LoadingOverlay,
+
+}
+
+from './LoadingOverlay.vue'

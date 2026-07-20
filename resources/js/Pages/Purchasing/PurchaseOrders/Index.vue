@@ -5,8 +5,7 @@ import {
     Link
 } from '@inertiajs/vue3'
 
-import AuthenticatedLayout
-    from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
@@ -37,7 +36,7 @@ const formatCurrency = (
 </pre>
     <Head title="Purchase Orders" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <div
             class="py-6 px-6"
@@ -504,6 +503,6 @@ const formatCurrency = (
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

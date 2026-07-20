@@ -19,6 +19,7 @@ import {
 
     Settings,
 
+    
     ChevronLeft,
 
     ChevronRight,
@@ -588,6 +589,26 @@ const toggleSidebar = () => {
             <span>
 
                 Purchase Invoice
+            </span>
+
+        </Link>
+          <Link
+
+            :href="
+                route(
+                    'chart-of-accounts.index'
+                )
+            "
+
+            class="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-50"
+
+        >
+
+            <Package :size="18" />
+
+            <span>
+
+                Chart Of Account ( COA )
             </span>
 
         </Link>

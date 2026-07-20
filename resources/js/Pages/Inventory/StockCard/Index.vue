@@ -7,12 +7,9 @@ from 'vue-flatpickr-component'
 
 import 'flatpickr/dist/flatpickr.css'
 
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
-
 import SearchableSelect
-from '@/Components/SearchableSelect.vue'
-
+from '@/Components/Form/SearchableSelect.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
     movements: Object,
@@ -99,7 +96,7 @@ watch(
 
     <Head title="Stock Card" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -596,6 +593,6 @@ watch(
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

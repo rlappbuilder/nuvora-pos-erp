@@ -1,61 +1,50 @@
 <script setup>
 
-const props = defineProps({
-
-    align: {
-
-        type: String,
-
-        default: 'right'
-
-    },
+defineProps({
 
     bordered: {
 
         type: Boolean,
 
-        default: false
+        default: true,
 
-    }
+    },
+
+    sticky: {
+
+        type: Boolean,
+
+        default: false,
+
+        
+
+    },
 
 })
 
+
 </script>
+
 <template>
 
 <div
-
     :class="[
-
         'flex',
-
+        'flex-wrap',
         'items-center',
-
-        align === 'left'
-
-            ? 'justify-start'
-
-            : align === 'center'
-
-                ? 'justify-center'
-
-                : align === 'between'
-
-                    ? 'justify-between'
-
-                    : 'justify-end',
+        'justify-between',
+        'gap-3',
+        'px-5',
+        'py-4',
+        'lg:px-6',
 
         bordered
-
-            ? 'border-t border-gray-200 pt-6 mt-6'
-
+            ? 'border-b border-gray-200'
             : ''
-
     ]"
-
 >
-
     <slot />
+
 
 </div>
 

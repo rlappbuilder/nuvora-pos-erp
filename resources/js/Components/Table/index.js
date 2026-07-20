@@ -13,29 +13,29 @@ export {
 
 from './DataTable.vue'
 
-export {
+/** export {
 
     default as TableToolbar
 
 }
 
-from './TableToolbar.vue'
+from './TableToolbar.vue' */
 
-export {
+/** export {
 
     default as TableSearch
 
 }
 
-from './TableSearch.vue'
+from './TableSearch.vue' */
 
-export {
+/** export {
 
     default as TableFilter
 
 }
 
-from './TableFilter.vue'
+from './TableFilter.vue' */
 
 export {
 
@@ -47,8 +47,9 @@ from './TablePagination.vue'
 
 export {
 
-    default as EmptyTable
+    default as TableEmpty
 
 }
 
-from './EmptyTable.vue'
+from './TableEmpty.vue'
+

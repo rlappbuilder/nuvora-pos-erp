@@ -10,8 +10,7 @@ import {
 
 } from '@inertiajs/vue3'
 
-import AuthenticatedLayout
-    from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 import { computed } from 'vue'
 const props = defineProps({
@@ -202,7 +201,7 @@ const remainingQty = computed(() => {
     title="Create Goods Receipt"
 />
 
-<AuthenticatedLayout>
+<AppLayout>
 
 <div
     class="p-6"
@@ -1063,6 +1062,6 @@ const remainingQty = computed(() => {
                     </div>
 </div>
 
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>

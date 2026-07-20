@@ -27,13 +27,11 @@ from 'vue-flatpickr-component'
 
 import 'flatpickr/dist/flatpickr.css'
 
-import AuthenticatedLayout
-
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 import SearchableSelect
 
-from '@/Components/SearchableSelect.vue'
+from '@/Components/Form/SearchableSelect.vue'
 
 const props = defineProps({
 
@@ -382,7 +380,7 @@ const submit = () => {
 
 />
 
-<AuthenticatedLayout>
+<AppLayout>
 
     <template #header>
 
@@ -1344,7 +1342,7 @@ const submit = () => {
 
     </div>
 
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>
             <!----- -->

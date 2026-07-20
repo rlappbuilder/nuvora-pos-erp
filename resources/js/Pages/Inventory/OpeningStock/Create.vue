@@ -4,6 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { usePage } from '@inertiajs/vue3'
 import BaseToast from '@/Components/UI/BaseToast.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const page = usePage()
 
@@ -64,7 +65,7 @@ const submit = () => {
 
     <Head title="Opening Stock" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -373,6 +374,6 @@ const submit = () => {
 
 />      
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

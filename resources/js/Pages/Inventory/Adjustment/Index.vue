@@ -13,6 +13,7 @@ import 'flatpickr/dist/flatpickr.css'
 
 import AuthenticatedLayout
 from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
@@ -87,7 +88,7 @@ const applyFilter = () => {
     title="Inventory Adjustment"
 />
 
-<AuthenticatedLayout>
+<AppLayout>
 
             <template #header>
 
@@ -962,5 +963,5 @@ const applyFilter = () => {
                         </template>
 
                     </div>
-    </AuthenticatedLayout>
+</AppLayout>
 </template>

@@ -1,47 +1,144 @@
 <script setup>
 
-import AuthenticatedLayout
-    from '@/Layouts/AuthenticatedLayout.vue'
+import { ref, computed, watch } from 'vue'
 
-import { Head }
-
-    from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 
 import {
 
-    router,
+    LoadingOverlay,
 
-    Link
+} from '@/Components/Feedback'
+/*
 
-}
+|--------------------------------------------------------------------------
+| Layout
+|--------------------------------------------------------------------------
+*/
 
-from '@inertiajs/vue3'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+
+/*
+|--------------------------------------------------------------------------
+| Components
+|--------------------------------------------------------------------------
+*/
+
+import PageHeader from '@/Components/Layout/PageHeader.vue'
+
+import Card from '@/Components/Layout/Card.vue'
+
+import DataTable from '@/Components/Table/DataTable.vue'
+
+import DataTableHead from '@/Components/Table/DataTableHead.vue'
+
+import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
+
+import DataTableBody from '@/Components/Table/DataTableBody.vue'
+
+import DataTableRow from '@/Components/Table/DataTableRow.vue'
+
+import DataTableCell from '@/Components/Table/DataTableCell.vue'
+
+import TableEmpty from '@/Components/Table/TableEmpty.vue'
+
+import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
+
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+import BaseButton from '@/Components/Button/BaseButton.vue'
+import {   TablePagination, } from '@/Components/Table'
+import {   ActionBar,} from '@/Components/Layout'
+/*
+|--------------------------------------------------------------------------
+| Utils
+|--------------------------------------------------------------------------
+*/
 
 import {
 
-    ref,
+    formatCurrency,
 
-    watch
-
-}
-
-from 'vue'
-import SearchableSelect
-
-    from '@/Components/Form/SearchableSelect.vue'
-
+} from '@/Utils/currency'
 import {
 
-    EyeIcon,
+    BulkSelectionBar,
 
-    PencilSquareIcon,
+} from '@/Components/Bulk'
+/*
+|--------------------------------------------------------------------------
+| Icons
+|--------------------------------------------------------------------------
+*/
 
-    TrashIcon
 
-}
+import StatsCard
 
-from '@heroicons/vue/24/outline'
+from '@/Components/Card/StatsCard.vue'
+import StatusBadge from '@/Components/Display/StatusBadge.vue'
+
+import {
+    success,
+    error,
+} from '@/Utils'
 import Swal from 'sweetalert2'
+
+import {
+
+    onMounted,
+
+} from 'vue'
+
+import {
+
+    usePage,
+
+} from '@inertiajs/vue3'
+
+import { PlusIcon } from '@heroicons/vue/24/outline'
+import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
+import {
+
+    useLoading,
+
+} from '@/Composables/useLoading'
+const {
+
+    loading,
+
+} = useLoading()
+
+const page = usePage()
+
+onMounted(() => {
+
+    if (
+
+        page.props.flash?.success
+
+    ) {
+
+        Swal.fire({
+
+            icon: 'success',
+
+            title: 'Success',
+
+            text: page.props.flash.success,
+
+            confirmButtonColor: '#2563eb',
+
+        })
+
+    }
+
+})
+const showBulkActivate = ref(false)
+
+const showBulkDeactivate = ref(false)
+
+const selectedRows = ref([])
+
 const props = defineProps({
 
     cashBanks: Object,
@@ -51,13 +148,29 @@ const props = defineProps({
     summary: Object,
 
 })
+console.log(props.summary)
+/*
+|--------------------------------------------------------------------------
+| Filters
+|--------------------------------------------------------------------------
+*/
 
 const search = ref(
 
     props.filters.search ?? ''
 
 )
+const sort = ref(
 
+    props.filters.sort
+
+)
+
+const direction = ref(
+
+    props.filters.direction
+
+)
 const type = ref(
 
     props.filters.type ?? ''
@@ -69,13 +182,55 @@ const status = ref(
     props.filters.status ?? ''
 
 )
+
+/*
+|--------------------------------------------------------------------------
+| Delete Modal
+|--------------------------------------------------------------------------
+*/
+
+const showDelete = ref(false)
+
+const selectedCashBank = ref(null)
+
+const deleteMessage = computed(() => {
+
+    if (!selectedCashBank.value) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to delete "${selectedCashBank.value.name}"?`
+
+})
+
+/*
+|--------------------------------------------------------------------------
+| bulkDelete Modal
+|--------------------------------------------------------------------------
+*/
+const showBulkDelete = ref(false)
+const bulkDeleteMessage = computed(() => {
+
+    return `Are you sure you want to delete ${selectedRows.value.length} selected Cash Bank account(s)?`
+
+})
+/*
+
+
+|--------------------------------------------------------------------------
+| Filter Options
+|--------------------------------------------------------------------------
+*/
+
 const typeOptions = [
 
     {
 
         id: '',
 
-        name: 'All Type'
+        name: 'All Type',
 
     },
 
@@ -83,7 +238,7 @@ const typeOptions = [
 
         id: 'Cash',
 
-        name: 'Cash'
+        name: 'Cash',
 
     },
 
@@ -91,9 +246,9 @@ const typeOptions = [
 
         id: 'Bank',
 
-        name: 'Bank'
+        name: 'Bank',
 
-    }
+    },
 
 ]
 
@@ -103,7 +258,7 @@ const statusOptions = [
 
         id: '',
 
-        name: 'All Status'
+        name: 'All Status',
 
     },
 
@@ -111,7 +266,7 @@ const statusOptions = [
 
         id: 1,
 
-        name: 'Active'
+        name: 'Active',
 
     },
 
@@ -119,11 +274,17 @@ const statusOptions = [
 
         id: 0,
 
-        name: 'Inactive'
+        name: 'Inactive',
 
-    }
+    },
 
 ]
+/*
+|--------------------------------------------------------------------------
+| Watch Filters
+|--------------------------------------------------------------------------
+*/
+
 watch(
 
     [
@@ -132,7 +293,7 @@ watch(
 
         type,
 
-        status
+        status,
 
     ],
 
@@ -160,17 +321,25 @@ watch(
 
                 preserveState: true,
 
+                preserveScroll: true,
+
                 replace: true,
 
-            }
+            },
 
-        );
+        )
 
     }
 
-);
+)
+/*
+|--------------------------------------------------------------------------
+| Methods
+|--------------------------------------------------------------------------
+*/
 
-const resetFilter = () => {
+function resetFilter()
+{
 
     search.value = ''
 
@@ -179,1153 +348,1054 @@ const resetFilter = () => {
     status.value = ''
 
 }
-const formatCurrency = (value) => {
+function openDelete(item)
+{
 
-    return new Intl.NumberFormat(
+    selectedCashBank.value = item
 
-        'id-ID',
+    showDelete.value = true
+
+}
+function closeDelete()
+{
+
+    showDelete.value = false
+
+    selectedCashBank.value = null
+
+}
+
+function deleteCashBank()
+{
+
+    if (!selectedCashBank.value) {
+
+        return
+
+    }
+
+    router.delete(
+
+        route(
+            'cash-banks.destroy',
+            selectedCashBank.value.id
+        ),
 
         {
 
-            style: 'currency',
+            preserveScroll: true,
 
-            currency: 'IDR',
+            onSuccess: () => {
 
-            minimumFractionDigits: 2
+                closeDelete()
 
-        }
+                success(
+                    'Cash Bank deleted successfully.'
+                )
 
-    ).format(value ?? 0)
+            },
 
-}
-const formatCompactCurrency = (value) => {
+            onError: () => {
 
-    value = Number(value ?? 0)
+                error(
+                    'Failed to delete Cash Bank.'
+                )
 
-    if (value >= 1000000000000) {
-
-        return `Rp ${(value / 1000000000000).toFixed(2)} T`
-
-    }
-
-    if (value >= 1000000000) {
-
-        return `Rp ${(value / 1000000000).toFixed(2)} M`
-
-    }
-
-    if (value >= 1000000) {
-
-        return `Rp ${(value / 1000000).toFixed(2)} Jt`
-
-    }
-
-    if (value >= 1000) {
-
-        return `Rp ${(value / 1000).toFixed(2)} Rb`
-
-    }
-
-    return formatCurrency(value)
-
-}
-const deleteCashBank = (id) => {
-
-    Swal.fire({
-
-        title: 'Delete Cash Bank?',
-
-        text: 'This action cannot be undone.',
-
-        icon: 'warning',
-
-        showCancelButton: true,
-
-        confirmButtonColor: '#dc2626',
-
-        cancelButtonColor: '#6b7280',
-
-        confirmButtonText: 'Yes, Delete',
-
-        cancelButtonText: 'Cancel'
-
-    }).then((result) => {
-
-        if (result.isConfirmed) {
-
-            router.delete(
-
-                route('cash-banks.destroy', id),
-
-                {
-
-                    preserveScroll: true,
-
-                    onSuccess: () => {
-
-                        Swal.fire({
-
-                            icon: 'success',
-
-                            title: 'Deleted',
-
-                            text: 'Cash Bank deleted successfully.',
-
-                            timer: 1800,
-
-                            showConfirmButton: false
-
-                        })
-
-                    },
-
-                    onError: () => {
-
-                        Swal.fire({
-
-                            icon: 'error',
-
-                            title: 'Failed',
-
-                            text: 'Unable to delete Cash Bank.'
-
-                        })
-
-                    }
-
-                }
-
-            )
+            }
 
         }
 
-    })
+    )
+
+}
+function showCashBank(id)
+{
+
+    router.visit(
+
+        route(
+
+            'cash-banks.show',
+
+            id
+
+        )
+
+    )
+
+}
+function editCashBank(id)
+{
+
+    router.visit(
+
+        route(
+
+            'cash-banks.edit',
+
+            id
+
+        )
+
+    )
+
+}
+
+const isAllSelected = computed(() => {
+
+    return (
+
+        props.cashBanks.data.length > 0 &&
+
+        selectedRows.value.length === props.cashBanks.data.length
+
+    )
+
+})
+
+function toggleSelectAll(event)
+{
+
+    if (
+
+        event.target.checked
+
+    ) {
+
+      selectedRows.value = props.cashBanks.data.map(
+    item => item.id
+)
+
+    } else {
+
+        selectedRows.value = []
+
+    }
+
+}
+const hasSelection = computed(() => {
+
+    return selectedRows.value.length > 0
+
+})
+
+const selectedCount = computed(() => {
+
+    return selectedRows.value.length
+
+})
+
+const selectAllRef = ref(null)
+const isIndeterminate = computed(() => {
+
+    return (
+
+        selectedRows.value.length > 0 &&
+
+        selectedRows.value.length < props.cashBanks.data.length
+
+    )
+
+})
+watch(
+
+    isIndeterminate,
+
+    (value) => {
+
+        if (
+
+            selectAllRef.value
+
+        ) {
+
+            selectAllRef.value.indeterminate = value
+
+        }
+
+    }
+
+)
+function openBulkDelete()
+{
+
+    if (selectedRows.value.length === 0) {
+
+        return
+
+    }
+
+    showBulkDelete.value = true
+
+}
+function bulkDelete()
+{
+
+    router.delete(
+
+        route('cash-banks.bulk-delete'),
+
+        {
+
+            data: {
+
+                ids: selectedRows.value,
+
+            },
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showBulkDelete.value = false
+
+                selectedRows.value = []
+
+                success(
+                    'Selected Cash Bank deleted successfully.'
+                )
+
+            },
+
+            onError: () => {
+
+                error(
+                    'Failed to delete selected Cash Bank.'
+                )
+
+            }
+
+        }
+
+    )
+
+}
+function openBulkActivate()
+{
+
+    if (
+
+        selectedRows.value.length === 0
+
+    ) {
+
+        return
+
+    }
+
+    showBulkActivate.value = true
+
+}
+
+function openBulkDeactivate()
+{
+
+    if (
+
+        selectedRows.value.length === 0
+
+    ) {
+
+        return
+
+    }
+
+    showBulkDeactivate.value = true
+
+}
+
+const bulkActivateMessage = computed(() => {
+
+    return `Activate ${selectedRows.value.length} selected Cash Bank account(s)?`
+
+})
+
+const bulkDeactivateMessage = computed(() => {
+
+    return `Deactivate ${selectedRows.value.length} selected Cash Bank account(s)?`
+
+})
+
+function bulkActivate()
+{
+
+    router.patch(
+
+        route('cash-banks.bulk-activate'),
+
+        {
+
+            ids: selectedRows.value,
+
+        },
+
+        {
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showBulkActivate.value = false
+
+                selectedRows.value = []
+                success(
+                    'Selected Cash Bank activated successfully.'
+                )
+
+            }
+
+        }
+
+    )
+
+}
+
+function bulkDeactivate()
+{
+
+    router.patch(
+
+        route('cash-banks.bulk-deactivate'),
+
+        {
+
+            ids: selectedRows.value,
+
+        },
+
+        {
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showBulkDeactivate.value = false
+
+                selectedRows.value = []
+                success(
+                    'Selected Cash Bank Dectivated successfully.'
+                )
+
+            }
+
+        }
+
+    )
+
+}
+function create()
+{
+
+    router.get(
+
+        route(
+
+            'cash-banks.create'
+
+        )
+
+    )
+
+}
+function clearSelection()
+{
+
+    selectedRows.value = []
+
+}
+
+function duplicate(item)
+{
+
+    router.get(
+
+        route(
+
+            'cash-banks.duplicate',
+
+            item.id
+
+        )
+
+    )
+
+}
+function sortBy(column)
+{
+
+    if (
+
+        sort.value === column
+
+    ) {
+
+        direction.value =
+
+            direction.value === 'asc'
+
+                ? 'desc'
+
+                : 'asc'
+
+    }
+
+    else {
+
+        sort.value = column
+
+        direction.value = 'asc'
+
+    }
+
+    router.get(
+
+        route(
+
+            'cash-banks.index'
+
+        ),
+
+        {
+
+            search: search.value,
+
+            type: type.value,
+
+            status: status.value,
+
+            sort: sort.value,
+
+            direction: direction.value,
+
+        },
+
+        {
+
+            preserveState: true,
+
+            preserveScroll: true,
+
+            replace: true,
+
+        }
+
+    )
 
 }
 </script>
 <template>
 
-    <Head
+<Head
 
-        title="Cash & Bank"
+    title="Cash & Bank"
 
-    />
+/>
 
-    <AuthenticatedLayout>
-
-        <template #header>
-
-            <div
-
-                class="flex items-center justify-between"
-
-            >
-
-                <div>
-
-                    <h2
-
-                        class="text-2xl font-bold text-gray-900"
-
-                    >
-
-                        Cash & Bank
-
-                    </h2>
-
-                    <p
-
-                        class="mt-1 text-sm text-gray-500"
-
-                    >
-
-                        Manage cash accounts and bank accounts.
-
-                    </p>
-
-                </div>
-
-                <Link
-
-                    :href="route('cash-banks.create')"
-
-                    class="
-                        inline-flex
-                        items-center
-                        rounded-xl
-                        bg-indigo-600
-                        px-5
-                        py-3
-                        text-sm
-                        font-semibold
-                        text-white
-                        shadow-sm
-                        transition
-                        hover:bg-indigo-700
-                    "
-
-                >
-
-                    + New Cash Bank
-
-                </Link>
-
-            </div>
-
-        </template>
-
-        <div
-
-            class="py-6"
-
-        >
-
-            <div
-
-                class="
-                    mx-auto
-                    max-w-7xl
-                    px-4
-                    sm:px-6
-                    lg:px-8
-                "
-
-            >
-                 <!-- Summary Card -->
-
-                <div
-
-                    class="
-                        mb-6
-                        grid
-                        gap-6
-                        md:grid-cols-2
-                        xl:grid-cols-4
-                    "
-
-                >
-
-                    <!-- Total Account -->
-
-                    <div
-
-                        class="
-                            rounded-2xl
-                            border
-                            border-gray-100
-                            bg-white
-                            p-6
-                            shadow-sm
-                        "
-
-                    >
-
-                        <p
-
-                            class="
-                                text-sm
-                                font-medium
-                                text-gray-500
-                            "
-
-                        >
-
-                            Total Account
-
-                        </p>
-
-                        <h3
-
-                            class="
-                                mt-2
-                                text-3xl
-                                font-bold
-                                text-gray-900
-                            "
-
-                        >
-
-                            {{ summary?.total_accounts ?? 0 }}
-
-                        </h3>
-
-                    </div>
-
-                    <!-- Cash Account -->
-
-                    <div
-
-                        class="
-                            rounded-2xl
-                            border
-                            border-gray-100
-                            bg-white
-                            p-6
-                            shadow-sm
-                        "
-
-                    >
-
-                        <p
-
-                            class="
-                                text-sm
-                                font-medium
-                                text-gray-500
-                            "
-
-                        >
-
-                            Cash Account
-
-                        </p>
-
-                        <h3
-
-                            class="
-                                mt-2
-                                text-3xl
-                                font-bold
-                                text-emerald-600
-                            "
-
-                        >
-
-                            {{ summary?.cash_accounts ?? 0 }}
-
-                        </h3>
-
-                    </div>
-
-                    <!-- Bank Account -->
-
-                    <div
-
-                        class="
-                            rounded-2xl
-                            border
-                            border-gray-100
-                            bg-white
-                            p-6
-                            shadow-sm
-                        "
-
-                    >
-
-                        <p
-
-                            class="
-                                text-sm
-                                font-medium
-                                text-gray-500
-                            "
-
-                        >
-
-                            Bank Account
-
-                        </p>
-
-                        <h3
-
-                            class="
-                                mt-2
-                                text-3xl
-                                font-bold
-                                text-blue-600
-                            "
-
-                        >
-
-                            {{ summary?.bank_accounts ?? 0 }}
-
-                        </h3>
-
-                    </div>
-
-                    <!-- Current Balance -->
-
-                    <div
-
-                        class="
-                            rounded-2xl
-                            border
-                            border-gray-100
-                            bg-white
-                            p-6
-                            shadow-sm
-                        "
-
-                    >
-
-                        <p
-
-                            class="
-                                text-sm
-                                font-medium
-                                text-gray-500
-                            "
-
-                        >
-
-                            Current Balance
-
-                        </p>
-
-                    <h3
-
-    :title="formatCurrency(summary.current_balance)"
-
-    class="
-        mt-2
-        cursor-help
-        truncate
-        text-3xl
-        font-bold
-        text-indigo-600
-    "
-
->
-
-    {{ formatCompactCurrency(summary.current_balance) }}
-
-</h3>
-
-                    </div>
-
-                </div>
-                <!-- Filter Toolbar -->
-
-                <div
-
-                    class="
-                        mb-6
-                        rounded-2xl
-                        border
-                        border-gray-100
-                        bg-white
-                        p-5
-                        shadow-sm
-                    "
-
-                >
-
-                    <div
-
-                        class="
-                            flex
-                            flex-col
-                            gap-4
-                            lg:flex-row
-                            lg:items-end
-                        "
-
-                    >
-
-                        <!-- Search -->
-
-                        <div
-
-                            class="w-full lg:w-96"
-
-                        >
-
-                            <label
-
-                                class="
-                                    mb-2
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-600
-                                "
-
-                            >
-
-                                Search
-
-                            </label>
-
-                            <input
-
-                                v-model="search"
-
-                                type="text"
-
-                                placeholder="Search code or account name..."
-
-                                class="
-                                    w-full
-                                    rounded-xl
-                                    border-gray-300
-                                    shadow-sm
-                                    focus:border-indigo-500
-                                    focus:ring-indigo-500
-                                "
-
-                            />
-
-                        </div>
-
-                        <!-- Type -->
-
-                        <div
-
-                            class="w-full lg:w-56"
-
-                        >
-
-                            <label
-
-                                class="
-                                    mb-2
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-600
-                                "
-
-                            >
-
-                                Type
-
-                            </label>
-
-                            <SearchableSelect
-
-                               v-model="type"
-
-                            :options="typeOptions"
-
-                            placeholder="All Type"
-
-                        />
-
-                        </div>
-
-                        <!-- Status -->
-
-                        <div
-
-                            class="w-full lg:w-56"
-
-                        >
-
-                            <label
-
-                                class="
-                                    mb-2
-                                    block
-                                    text-sm
-                                    font-medium
-                                    text-gray-600
-                                "
-
-                            >
-
-                                Status
-
-                            </label>
-
-                            <SearchableSelect
-
-                                v-model="status"
-
-                                :options="statusOptions"
-
-                                placeholder="All Status"
-
-                            />
-
-                        </div>
-
-                        <!-- Reset -->
-
-                        <div>
-
-                           <button
-
-                            @click="resetFilter"
-
-                            type="button"
-
-                            class="
-                                rounded-xl
-                                border
-                                border-gray-300
-                                bg-white
-                                px-5
-                                py-2.5
-                                text-sm
-                                font-medium
-                                text-gray-700
-                                hover:bg-gray-100
-                            "
-
-                        >
-
-                            Reset
-
-                        </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-                <!-- end filter bar-->
-                 <!-- Data Table -->
-
-<div
-
-    class="
-        overflow-hidden
-        rounded-2xl
-        border
-        border-gray-100
-        bg-white
-        shadow-sm
-    "
-
->
+<AppLayout>
 
     <div
 
-        class="overflow-x-auto"
+        class="
+            space-y-6
+        "
 
     >
 
-        <table
+        <PageHeader
 
-            class="min-w-full"
+            icon="🏦"
 
-        >
+            title="Cash & Bank"
 
-            <!-- Table Header -->
-
-            <thead
-
-                class="bg-gray-100
-                sticky
-                top-0
-                z-10
-                "
-            >
-
-                <tr>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        No
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Code
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Account Name
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Type
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Bank
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Account No
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Balance
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Status
-
-                    </th>
-
-                    <th
-
-                        class="px-5 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600"
-
-                    >
-
-                        Action
-
-                    </th>
-
-                </tr>
-
-            </thead>
-
-            <!-- Table Body -->
-
-            <tbody>
-
-                <tr v-if="cashBanks.data.length === 0">
-
-    <td
-
-        colspan="9"
-
-        class="px-6 py-16"
-
-    >
-
-        <div
-
-            class="flex flex-col items-center justify-center"
+            subtitle="Manage your cash and bank accounts."
 
         >
 
-            <svg
 
-                xmlns="http://www.w3.org/2000/svg"
 
-                fill="none"
+        </PageHeader>
 
-                viewBox="0 0 24 24"
+        <!-- stats card-->
+            <!-- ===================================================== -->
+            <!-- Summary -->
+            <!-- ===================================================== -->
 
-                stroke-width="1.5"
-
-                stroke="currentColor"
-
-                class="h-16 w-16 text-gray-300"
-
-            >
-
-                <path
-
-                    stroke-linecap="round"
-
-                    stroke-linejoin="round"
-
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-
-                />
-
-                <path
-
-                    stroke-linecap="round"
-
-                    stroke-linejoin="round"
-
-                    d="M9.75 9.75h4.5v4.5h-4.5z"
-
-                />
-
-            </svg>
-
-            <h3
-
-                class="mt-4 text-lg font-semibold text-gray-700"
-
-            >
-
-                No Cash Bank Found
-
-            </h3>
-
-            <p
-
-                class="mt-2 text-sm text-gray-500"
-
-            >
-
-                Click the button below to create your first Cash Bank.
-
-            </p>
-
-            <Link
-
-                :href="route('cash-banks.create')"
-
+            <div
                 class="
-                    mt-6
-                    rounded-xl
-                    bg-indigo-600
-                    px-5
-                    py-3
-                    text-white
-                    hover:bg-indigo-700
+                    grid
+                    grid-cols-1
+                    sm:grid-cols-2
+                    xl:grid-cols-4
+                    gap-6
                 "
-
             >
 
-                + New Cash Bank
+                <StatsCard
 
-            </Link>
+                    title="Total Account"
 
-        </div>
+                    :value="summary.total_accounts"
 
-    </td>
+                    icon="🏦"
 
-</tr>
+                />
 
-              <tr
+                <StatsCard
 
-                    v-for="(item,index) in cashBanks.data"
+                    title="Bank Accounts"
 
-                    :key="item.id"
+                    :value="summary.bank_accounts"
 
-                    :class="[
+                    icon="🏛️"
 
-                        index % 2 === 0
+                />
 
-                            ? 'bg-white'
+                  <StatsCard
 
-                            : 'bg-gray-50',
+                    title="Cash Accounts"
 
-                        'hover:bg-blue-50 transition-colors duration-150'
+                    :value="summary.cash_accounts"
 
-                    ]"
+                    icon="💵"
 
-                 >
+                />
 
-                    <!-- No -->
+                <StatsCard
 
-                    <td
+                    title="Current Balance"
 
-                        class="px-5 py-4"
+                    :value="formatCurrency(
+                        summary.current_balance
+                    )"
 
-                    >
+                    icon="💰"
 
-                       {{
-                            cashBanks.from + index
-                        }}
+                />
+            </div>
+        <!-- end stats card-->
+      
+          <!-- ===================================================== -->
+            <!-- Data Table -->
+            <!-- ===================================================== -->
 
-                    </td>
-
-                    <!-- Code -->
-
-                    <td
-
-                        class="px-5 py-4 font-semibold text-blue-600"
-
-                    >
-
-                        {{ item.code }}
-
-                    </td>
-
-                    <!-- Name -->
-
-                    <td
-
-                        class="px-5 py-4"
-
-                    >
-
-                        {{ item.name }}
-
-                    </td>
-
-                    <!-- Type -->
-
-                    <td
-
-                        class="px-5 py-4"
-
-                    >
-
-                        {{ item.type }}
-
-                    </td>
-
-                    <!-- Bank -->
-
-                    <td
-
-                        class="px-5 py-4"
-
-                    >
-
-                        {{ item.bank_name }}
-
-                    </td>
-
-                    <!-- Account -->
-
-                    <td
-
-                        class="px-5 py-4"
-
-                    >
-
-                        {{ item.account_number }}
-
-                    </td>
-
-                    <!-- Balance -->
-
-                    <td
-
-                        class="px-5 py-4 text-right font-semibold text-emerald-600"
-
-                    >
-
-                        {{ formatCurrency(item.current_balance) }}
-
-                    </td>
-
-                    <!-- Status -->
+            <Card>
+                    <!-- Bulk Action Container -->
+                    <!-- <div
+                        class="
+                            flex
+                            items-center
+                            justify-between
+                            border-b
+                            border-gray-200
+                            px-6
+                            py-4
+                            min-h-[72px]
+                        "
+                    > -->
                     
-                        <!-- Badge nanti -->
-                            <td
+                    <Actionbar>
 
-                                class="px-5 py-4 text-center"
+                       <template v-if="!hasSelection">
 
-                            >
+                            <div
+                                class="
+                                    flex
+                                    flex-col
+                                    gap-3
 
-                                <span
+                                    lg:flex-row
+                                    lg:items-center
+                                    lg:justify-between
+                                "   >
 
-                                    v-if="item.status"
-
-                                    class="
-                                        inline-flex
-                                        rounded-full
-                                        bg-green-100
-                                        px-3
-                                        py-1
-                                        text-xs
-                                        font-semibold
-                                        text-green-700
-                                    "
-
-                                >
-
-                                    Active
-
-                                </span>
-
-                                <span
-
-                                    v-else
-
-                                    class="
-                                        inline-flex
-                                        rounded-full
-                                        bg-red-100
-                                        px-3
-                                        py-1
-                                        text-xs
-                                        font-semibold
-                                        text-red-700
-                                    "
-
-                                >
-
-                                    Inactive
-
-                                </span>
-
-                            </td>
-                    <!-- Action -->
-                        <!-- Heroicon nanti -->
-
-                            <td
-
-                                class="px-5 py-4"
-
-                            >
+                                <!-- Left -->
 
                                 <div
-
                                     class="
-                                        flex
-                                        items-center
-                                        justify-center
-                                        gap-2
+                                            flex
+                                            flex-col
+                                            gap-3
+                                            md:flex-row
+                                            md:flex-wrap
+                                            md:items-center
+                                            flex-1
+                                        "
+                                >
+
+                                    <!-- Search -->
+
+                                    <input
+
+                                        v-model="search"
+
+                                        type="text"
+
+                                        placeholder="Search..."
+
+                                        class="
+                                                w-full
+                                                lg:max-w-sm
+                                                rounded-xl
+                                                border
+                                                border-gray-300
+                                                px-4
+                                                py-2.5
+                                            "
+                                    >
+                                </div>
+                                    <div class="w-full md:w-44">
+
+                                    <SearchableSelect
+
+                                        v-model="type"
+
+                                        :options="typeOptions"
+
+                                        placeholder="All Type"
+
+                                    />
+
+                                </div>
+
+                                <div class="w-full md:w-44">
+
+                                    <SearchableSelect
+
+                                        v-model="status"
+
+                                        :options="statusOptions"
+
+                                        placeholder="All Status"
+
+                                    />
+
+                                </div>
+                                <BaseButton
+                                    class="
+                                        w-full
+                                        md:w-auto
                                     "
+                                    variant="secondary"
+
+                                    @click="resetFilter"
 
                                 >
 
-                                    <Link
+                                    Reset
 
-                                        :href="route('cash-banks.show',item.id)"
+                                </BaseButton>
+                                <!-- Right -->
 
-                                        class="text-blue-600 hover:text-blue-800
-                                        cursor-pointer
+                                <BaseButton class="
+                                                w-full
+                                                md:w-auto
+                                            "
+                                        " @click="create">
+
+                                <template #icon>
+
+                                    <PlusIcon class="h-5 w-5" />
+
+                                </template>
+
+                                Create New
+
+                            </BaseButton>
+
+                   </div>
+
+                        </template>
+                   
+                        <!-- action bulk-->
+                         
+                 <template v-if="hasSelection">
+
+                    <BulkSelectionBar
+                         :count="selectedRows.length"
+
+                        @delete="openBulkDelete"
+
+                        @activate="openBulkActivate"
+
+                        @deactivate="openBulkDeactivate"
+
+                        @cancel="clearSelection"
+
+                    />
+
+                    </template>
+                     </ActionBar>
+                    <br>
+                        <!-- end action bulk-->
+                    
+                   <!-- </div>  end toolbar action-->
+                <div
+                        v-if="cashBanks.data.length === 0"
+                    >
+                        <TableEmpty
+
+
+                            icon="🏦"
+
+                                title="No Cash & Bank Accounts"
+
+                                description="You haven't created any Cash & Bank accounts yet. Start by creating your first account."
+
+                                button-text="+ New Cash Bank"
+
+                                @action="create"
+
+                            />
+                        
+
+                        </div>
+         <div class="relative">
+
+        <LoadingOverlay
+            :show="loading"
+            text="Loading Cash Bank..."
+        />
+                <DataTable 
+                sticky-header
+                 max-height="650px"
+                >
+
+                    <DataTableHead sticky>
+
+                        <DataTableHeaderCell
+
+                            width="60px"
+
+                            align="center"
+
+                        >
+
+                          <input
+                                ref="selectAllRef"
+
+                                type="checkbox"
+
+                                :checked="isAllSelected"
+
+                                @change="toggleSelectAll"
+
+                                 class="
+                                    rounded
+                                    border-gray-300
+                                "
+
+                            />
+      
+                        </DataTableHeaderCell>
+
+                       <DataTableHeaderCell
+
+                            sortable
+
+                            column="code"
+
+                            :sort="sort"
+
+                            :direction="direction"
+
+                            @sort="sortBy"
+
+                            width="140px"
+
+                        >
+
+                            Code
+
+                        </DataTableHeaderCell>
+
+                        <DataTableHeaderCell
+
+                            sortable
+
+                            column="name"
+
+                            :sort="sort"
+
+                            :direction="direction"
+
+                            @sort="sortBy"
+
+                            width="260px"
+
+                        >
+
+                            Name
+
+                        </DataTableHeaderCell>
+                        <DataTableHeaderCell
+
+                            sortable
+
+                            column="type"
+
+                            :sort="sort"
+
+                            :direction="direction"
+
+                            @sort="sortBy"
+
+                            width="120px"
+
+                        >
+
+                            Type
+
+                        </DataTableHeaderCell>
+
+
+                       <DataTableHeaderCell
+
+                            sortable
+
+                            column="current_balance"
+
+                            :sort="sort"
+
+                            :direction="direction"
+
+                            @sort="sortBy"
+
+                            align="right"
+
+                            width="150px"
+
+                        >
+
+                            Balance
+
+                        </DataTableHeaderCell>
+
+                        <DataTableHeaderCell
+
+                            sortable
+
+                            column="status"
+
+                            :sort="sort"
+
+                            :direction="direction"
+
+                            @sort="sortBy"
+
+                            align="center"
+
+                            width="100px"
+
+                        >
+
+                            Status
+
+                        </DataTableHeaderCell>
+
+                        <DataTableHeaderCell
+                            align="center"
+                            width="100px"
+                        >
+
+                            Actions
+
+                        </DataTableHeaderCell>
+
+                    </DataTableHead>
+
+                    <DataTableBody>
+
+                        <template
+
+                            v-if="cashBanks.data.length"
+
+                        >
+
+                            <DataTableRow
+
+                                v-for="item in cashBanks.data"
+
+                                :key="item.id"
+
+                            >
+
+                                <DataTableCell
+
+                                    align="center"
+
+                                >
+
+                                    <input
+
+                                        v-model="selectedRows"
+
+                                        :value="item.id"
+
+                                        type="checkbox"
+
+
+                                        class="
+                                            rounded
+                                            border-gray-300
                                         "
 
                                     >
 
-                                        <EyeIcon class="h-5 w-5"/>
+                                </DataTableCell>
 
-                                    </Link>
+                                <DataTableCell  width="60px">
 
-                                    <Link
+                                    {{ item.code }}
 
-                                        :href="route('cash-banks.edit',item.id)"
+                                </DataTableCell>
 
-                                        class="text-amber-600 hover:text-amber-800"
+                                <DataTableCell width="260px">
 
-                                    >
+                                    {{ item.name }}
 
-                                        <PencilSquareIcon class="h-5 w-5"/>
+                                </DataTableCell>
 
-                                    </Link>
-                                    <!-- button delete-->
-                                  <button
+                                <DataTableCell width="120px" >
 
-                                    @click="deleteCashBank(item.id)"
+                                    {{ item.type }}
 
-                                    class="
-                                        text-red-600
-                                        hover:text-red-800
-                                    "
+                                </DataTableCell>
+
+                                <DataTableCell 
+                                    width="180px"
+
+                                    align="right"
 
                                 >
 
-                                    <TrashIcon
+                                    {{
 
-                                        class="h-5 w-5"
+                                        formatCurrency(
 
+                                            item.current_balance
+
+                                        )
+
+                                    }}
+
+                                </DataTableCell>
+
+                               <DataTableCell
+                                    width="120px"
+                                    align="center"
+
+                                >
+
+                                   <StatusBadge
+                                        :active="item.is_active === 1"
                                     />
 
-                                </button>
+                                </DataTableCell>
 
-                                </div>
+                                <DataTableCell
+                                    width="150px"
+                                    align="center"
 
-                            </td>
-                </tr>
+                                >
+                                <ActionDropdown
 
-            </tbody>
+                                    @view="showCashBank(item)"
 
-        </table>
-<div
+                                    @edit="editCashBank(item)"
 
-    v-if="cashBanks.links.length > 3"
+                                    @duplicate="duplicate(item)"
 
-    class="
-        border-t
-        bg-white
-        px-6
-        py-4
-    "
+                                    @export="exportRow(item)"
 
->
+                                    @delete="openDelete(item)"
 
-    <div
+                                />
+                                 
+                                </DataTableCell>
 
-        class="flex justify-end"
+                            </DataTableRow>
 
-    >
+                        </template>
 
-        <template
+                        <template
 
-            v-for="link in cashBanks.links"
+                            v-else
 
-            :key="link.label"
+                        >
 
-        >
 
-            <Link
 
-                v-if="link.url"
+                        </template>
 
-                :href="link.url"
+                    </DataTableBody>
 
-                v-html="link.label"
-
-                class="
-                    mx-1
-                    rounded-lg
-                    border
-                    px-4
-                    py-2
-                    text-sm
-                    hover:bg-indigo-50
-                "
-
-                :class="{
-
-                    'bg-indigo-600 text-white':
-
-                        link.active
-
-                }"
-
-            />
-
-            <span
-
-                v-else
-
-                v-html="link.label"
-
-                class="
-                    mx-1
-                    px-4
-                    py-2
-                    text-gray-400
-                "
-
-            />
-
-        </template>
-
-    </div>
-
-</div>
-    </div>
-
-</div>
-                 <!-- end data table-->
+                </DataTable>
             </div>
+                <TablePagination
 
-        </div>
+                    :data="cashBanks"
 
-    </AuthenticatedLayout>
+                />                   
+
+            </Card>
+            <!-- end card databale-->
+             <ConfirmDeleteModal
+
+    :show="showDelete"
+
+    title="Delete Cash Bank"
+
+    :message="deleteMessage"
+
+    @close="closeDelete"
+
+    @confirm="deleteCashBank"
+
+/>
+
+<ConfirmDeleteModal
+
+    :show="showBulkDelete"
+
+    title="Bulk Delete Cash Bank"
+
+    :message="bulkDeleteMessage"
+
+    @close="showBulkDelete = false"
+
+    @confirm="bulkDelete"
+
+/>
+
+<ConfirmDeleteModal
+
+    :show="showBulkActivate"
+
+    title="Bulk Activate"
+
+    :message="bulkActivateMessage"
+
+    @close="showBulkActivate = false"
+
+    @confirm="bulkActivate"
+
+/>
+
+<ConfirmDeleteModal
+
+    :show="showBulkDeactivate"
+
+    title="Bulk Deactivate"
+
+    :message="bulkDeactivateMessage"
+
+    @close="showBulkDeactivate = false"
+
+    @confirm="bulkDeactivate"
+
+/>
+    </div>
+
+</AppLayout>
 
 </template>

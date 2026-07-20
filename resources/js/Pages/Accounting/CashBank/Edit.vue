@@ -1,7 +1,5 @@
 <script setup>
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
 import PageHeader from '@/Components/Layout/PageHeader.vue'
 
 import CashBankForm from '@/Pages/Accounting/CashBank/Components/CashBankForm.vue'
@@ -9,7 +7,7 @@ import CashBankForm from '@/Pages/Accounting/CashBank/Components/CashBankForm.vu
 import ActionBar from '@/Components/Layout/ActionBar.vue'
 
 import BaseButton from '@/Components/Button/BaseButton.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 import ButtonGroup from '@/Components/Button/ButtonGroup.vue'
 
 import {
@@ -23,7 +21,10 @@ import {
 }
 
 from '@inertiajs/vue3'
-
+import {
+    success,
+    error,
+} from '@/Utils'
 const props = defineProps({
 
     cashBank: {
@@ -107,7 +108,7 @@ function cancel()
 }
 function submit()
 {
-    console.log('Submit jalan')
+    
 
     form.put(
         route(
@@ -118,15 +119,15 @@ function submit()
             preserveScroll: true,
 
             onSuccess: () => {
-                console.log('SUCCESS')
+               
             },
 
             onError: (errors) => {
-                console.log('ERROR', errors)
+               
             },
 
             onFinish: () => {
-                console.log('FINISH')
+              
             }
         }
     )
@@ -140,7 +141,7 @@ function submit()
 
 />
 
-<AuthenticatedLayout>
+<AppLayout>
 
     <div
 
@@ -230,6 +231,6 @@ function submit()
 
     </div>
 
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>

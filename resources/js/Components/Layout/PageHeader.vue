@@ -18,7 +18,6 @@ const props = defineProps({
         type: String,
 
         required: true
-
     },
 
     subtitle: {
@@ -31,11 +30,11 @@ const props = defineProps({
 
     icon: {
 
-        type: String,
+    type: String,
 
-        default: '📄'
+    default: ''
 
-    },
+},
 
     badge: {
 
@@ -75,11 +74,11 @@ const wrapperClass = computed(
 
         'pb-6',
 
-        props.sticky
+       props.sticky
 
-            ? 'sticky top-0 z-20'
+        ? 'sticky top-0 z-20 backdrop-blur bg-white/90'
 
-            : ''
+        : ''
 
     ]
 
@@ -105,9 +104,13 @@ const wrapperClass = computed(
 
         'shadow-sm',
 
-        'px-8',
+       'px-5',
 
-        'py-7'
+        'py-6',
+
+        'lg:px-8',
+
+        'lg:py-7'
 
     ]"
 
@@ -181,19 +184,41 @@ const wrapperClass = computed(
 
             <div
 
-                class="flex flex-wrap items-center gap-3"
+               class="
+                        flex
+                        flex-wrap
+                        items-center
+                        gap-4
+                    "
 
             >
 
-                <div
+               <div
+                        class="
+                            flex
+                            h-12
+                            w-12
+                            items-center
+                            justify-center
+                            rounded-xl
+                            bg-primary-50
+                            text-primary-600
+                            shrink-0
+                        "
+                    >
 
-                    class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-2xl"
+                        <slot name="icon">
 
-                >
+                            <span
+                                v-if="icon"
+                                class="text-2xl"
+                            >
+                                {{ icon }}
+                            </span>
 
-                    {{ icon }}
+                        </slot>
 
-                </div>
+                    </div>
 
                 <div>
 
@@ -205,8 +230,13 @@ const wrapperClass = computed(
 
                         <h1
 
-                            class="text-4xl font-bold tracking-tight text-gray-900"
-
+                           class="
+                                    text-2xl
+                                    font-bold
+                                    tracking-tight
+                                    text-gray-900
+                                    sm:text-3xl
+                                "
                         >
 
                             {{ title }}
@@ -231,8 +261,12 @@ const wrapperClass = computed(
 
                         v-if="subtitle"
 
-                        class="mt-2 text-base leading-relaxed"
-
+                        class="
+                                mt-2
+                                text-sm
+                                leading-relaxed
+                                text-gray-500
+                            "
                     >
 
                         {{ subtitle }}

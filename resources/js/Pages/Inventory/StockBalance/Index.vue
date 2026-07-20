@@ -1,8 +1,8 @@
 <script setup>
 
 import { Head } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
+import AppLayout from '@/Layouts/AppLayout.vue'
 defineProps({
 
     stocks: Object
@@ -15,7 +15,7 @@ defineProps({
 
     <Head title="Stock Balance" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -93,6 +93,6 @@ defineProps({
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

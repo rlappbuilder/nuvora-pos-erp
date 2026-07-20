@@ -20,9 +20,7 @@ from 'vue-flatpickr-component'
 
 import 'flatpickr/dist/flatpickr.css'
 
-import AuthenticatedLayout
-
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 import SearchableSelect
 
@@ -336,7 +334,7 @@ const formatDate = (
             title="Inventory Issue"
         />
 
-        <AuthenticatedLayout>
+        <AppLayout>
             <template #header>
 
                     <div
@@ -1480,6 +1478,6 @@ const formatDate = (
                              <!-- pagination-->
                         </div>
                      <!-- end filter bar-->
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

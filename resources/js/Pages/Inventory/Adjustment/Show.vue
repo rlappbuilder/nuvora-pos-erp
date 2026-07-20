@@ -4,8 +4,7 @@ import { Head } from '@inertiajs/vue3'
 
 import { router } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import AuthenticatedLayout
-from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
@@ -127,7 +126,7 @@ const formatDateTime = (date) => {
                 title="Inventory Adjustment"
             />
 
-<AuthenticatedLayout>
+<AppLayout>
 
             <template #header>
 
@@ -1513,6 +1512,6 @@ const formatDateTime = (date) => {
 
                     </div>
                 <!-- end modal cancell reason-->
-    </AuthenticatedLayout>
+</AppLayout>
 
 </template>

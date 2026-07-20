@@ -13,3 +13,48 @@ Pages/
         │   └── useCashBank.js
         │
         └── Partials/         (Future)
+
+        PHASE 3 ⭐ ERP FOUNDATION
+------------------------
+Role
+Permission
+User
+Employee
+
+Company
+Branch
+
+COA
+
+Fiscal Year
+Accounting Period
+
+Journal Engine
+
+Audit Trail
+
+Base Service
+
+PHASE 4
+------------------------
+Customer
+
+Supplier
+
+Warehouse
+
+Product
+
+PHASE 5
+------------------------
+Purchase
+
+Sales
+
+POS
+
+Inventory
+
+PHASE 6
+------------------------
+Financial Report

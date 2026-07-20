@@ -13,20 +13,17 @@ import {
     ref,
 
 } from 'vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 import FlatPickr
 
 from 'vue-flatpickr-component'
 
 import 'flatpickr/dist/flatpickr.css'
 
-import AuthenticatedLayout
-
-from '@/Layouts/AuthenticatedLayout.vue'
 
 import SearchableSelect
 
-from '@/Components/SearchableSelect.vue'
+from '@/Components/Form/SearchableSelect.vue'
 import {
 
     EyeIcon,
@@ -261,7 +258,7 @@ const formatDate = (
             title="Inventory Transfer"
         />
 
-        <AuthenticatedLayout>
+        <AppLayout>
             <template #header>
 
                     <div
@@ -1400,6 +1397,6 @@ const formatDate = (
                              <!-- pagination-->
                         </div>
                      <!-- end filter bar-->
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

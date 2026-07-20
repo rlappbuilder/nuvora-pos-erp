@@ -20,30 +20,6 @@ import PageHeader
 
 from '@/Components/Layout/PageHeader.vue'
 
-import FormSection
-
-from '@/Components/Form/FormSection.vue'
-
-import SearchableSelect
-
-from '@/Components/Form/SearchableSelect.vue'
-
-import FormInput
-
-from '@/Components/Form/FormInput.vue'
-
-import CurrencyInput
-
-from '@/Components/Form/CurrencyInput.vue'
-
-import FormTextarea
-
-from '@/Components/Form/FormTextarea.vue'
-
-import FormField
-
-from '@/Components/Form/FormField.vue'
-
 import ButtonGroup from '@/Components/Button/ButtonGroup.vue'
 
 import BaseButton from '@/Components/Button/BaseButton.vue'
@@ -51,6 +27,11 @@ import BaseButton from '@/Components/Button/BaseButton.vue'
 import ActionBar from '@/Components/Layout/ActionBar.vue'
 
 import CashBankForm from '@/Pages/Accounting/CashBank/Components/CashBankForm.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+import {
+    success,
+    error,
+} from '@/Utils'
 
 const props = defineProps({
 
@@ -60,52 +41,134 @@ const props = defineProps({
 
     branches: Array,
 
-    coaAccounts: Array
+    coaAccounts: Array,
+
+     duplicate: {
+
+        type: Object,
+
+        default: null,
+
+    },
 
 })
 
 const form = useForm({
 
-    company_id: null,
+    company_id: props.duplicate?.company_id ?? null,
 
-    branch_id: null,
+    branch_id: props.duplicate?.branch_id ?? null,
 
     code: props.generatedCode,
 
-    name: '',
+    name: props.duplicate?.name ?? '',
 
-    type: 'Cash',
+    type: props.duplicate?.type ?? 'Cash',
 
-    bank_name: '',
+    bank_name: props.duplicate?.bank_name ?? '',
 
-    bank_branch: '',
+    bank_branch: props.duplicate?.bank_branch ?? '',
 
-    account_number: '',
+    account_number: props.duplicate?.account_number ?? '',
 
-    account_holder: '',
+    account_holder: props.duplicate?.account_holder ?? '',
 
     opening_balance: 0,
 
     current_balance: 0,
 
-    coa_id: null,
+    coa_id: props.duplicate?.coa_id ?? null,
 
-    description: '',
+    description: props.duplicate?.description ?? '',
 
-    status: true
+    status: props.duplicate?.status ?? true,
+
+    create_another: false,
 
 })
 
-function submit()
+
+
+function submit(createAnother = false)
+{
+    form.create_another = createAnother
+
+    form.post(route('cash-banks.store'), {
+
+        onSuccess: () => {
+
+            success('Cash Bank created successfully.')
+
+            if (createAnother) {
+
+                router.get(
+                    route('cash-banks.create'),
+                    {},
+                    {
+                        replace: true,
+                        preserveState: false,
+                        preserveScroll: false,
+                    }
+                )
+
+            }
+
+        },
+
+        onError: () => {
+
+            error('Failed to create Cash Bank.')
+
+        }
+
+    })
+}
+function resetForm()
+{
+
+    form.reset()
+
+    form.is_active = true
+
+    form.type = 'Cash'
+
+}
+function saveAndNew()
 {
 
     form.post(
 
-        route(
+        route('cash-banks.store'),
 
-            'cash-banks.store'
+        {
 
-        )
+            preserveState: true,
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                success(
+
+                    'Cash Bank created successfully.'
+
+                )
+
+                resetForm();
+
+            },
+
+            onError: () => {
+
+                error(
+
+                    'Failed to create Cash Bank.'
+
+                )
+
+            }
+
+        }
 
     )
 
@@ -125,6 +188,7 @@ function cancel()
     )
 
 }
+
 </script>
 <template>
 
@@ -134,7 +198,7 @@ function cancel()
 
 />
 
-<AuthenticatedLayout>
+<AppLayout>
 
     <div
 
@@ -157,10 +221,9 @@ function cancel()
             subtitle="Create a new cash or bank account."
 
         />
-
         <form
 
-            @submit.prevent="submit"
+            @submit.prevent="submit(false)"
 
             class="space-y-6"
 
@@ -182,6 +245,7 @@ function cancel()
 
                 />
               <ActionBar
+
 
                     bordered
 
@@ -209,12 +273,27 @@ function cancel()
 
                             :loading="form.processing"
 
+                         
                         >
 
                             Save
 
                         </BaseButton>
+                         <BaseButton
 
+                            variant="primary"
+
+                            type="button"
+
+                            :loading="form.processing"
+
+                            @click="submit(true)"
+
+                        >
+
+                            Save & Create New
+
+                        </BaseButton>
                     </ButtonGroup>
 
                 </ActionBar>
@@ -222,6 +301,6 @@ function cancel()
         
     </div>
 
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>

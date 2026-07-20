@@ -1,12 +1,12 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AppLayout from '@/Layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3';
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
@@ -146,5 +146,5 @@ import { Head } from '@inertiajs/vue3';
 
             </div>
         </div>
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>

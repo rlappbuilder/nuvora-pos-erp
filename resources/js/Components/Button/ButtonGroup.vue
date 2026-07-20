@@ -16,7 +16,14 @@ const props = defineProps({
 
         default: false
 
-    }
+    },
+    gap: {
+
+    type: String,
+
+    default: 'gap-3'
+
+}
 
 })
 
@@ -28,14 +35,15 @@ const props = defineProps({
     :class="[
 
         'flex',
+        'flex-wrap',
 
         vertical
 
-            ? 'flex-col'
+           ? 'flex-col items-stretch'
 
-            : 'flex-row',
+            : 'flex-row items-center',
 
-        'gap-3',
+        props.gap,
 
         align === 'left'
 
