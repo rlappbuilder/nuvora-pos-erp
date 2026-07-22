@@ -17,13 +17,48 @@ const modules = {
         permission: 'dashboard.view',
     },
 
-    companies: {
+
+      categories: {
+        key: 'categories',
+        title: 'Categories',
+        icon: BuildingOfficeIcon,
+        route: 'categories.index',
+        permission: 'categories.view',
+    },
+
+    units: {
+        key: 'units',
+        title: 'Units',
+        icon: BuildingOfficeIcon,
+        route: 'units.index',
+        permission: 'units.view',
+    },
+
+    brands: {
+        key: 'brands',
+        title: 'Brands',
+        icon: BuildingOfficeIcon,
+        route: 'brands.index',
+        permission: 'brands.view',
+    },
+
+    colors: {
+        key: 'colors',
+        title: 'Colors',
+        icon: BuildingOfficeIcon,
+        route: 'colors.index',
+        permission: 'colors.view',
+    },
+
+     companies: {
         key: 'companies',
         title: 'Company',
         icon: BuildingOfficeIcon,
         route: 'companies.index',
         permission: 'companies.view',
     },
+
+  
 
     branches: {
         key: 'branches',
@@ -159,6 +194,15 @@ const modules = {
                 permission: 'goods-receipts.view',
             },
         // End purchasing //
+        // settings
+            Settings: {
+                key: 'Settings',
+                title: 'Documents Numbering',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+        // End Settings //
 }
 
 export default modules

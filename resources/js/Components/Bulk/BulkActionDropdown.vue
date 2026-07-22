@@ -5,7 +5,17 @@ import BaseButton from '@/Components/Button/BaseButton.vue'
 
 const open = ref(false)
 const dropdown = ref(null)
+const props = defineProps({
 
+    count: {
+
+        type: Number,
+
+        default: 0,
+
+    },
+
+})
 const emit = defineEmits([
     'delete',
     'activate',
@@ -59,13 +69,28 @@ onBeforeUnmount(() => {
     class="relative"
 >
 
-    <BaseButton
-        @click.stop="toggle"
-    >
+        <BaseButton
+            @click.stop="toggle"
+        >
 
-        Bulk Action
+            Bulk Action
 
-    </BaseButton>
+            <span
+                v-if="props.count"
+                class="
+                    ml-1
+                    rounded-full
+                    bg-white/20
+                    px-2
+                    py-0.5
+                    text-xs
+                    font-semibold
+                "
+            >
+                {{ props.count }}
+            </span>
+
+        </BaseButton>
 
     <div
         v-if="open"

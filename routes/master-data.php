@@ -54,6 +54,14 @@ Route::middleware(
 
         );
 
+        Route::get(
+            'categories/create',
+            [
+                CategoryController::class,
+                'create'
+            ]
+        )->name('categories.create');
+
         Route::post(
 
             'categories',
@@ -71,6 +79,14 @@ Route::middleware(
             'categories.store'
 
         );
+
+        Route::get(
+            'categories/{category}/edit',
+            [
+                CategoryController::class,
+                'edit'
+            ]
+        )->name('categories.edit');
 
         Route::put(
 
@@ -108,7 +124,58 @@ Route::middleware(
 
         );
 
+       
+        Route::get(
+            'categories/preview-code',
+            [
+                CategoryController::class,
+                'previewCode'
+            ]
+        )->name('categories.preview-code');
+                Route::get(
+                    'categories-trash',
+                    [CategoryController::class, 'trash']
+                )->name('categories.trash');
+
+                Route::patch(
+                    'categories/{category}/restore',
+                    [CategoryController::class, 'restore']
+                )->withTrashed()->name('categories.restore');
+
+                Route::patch(
+                    'categories/restore/bulk',
+                    [CategoryController::class, 'bulkRestore']
+                )->name('categories.bulk-restore');
+                Route::get(
+                'categories/sync-code',
+                [CategoryController::class, 'syncCode']
+            )->name('categories.sync-code');
+
+        Route::post(
+        'bulk-delete',
+        [CategoryController::class, 'bulkDelete']
+            )->name('categories.bulk-delete');
+
+            Route::patch(
+                'bulk-activate',
+                [CategoryController::class, 'bulkActivate']
+            )->name('categories.bulk-activate');
+
+            Route::patch(
+                'bulk-deactivate',
+                [CategoryController::class, 'bulkDeactivate']
+            )->name('categories.bulk-deactivate');
+            Route::get(
+                'categories/{category}/duplicate',
+                [CategoryController::class, 'duplicate']
+            )->name('categories.duplicate');
+
+                  
+        /* Route Bulk Actin 
+
+   
         /*
+        
         |--------------------------------------------------------------------------
         | Products
         |--------------------------------------------------------------------------

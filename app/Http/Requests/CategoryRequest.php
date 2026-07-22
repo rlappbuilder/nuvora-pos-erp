@@ -32,26 +32,10 @@ class CategoryRequest extends FormRequest
             'string'
         ],
 
-        'status' => [
+        'is_active' => [
             'required',
             'boolean'
         ],
-
-            'name' => [
-                'required',
-                'string',
-                'max:255'
-            ],
-
-            'description' => [
-                'nullable',
-                'string'
-            ],
-
-            'status' => [
-                'required',
-                'boolean'
-            ],
 
         ];
     }

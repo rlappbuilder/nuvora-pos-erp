@@ -1050,7 +1050,7 @@ function create()
 
                                         <StatusBadge
 
-                                            :active="item.status"
+                                            :status="item.status"
 
                                         />
 

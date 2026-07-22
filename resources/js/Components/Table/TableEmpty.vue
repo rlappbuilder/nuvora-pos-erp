@@ -103,19 +103,15 @@ const emit = defineEmits([
 
     </p>
 
+    <slot name="action">
     <BaseButton
-
         v-if="buttonText"
-
         class="mt-8"
-
         @click="emit('action')"
-
     >
-
         {{ buttonText }}
-
     </BaseButton>
+</slot>
 
 </div>
 

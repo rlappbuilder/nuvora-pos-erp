@@ -21,7 +21,7 @@ class Category extends Model
 
         'description',
 
-        'status',
+        'is_active',
 
         'created_by',
 
@@ -31,15 +31,19 @@ class Category extends Model
 
     protected $casts = [
 
-        'status' => 'boolean',
+        'is_active' => 'boolean',
 
     ];
+    public function getRouteKeyName(): string
+{
+    return 'id';
+}
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
 
-            ->useLogName('Category')
+            ->useLogName('category')
 
             ->logFillable()
 
@@ -47,4 +51,9 @@ class Category extends Model
 
             ->dontSubmitEmptyLogs();
     }
+
+    public function scopeActive($query)
+{
+    return $query->where('is_active', true);
+}
 }

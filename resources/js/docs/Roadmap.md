@@ -19,3 +19,21 @@ Baru kita kerjakan:
 📄 Print
 📄 Import Excel
 📄 Email Report
+
+Master Data
+├── Controller
+├── Request
+└── Model
+
+Transaction
+├── Controller
+├── Request
+├── Service
+└── Model
+
+Core Engine
+├── Inventory Engine
+├── Costing Engine
+├── Journal Engine
+├── Tax Engine
+└── Pricing Engine

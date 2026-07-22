@@ -1,558 +1,979 @@
 <script setup>
 
-const isEdit = ref(false)
-
-const selectedId = ref(null)
-const showDeleteModal = ref(false)
-const selectedCategory = ref(null)
-const showToast = ref(false)
-const toastMessage = ref('')
-
-import { ref } from 'vue'
-import { Head, useForm } from '@inertiajs/vue3'
-
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import BaseModal from '@/Components/UI/BaseModal.vue'
-import BaseToast from '@/Components/UI/BaseToast.vue'
+import { Head } from '@inertiajs/vue3'
+import StatsCard from '@/Components/Card/StatsCard.vue'
+import PageHeader from '@/Components/Layout/PageHeader.vue'
+import Card from '@/Components/Layout/Card.vue'
+import DataTable from '@/Components/Table/DataTable.vue'
+import DataTableHead from '@/Components/Table/DataTableHead.vue'
+import DataTableBody from '@/Components/Table/DataTableBody.vue'
+import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
+import DataTableRow from '@/Components/Table/DataTableRow.vue'
+import DataTableCell from '@/Components/Table/DataTableCell.vue'
+import StatusBadge from '@/Components/Display/StatusBadge.vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { usePage } from '@inertiajs/vue3'
+import BaseButton from '@/Components/Button/BaseButton.vue'
+import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
+import TablePagination from '@/Components/Table/TablePagination.vue'
+import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
+import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
+import TableEmpty from '@/Components/Table/TableEmpty.vue'
 
+import {
+    FolderIcon,
+    DocumentTextIcon,
+    ChevronRightIcon,
+    ChevronDownIcon,
+    PlusIcon,
+    PencilSquareIcon,
+} from '@heroicons/vue/24/solid'
+import {
+    success,
+    error,
+} from '@/Utils'
+import Swal from 'sweetalert2'
+import {
 
+    LoadingOverlay,
 
-const page = usePage()
+} from '@/Components/Feedback'
+import {
+
+    useLoading,
+
+} from '@/Composables/useLoading'
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+import { ChartNoAxesColumnIcon } from 'lucide-vue-next'
+
 
 const props = defineProps({
 
     categories: Object,
 
-    filters: Object
+    stats: Object,
+
+    filters: Object,
 
 })
+const search = ref(props.filters.search ?? '')
 
-const search = ref(
-    props.filters.search ?? ''
-)
+const status = ref(props.filters.is_active ?? '')
 
-const doSearch = () => {
+const perPage = ref(props.filters.per_page ?? 10)
 
+
+const pageTitle = computed(() => 'Category')
+const loading = ref(false)
+//const {
+
+ //   loading,
+   // showLoading,
+    // hideLoading,
+
+//} = useLoading()
+
+const filters = reactive({
+
+    search: props.filters?.search ?? '',
+
+    is_active: props.filters?.is_active ?? '',
+
+    per_page: props.filters?.per_page ?? 10,
+
+})
+let debounceTimer = null
+
+function loadData()
+{
     router.get(
-
         route('categories.index'),
-
-        {
-            search: search.value
-        },
-
+        filters,
         {
             preserveState: true,
-            replace: true
+            preserveScroll: true,
+            replace: true,
         }
-
     )
+}
+watch(
+    () => filters.search,
+    () => {
 
+        clearTimeout(debounceTimer)
+
+        debounceTimer = setTimeout(() => {
+
+            loadData()
+
+        }, 500)
+
+    }
+)
+watch(
+    () => filters.is_active,
+    () => {
+
+        loadData()
+
+    }
+)
+function refresh()
+{
+    Object.assign(filters, {
+        search: '',
+        is_active: '',
+        per_page: 10,
+    })
+
+    loadData()
+}
+const startLoading = () => {
+    loading.value = true
 }
 
-const showModal = ref(false)
+const stopLoading = () => {
+    loading.value = false
+}
 
-const form = useForm({
-   
-    name: '',
-    description: '',
-    status: true
+let removeStartListener
+let removeFinishListener
+
+onMounted(() => {
+    removeStartListener = router.on('start', startLoading)
+    removeFinishListener = router.on('finish', stopLoading)
 })
 
-const openModal = () => {
-    showModal.value = true
-}
-const editCategory = (category) => {
+onUnmounted(() => {
+    removeStartListener?.()
+    removeFinishListener?.()
+})
+const statusOptions = [
 
-    isEdit.value = true
+    {
 
-    selectedId.value = category.id
+        value: '',
 
-    form.name = category.name
+        label: 'All Status',
 
-    form.description = category.description
+    },
 
-    form.status = category.status
+    {
 
-    showModal.value = true
+        value: 1,
 
-}
-const deleteCategory = (category) => {
+        label: 'Active',
 
-    selectedCategory.value = category
+    },
 
-    selectedId.value = category.id
+    {
 
-    showDeleteModal.value = true
+        value: 0,
 
-}
-const closeModal = () => {
+        label: 'Inactive',
 
-    showModal.value = false
+    },
 
-    isEdit.value = false
+]
+const selectedRows = ref([])
+const selectAllRef = ref(null)
+const isAllSelected = computed(() => {
 
-    selectedId.value = null
-
-    form.reset()
-
-}
-const showNotification = (message) => {
-
-    toastMessage.value = message
-
-    showToast.value = true
-
-    setTimeout(() => {
-
-        showToast.value = false
-
-    }, 3000)
-
-}
-const saveCategory = () => {
-
-    if (isEdit.value) {
-
-        form.put(
-
-            route(
-                'categories.update',
-                selectedId.value
-            ),
-
-            {
-
-               onSuccess: () => {
-
-    closeModal()
-
-    showNotification(
-
-        isEdit.value
-
-            ? 'Category updated successfully'
-
-            : 'Category created successfully'
-
+    return (
+        props.categories.data.length > 0 &&
+        selectedRows.value.length === props.categories.data.length
     )
 
-}
+})
 
-            }
+const isIndeterminate = computed(() => {
+
+    return (
+        selectedRows.value.length > 0 &&
+        selectedRows.value.length < props.categories.data.length
+    )
+
+})
+watch(
+
+    isIndeterminate,
+
+    (value) => {
+
+        if (selectAllRef.value) {
+
+            selectAllRef.value.indeterminate = value
+
+        }
+
+    },
+
+    {
+
+        immediate: true,
+
+    }
+
+)
+function toggleSelectAll(event)
+{
+    if (event.target.checked) {
+
+        selectedRows.value = props.categories.data.map(
+
+            item => item.id
 
         )
 
     } else {
 
-        form.post(
+        selectedRows.value = []
 
-            route(
-                'categories.store'
-            ),
+    }
+}
+const deleteItem = ref(null)
 
-            {
+function create()
+{
+    router.visit(
+        route('categories.create')
+    )
+}
 
-                onSuccess: () => {
+function showCategory(category)
+{
+    router.visit(
 
-                    closeModal()
-
-                }
-
-            }
-
+        route(
+            'categories.show',
+            category.id
         )
+
+    )
+}
+
+function editCategory(category)
+{
+    router.visit(
+
+        route(
+            'categories.edit',
+            category.id
+        )
+
+    )
+}
+
+function duplicate(category)
+{
+    router.get(
+
+        route(
+            'categories.duplicate',
+            category.id
+        )
+
+    )
+}
+function openDelete(category)
+{
+    deleteItem.value = category
+
+    showDelete.value = true
+}
+const openBulkDelete = () => {
+
+    if (!selectedRows.value.length) {
+
+        return
 
     }
 
-}
-const confirmDelete = () => {
+    showBulkDelete.value = true
 
-    form.delete(
+}
+const openBulkActivate = () => {
+
+    if (!selectedRows.value.length) {
+
+        return
+
+    }
+
+    showBulkActivate.value = true
+
+}
+const openBulkDeactivate = () => {
+
+    if (!selectedRows.value.length) {
+
+        return
+
+    }
+
+    showBulkDeactivate.value = true
+
+}
+function closeDelete()
+{
+    deleteItem.value = null
+
+    showDelete.value = false
+}
+
+
+/** single delete */
+
+const showDelete = ref(false)
+
+const deleteMessage = computed(() => {
+
+    if (!deleteItem.value) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to delete "${deleteItem.value.name}"?`
+
+})
+
+/** end single delete */
+
+/** bulk delete */
+const bulkDelete = () => {
+
+    router.delete(
+        route('categories.bulk-delete'),
+        {
+            data: {
+                ids: selectedRows.value,
+            },
+            preserveScroll: true,
+            onSuccess: () => {
+
+                showBulkDelete.value = false
+
+                selectedRows.value = []
+
+            },
+        }
+    )
+
+}
+const showBulkDelete = ref(false)
+const bulkDeleteMessage = computed(() => {
+
+    const total = selectedRows.value.length
+
+    if (total === 0) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to delete ${total} selected Category(s)?`
+
+})
+
+/** end bulk delete */
+
+/** bulk activate */
+const bulkActivate = () => {
+
+    router.patch(
+        route('categories.bulk-activate'),
+        {
+            ids: selectedRows.value,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+
+                showBulkActivate.value = false
+
+                selectedRows.value = []
+
+            },
+        }
+    )
+
+}
+const showBulkActivate = ref(false)
+const bulkActivateMessage = computed(() => {
+
+    const total = selectedRows.value.length
+
+    if (total === 0) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to activate ${total} selected Category(s)?`
+
+})
+const bulkDeactivate = () => {
+
+    router.patch(
+        route('categories.bulk-deactivate'),
+        {
+            ids: selectedRows.value,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+
+                showBulkDeactivate.value = false
+
+                selectedRows.value = []
+
+            },
+        }
+    )
+
+}
+/** end bulk activate */
+
+/** bulk deactivate */
+const showBulkDeactivate = ref(false)
+
+const bulkDeactivateMessage = computed(() => {
+
+    const total = selectedRows.value.length
+
+    if (total === 0) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to deactivate ${total} selected Category(s)?`
+
+})
+
+/** end bulk deactivate */
+
+
+function confirmDelete()
+{
+    console.log(route('categories.destroy',deleteItem.value.id))
+    if (!deleteItem.value) {
+
+        return
+
+    }
+
+    router.delete(
 
         route(
             'categories.destroy',
-            selectedId.value
+            deleteItem.value.id
         ),
 
         {
 
-           onSuccess: () => {
+            preserveScroll: true,
 
-    showDeleteModal.value = false
+            onSuccess: () => {
 
-    selectedId.value = null
+                closeDelete()
 
-    selectedCategory.value = null
+                success(
+                    'Category deleted successfully.'
+                )
 
-    showNotification(
+            },
 
-        'Category deleted successfully'
+            onError: () => {
 
-    )
+                error(
+                    'Failed to delete category.'
+                )
 
-}
+            },
 
         }
 
     )
-
 }
+const sort = ref(
+    props.filters.sort
+)
 
+const direction = ref(
+    props.filters.direction
+)
+function sortBy(column)
+{
+    if (sort.value === column) {
+
+        direction.value =
+            direction.value === 'asc'
+                ? 'desc'
+                : 'asc'
+
+    } else {
+
+        sort.value = column
+        direction.value = 'asc'
+
+    }
+
+    router.get(
+        route('categories.index'),
+        {
+            search: search.value,
+            status: status.value,
+            per_page: perPage.value,
+            sort: sort.value,
+            direction: direction.value,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }
+    )
+}
 </script>
-
 <template>
 
-    <Head title="Categories" />
+    <AppLayout>
 
-    <AuthenticatedLayout>
+        <div
+            class="space-y-6"
+        >
 
-        <template #header>
+            <PageHeader
 
-            <div class="flex items-center justify-between">
+                icon="📂"
 
-                <div>
+                title="Category"
 
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        Categories
-                    </h2>
+                subtitle="Manage product categories."
 
-                    <p class="text-sm text-gray-500">
-                        Master Data Category
-                    </p>
-
-                </div>
-
-                <button
-                    @click="openModal"
-                    class="rounded-xl bg-blue-600 px-5 py-3 text-white hover:bg-blue-700"
-                >
-                    + Add Category
-                </button>
-
-            </div>
-
-        </template>
-
-        <div class="space-y-6">
-<div
-    class="rounded-2xl bg-white p-5 shadow-sm"
->
-
-    <input
-
-        v-model="search"
-
-        @keyup="doSearch"
-
-        type="text"
-
-        placeholder="Search category..."
-
-        class="w-full rounded-xl border border-gray-300 px-4 py-3"
-
-    />
-
-</div>
-            <!-- Table -->
+            />
 
             <div
-                class="overflow-hidden rounded-2xl bg-white shadow-sm"
+                class="
+                    grid
+                    grid-cols-1
+                    gap-6
+                    md:grid-cols-2
+                    xl:grid-cols-4
+                "
             >
 
-                <table
-                    class="min-w-full"
-                >
+                <StatsCard
 
-                    <thead
-                        class="bg-gray-50"
-                    >
+                    title="Total Category"
 
-                        <tr>
+                    :value="stats.total"
 
-                            <th class="px-6 py-4 text-left">
-                                Code
-                            </th>
+                    icon="📂"
 
-                            <th class="px-6 py-4 text-left">
-                                Name
-                            </th>
+                />
 
-                            <th class="px-6 py-4 text-left">
-                                Status
-                                                        </th>
-                            <th class="px-6 py-4 text-center">
-                                Action
-                            </th>
-                        </tr>
+                <StatsCard
 
-                    </thead>
+                    title="Active"
 
-                    <tbody>
+                    :value="stats.active"
 
-                        <tr
-                            v-for="category in categories.data"
-                            :key="category.id"
-                            class="border-t"
-                        >
+                    icon="✅"
 
-                            <td class="px-6 py-4">
-                                {{ category.code }}
-                            </td>
+                />
 
-                            <td class="px-6 py-4">
-                                {{ category.name }}
-                            </td>
+                <StatsCard
 
-                            <td class="px-6 py-4">
+                    title="Inactive"
 
-                                <span
-                                    v-if="category.status"
-                                    class="rounded-full bg-green-100 px-3 py-1 text-sm text-green-700"
-                                >
-                                    Active
-                                </span>
+                    :value="stats.inactive"
 
-                                <span
-                                    v-else
-                                    class="rounded-full bg-red-100 px-3 py-1 text-sm text-red-700"
-                                >
-                                    Inactive
-                                </span>
+                    icon="⛔"
 
-                            </td>
-                                <td class="px-6 py-4">
+                />
 
-                                    <div
-                                        class="flex justify-center gap-2"
-                                    >
+                <StatsCard
 
-                                        <button
+                    title="Deleted"
 
-                                                @click="editCategory(category)"
+                    :value="stats.deleted"
 
-                                                class="rounded-lg bg-amber-500 px-3 py-1 text-white hover:bg-amber-600"
+                    icon="🗑️"
 
-                                            >
+                />
 
-                                                Edit
-
-                                            </button>
-
-                                       <button
-
-                                            @click="deleteCategory(category)"
-
-                                            class="rounded-lg bg-red-500 px-3 py-1 text-white hover:bg-red-600"
-
-                                        >
-
-                                            Delete
-
-                                        </button>
-
-                                    </div>
-
-                                </td>
-                        </tr>
-
-                    </tbody>
-
-                </table>
-                    <div
-                        class="mt-5 flex justify-center gap-2"
-                    >
-
-                        <template
-                            v-for="link in categories.links"
-                            :key="link.label"
-                        >
-
-                            <button
-
-                                v-if="link.url"
-
-                                @click="router.visit(link.url)"
-
-                                v-html="link.label"
-
-                                class="rounded-lg border px-3 py-2 hover:bg-blue-50"
-
-                            />
-
-                        </template>
-
-                    </div>
             </div>
 
         </div>
-
-        <!-- Modal -->
-
-        <BaseModal
-            :show="showModal"
-            @close="closeModal"
-        >
-
-           <template #title>
-
-                {{ isEdit ? 'Edit Category' : 'Add Category' }}
-
-            </template>
-
-            <div class="space-y-4">
-
-                <div>
-
-                   
-
-                </div>
-
-                <div>
-
-                    <label
-                        class="mb-2 block text-sm font-medium"
-                    >
-                        Name
-                    </label>
-
-                    <input
-                        v-model="form.name"
-                        class="w-full rounded-xl border border-gray-300 px-4 py-3"
-                    />
-
-                </div>
-
-                <div>
-
-                    <label
-                        class="mb-2 block text-sm font-medium"
-                    >
-                        Description
-                    </label>
-
-                    <textarea
-                        v-model="form.description"
-                        class="w-full rounded-xl border border-gray-300 px-4 py-3"
-                    ></textarea>
-
-                </div>
+        <Card class="mt-4">
 
                 <div
-                    class="flex items-center gap-3"
+                    class="
+                        flex
+                        flex-col
+                        gap-4
+                        lg:flex-row
+                        lg:items-center
+                        lg:justify-between
+                    "
                 >
 
-                    <input
-                        type="checkbox"
-                        v-model="form.status"
-                    />
+                    <div
+                        class="
+                            flex
+                            flex-1
+                            flex-col
+                            gap-4
+                            md:flex-row
+                        "
+                    >
 
-                    <span>
-                        Active
-                    </span>
+                        <!-- Search -->
+                       <!--  <Actionbar> -->
+
+                            <div
+                                class="
+                                    flex
+                                    flex-col
+                                    gap-4
+
+                                    lg:flex-row
+                                    lg:items-center
+                                    lg:justify-between
+                                "
+                            >
+
+                                <!-- Left -->
+
+                                <div
+                                    class="
+                                        flex
+                                        flex-col
+                                        gap-3
+
+                                        lg:flex-row
+                                        lg:items-center
+                                    "
+                                >
+
+                                    <input
+                                        v-model="filters.search"
+                                        type="text"
+                                        placeholder="Search category code or name..."
+                                        class="
+                                            w-full
+                                            lg:w-80
+                                            rounded-xl
+                                            border
+                                            border-gray-300
+                                            px-4
+                                            py-2.5
+                                        "
+                                    />
+
+                                    <SearchableSelect
+                                        v-model="filters.is_active"
+                                        :options="statusOptions"
+                                        label="label"
+                                        value-key="value"
+                                        placeholder="All Status"
+                                    />
+
+                                </div>
+
+                                <!-- Right -->
+                                <div
+                                        class="
+                                            flex
+                                            flex-wrap
+                                            items-center
+                                            justify-end
+                                            gap-2
+                                        "
+                                    >
+
+                                        <BaseButton
+                                            variant="secondary"
+                                            @click="refresh"
+                                        >
+                                            Refresh
+                                        </BaseButton>
+
+                                        <BaseButton
+                                            variant="secondary"
+                                        >
+                                            Export
+                                        </BaseButton>
+
+                                        <BaseButton
+                                            class="w-full md:w-auto"
+                                            @click="create"
+                                        >
+
+                                            <template #icon>
+
+                                                <PlusIcon class="h-5 w-5" />
+
+                                            </template>
+
+                                            Add
+
+                                        </BaseButton>
+                                        <BulkActionDropdown
+                                            v-if="selectedRows.length"
+                                            :count="selectedRows.length"
+                                            @delete="openBulkDelete"
+                                            @activate="openBulkActivate"
+                                            @deactivate="openBulkDeactivate"
+                                        />
+                                    </div>
+                                
+                            </div>
+
+                      <!--   </Actionbar> -->
+                        <!-- bulkt action-->
+                        <!-- end bulk action -->
+
+                    </div>
+
+                    <div
+                        class="
+                            flex
+                            items-center
+                            gap-3
+                        "
+                    >
+
+                    </div>
 
                 </div>
-
-            </div>
-
-            <template #footer>
-
-                <button
-                    @click="closeModal"
-                    class="rounded-xl border px-5 py-2"
+                <!-- table-->
+                <div
+                    class="mt-6"
                 >
-                    Cancel
-                </button>
 
-                <button
-                    @click="saveCategory"
-                    class="rounded-xl bg-blue-600 px-5 py-2 text-white"
-                >
-                   {{ isEdit ? 'Update' : 'Save' }}
-                </button>
+                   <!-- Loading -->
 
-            </template>
+                        <LoadingOverlay
+                            :show="loading"
+                            text="Loading Categories..."
+                        />
 
-        </BaseModal>
-<BaseModal
+                        <!-- End Loading -->
 
-    :show="showDeleteModal"
+                        <DataTable 
+                            v-if="categories.data.length"
+                            sticky-header
+                            max-height="650px"
+                        >
 
-    @close="showDeleteModal = false"
+                            <DataTableHead sticky>
 
->
+                                <DataTableHeaderCell
+                                    width="60px"
+                                    align="center"
+                                >
 
-    <template #title>
+                                    <input
+                                        ref="selectAllRef"
+                                        type="checkbox"
+                                        :checked="isAllSelected"
+                                        @change="toggleSelectAll"
+                                        class="rounded border-gray-300"
+                                    />
 
-        Delete Category
+                                </DataTableHeaderCell>
 
-    </template>
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="code"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="150px"
+                                >
+                                    Code
+                                </DataTableHeaderCell>
 
-    <div>
+                               <DataTableHeaderCell
+                                    sortable
+                                    column="name"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="200px"
+                                >
+                                    Name
+                                </DataTableHeaderCell>
+                                   
 
-        <p class="text-gray-600">
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="description"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="200px"
+                                >
+                                    Description
+                                </DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="status"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="120px"
+                                    align="center"
+                                >
+                                    status
+                                </DataTableHeaderCell>
+                               
 
-            Are you sure want to delete
+                                <DataTableHeaderCell
+                                    width="100px"
+                                    align="center"
+                                >
+                                    Actions
+                                </DataTableHeaderCell>
 
-            <strong>
+                            </DataTableHead>
 
-                {{ selectedCategory?.name }}
+                            <DataTableBody>
 
-            </strong>
+                                <DataTableRow
+                                    v-for="item in categories.data"
+                                    :key="item.id"
+                                >
 
-            ?
+                                    <DataTableCell
+                                        align="center"
+                                    >
 
-        </p>
+                                        <input
+                                            v-model="selectedRows"
+                                            :value="item.id"
+                                            type="checkbox"
+                                            class="rounded border-gray-300"
+                                        />
 
-    </div>
+                                    </DataTableCell>
 
-    <template #footer>
+                                    <DataTableCell>
+                                        {{ item.code }}
+                                    </DataTableCell>
 
-        <button
+                                    <DataTableCell>
+                                        {{ item.name }}
+                                    </DataTableCell>
 
-            @click="showDeleteModal = false"
+                                    <DataTableCell>
+                                        {{ item.description || '-' }}
+                                    </DataTableCell>
 
-            class="rounded-xl border px-5 py-2"
+                                    <DataTableCell
+                                        align="center"
+                                    >
 
-        >
+                                        <StatusBadge
+                                            :status="item.is_active"
+                                        />
 
-            Cancel
+                                    </DataTableCell>
 
-        </button>
+                                    <DataTableCell
+                                        align="center"
+                                    >
 
-        <button
+                                        <ActionDropdown
 
-            @click="confirmDelete"
+                                            @edit="editCategory(item)"
 
-            class="rounded-xl bg-red-600 px-5 py-2 text-white"
+                                            @duplicate="duplicate(item)"
 
-        >
+                                            @export="exportRow(item)"
 
-            Delete
+                                            @delete="openDelete(item)"
 
-        </button>
+                                        />
 
-    </template>
+                                    </DataTableCell>
 
-</BaseModal>
+                                </DataTableRow>
 
-<BaseToast
+                            </DataTableBody>
 
-    :show="showToast"
+                        </DataTable>
+                        <TableEmpty
+                                v-else
+                                icon="🗂️"
+                                title="No Categories Found"
+                                description="There are no categories available."
+                            >
+                                <template #action>
 
-    :message="toastMessage"
+                                    <BaseButton
+                                        @click="router.visit(route('categories.create'))"
+                                    >
+                                        Create Category
+                                    </BaseButton>
 
+                                </template>
+                            </TableEmpty>
+                </div>
+
+                    <div
+                        class="mt-6"
+                    >
+
+                        <TablePagination
+                            :data="categories"
+                            label="Categories"
+                        />
+
+                    </div>
+            <!-- end table-->
+            </Card>
+    </AppLayout>
+<ConfirmDeleteModal
+    :show="showDelete"
+    title="Delete Confirmation"
+    :message="deleteMessage"
+    confirm-text="Delete"
+    confirm-variant="danger"
+    @close="closeDelete"
+    @confirm="confirmDelete"
+/>
+<ConfirmDeleteModal
+    :show="showBulkDelete"
+    title="Bulk Delete"
+    :message="bulkDeleteMessage"
+    confirm-text="Delete"
+    confirm-variant="danger"
+    @close="showBulkDelete = false"
+    @confirm="bulkDelete"
 />
 
-<BaseToast
-
-    :show="page.props.flash.success"
-
-    :message="page.props.flash.success"
-
+<ConfirmDeleteModal
+    :show="showBulkActivate"
+    title="Bulk Activate"
+    :message="bulkActivateMessage"
+    confirm-text="Activate"
+    confirm-variant="success"
+    @close="showBulkActivate = false"
+    @confirm="bulkActivate"
 />
-    </AuthenticatedLayout>
-
+<ConfirmDeleteModal
+    :show="showBulkDeactivate"
+    title="Bulk Deactivate"
+    :message="bulkDeactivateMessage"
+    confirm-text="Deactivate"
+    confirm-variant="warning"
+    @close="showBulkDeactivate = false"
+    @confirm="bulkDeactivate"
+/>
 </template>

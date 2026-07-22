@@ -4,9 +4,17 @@ import { computed } from 'vue'
 
 const props = defineProps({
 
-    active: {
+    status: {
 
-        type: Boolean,
+        type: [
+
+            Boolean,
+
+            Number,
+
+            String,
+
+        ],
 
         default: false,
 
@@ -14,9 +22,25 @@ const props = defineProps({
 
 })
 
+const active = computed(() => {
+
+    return [
+
+        true,
+
+        1,
+
+        '1',
+
+        'true',
+
+    ].includes(props.status)
+
+})
+
 const badgeClass = computed(() => [
 
-    props.active
+    active.value
 
         ? 'bg-green-50 text-green-700'
 
@@ -26,7 +50,7 @@ const badgeClass = computed(() => [
 
 const dotClass = computed(() => [
 
-    props.active
+    active.value
 
         ? 'bg-green-500'
 
@@ -80,7 +104,7 @@ const dotClass = computed(() => [
 
     />
 
-    {{ active ? 'Active' : 'Inactive' }}
+    {{ active.value ? 'Active' : 'Inactive' }}
 
 </span>
 

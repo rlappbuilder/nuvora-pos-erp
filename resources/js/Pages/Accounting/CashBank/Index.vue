@@ -1287,7 +1287,7 @@ function sortBy(column)
                                 >
 
                                    <StatusBadge
-                                        :active="item.is_active === 1"
+                                        :status="item.is_active === 1"
                                     />
 
                                 </DataTableCell>

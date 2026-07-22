@@ -137,8 +137,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Accounts Payable',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 [
     'code' => '210200',
@@ -146,8 +146,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Tax Payable',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Long Term Liabilities
@@ -157,8 +157,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Bank Loan',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Equity
@@ -168,8 +168,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Owner Capital',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Revenue
@@ -179,8 +179,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Sales Revenue',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Cost of Goods Sold
@@ -190,8 +190,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Cost of Goods Sold',
     'parent' => null,
     'normal_balance' => 'Debit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Operating Expenses
@@ -201,8 +201,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Operating Expense',
     'parent' => null,
     'normal_balance' => 'Debit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Other Income
@@ -212,8 +212,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Other Income',
     'parent' => null,
     'normal_balance' => 'Credit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 
 // Other Expense
@@ -223,8 +223,8 @@ class ChartOfAccountSeeder extends Seeder
     'category' => 'Other Expense',
     'parent' => null,
     'normal_balance' => 'Debit',
-    'is_header' => false,
-    'is_posting' => true,
+    'is_header' => true,
+    'is_posting' => false,
 ],
 ];
 

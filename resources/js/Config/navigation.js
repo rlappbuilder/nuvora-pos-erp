@@ -6,6 +6,10 @@ const navigation = [
     {
         title: 'Master Data',
         children: [
+            modules.categories,
+            modules.units,
+            modules.brands,
+            modules.colors,
             modules.companies,
             modules.branches,
             modules.warehouses,
@@ -68,6 +72,19 @@ const navigation = [
         children: [
             modules.cashBanks,
              modules.chartOfAccounts,
+            
+            // modules.journals,
+            // modules.generalLedgers,
+            // modules.trialBalances,
+            // modules.profitLosses,
+            // modules.balanceSheets,
+        ].filter(Boolean),
+    },
+
+     {
+        title: 'Settings',
+        children: [
+            modules.Settings,
             
             // modules.journals,
             // modules.generalLedgers,
