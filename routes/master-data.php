@@ -274,7 +274,26 @@ Route::middleware(
         | Colors
         |--------------------------------------------------------------------------
         */
+        Route::prefix('colors')->name('colors.')->group(function () {
 
+            Route::get('preview-code', [ColorController::class, 'previewCode'])
+                ->name('preview-code');
+
+            Route::delete('bulk-delete', [ColorController::class, 'bulkDelete'])
+                ->name('bulk-delete');
+
+            Route::patch('bulk-activate', [ColorController::class, 'bulkActivate'])
+                ->name('bulk-activate');
+
+            Route::patch('bulk-deactivate', [ColorController::class, 'bulkDeactivate'])
+                ->name('bulk-deactivate');
+
+            Route::post('{color}/duplicate', [ColorController::class, 'duplicate'])
+                ->name('duplicate');
+
+        });
+
+        Route::resource('colors', ColorController::class);
         Route::resource(
 
             'colors',
@@ -288,7 +307,26 @@ Route::middleware(
         | Sizes
         |--------------------------------------------------------------------------
         */
+        Route::prefix('sizes')->name('sizes.')->group(function () {
 
+            Route::get('preview-code', [SizeController::class, 'previewCode'])
+                ->name('preview-code');
+
+            Route::post('bulk-delete', [SizeController::class, 'bulkDelete'])
+                ->name('bulk-delete');
+
+            Route::post('bulk-activate', [SizeController::class, 'bulkActivate'])
+                ->name('bulk-activate');
+
+            Route::post('bulk-deactivate', [SizeController::class, 'bulkDeactivate'])
+                ->name('bulk-deactivate');
+
+            Route::post('{size}/duplicate', [SizeController::class, 'duplicate'])
+                ->name('duplicate');
+
+        });
+
+        Route::resource('sizes', SizeController::class);
         Route::resource(
 
             'sizes',

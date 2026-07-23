@@ -17,32 +17,40 @@ class ColorRequest extends FormRequest
     /**
      * Validation Rules
      */
-    public function rules(): array
-    {
-        return [
+   public function rules(): array
+{
+    $colorId = $this->route('color')?->id;
 
-            'name' => [
+    return [
 
-                'required',
+        'code' => [
+            'nullable',
+            'max:50',
+            'unique:colors,code,' . $colorId,
+        ],
 
-                'max:255'
+        'name' => [
+            'required',
+            'string',
+            'max:255',
+        ],
 
-            ],
+        'hex_color' => [
+            'nullable',
+            'string',
+            'max:20',
+        ],
 
-            'description' => [
+        'description' => [
+            'nullable',
+            'string',
+        ],
 
-                'nullable'
+        'is_active' => [
+            'required',
+            'boolean',
+        ],
 
-            ],
-
-            'status' => [
-
-                'required',
-
-                'boolean'
-
-            ],
-
-        ];
-    }
+    ];
+}
 }

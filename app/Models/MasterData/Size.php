@@ -15,23 +15,24 @@ class Size extends Model
 
     protected $fillable = [
 
-        'code',
+    'code',
 
-        'name',
+    'name',
 
-        'sort_order',
+    'sort_order',
 
-        'status',
+    'description',
 
-        'created_by',
+    'is_active',
 
-        'updated_by',
+    'created_by',
 
-    ];
+    'updated_by',
 
+];
     protected $casts = [
 
-        'status' => 'boolean',
+        'is_active' => 'boolean',
 
     ];
 

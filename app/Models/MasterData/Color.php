@@ -19,9 +19,11 @@ class Color extends Model
 
         'name',
 
+        'hex_color',
+
         'description',
 
-        'status',
+        'is_cctive',
 
         'created_by',
 
@@ -31,7 +33,7 @@ class Color extends Model
 
     protected $casts = [
 
-        'status' => 'boolean',
+        'is_active' => 'boolean',
 
     ];
 

@@ -21,32 +21,54 @@ class SizeRequest extends FormRequest
     {
         return [
 
-            'name' => [
+    'code' => [
 
-                'required',
+        'required',
 
-                'max:255'
+        'string',
 
-            ],
+        'max:50',
 
-            'sort_order' => [
+        'unique:sizes,code,' . $this->route('size')?->id,
 
-                'required',
+    ],
 
-                'integer',
+    'name' => [
 
-                'min:0'
+        'required',
 
-            ],
+        'string',
 
-            'status' => [
+        'max:255',
 
-                'required',
+    ],
 
-                'boolean'
+    'sort_order' => [
 
-            ],
+        'nullable',
 
-        ];
+        'integer',
+
+        'min:0',
+
+    ],
+
+    'description' => [
+
+        'nullable',
+
+        'string',
+
+    ],
+
+    'is_active' => [
+
+        'required',
+
+        'boolean',
+
+    ],
+
+];
     }
 }
