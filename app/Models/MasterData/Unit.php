@@ -15,26 +15,30 @@ class Unit extends Model
 
     protected $fillable = [
 
-        'code',
+    'code',
 
-        'name',
+    'name',
 
-        'description',
+    'symbol',
 
-        'status',
+    'description',
 
-        'created_by',
+    'status',
 
-        'updated_by',
+    'created_by',
 
-    ];
+    'updated_by',
 
+];
     protected $casts = [
 
         'status' => 'boolean',
 
     ];
-
+public function getRouteKeyName(): string
+{
+    return 'id';
+}
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

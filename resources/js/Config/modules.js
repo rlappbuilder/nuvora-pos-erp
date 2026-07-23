@@ -49,6 +49,14 @@ const modules = {
         route: 'colors.index',
         permission: 'colors.view',
     },
+     size: {
+        key: 'size',
+        title: 'Size',
+        icon: BuildingOfficeIcon,
+        route: 'sizes.index',
+        permission: 'sizes.view',
+    },
+    
 
      companies: {
         key: 'companies',
@@ -198,6 +206,13 @@ const modules = {
             Settings: {
                 key: 'Settings',
                 title: 'Documents Numbering',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+             fifoengin: {
+                key: 'fifoengin',
+                title: 'Fifo Engine',
                 icon: UsersIcon,
                 route: 'goods-receipts.index',
                 permission: 'goods-receipts.view',

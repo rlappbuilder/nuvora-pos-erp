@@ -10,6 +10,7 @@ const navigation = [
             modules.units,
             modules.brands,
             modules.colors,
+            modules.size,
             modules.companies,
             modules.branches,
             modules.warehouses,
@@ -85,8 +86,7 @@ const navigation = [
         title: 'Settings',
         children: [
             modules.Settings,
-            
-            // modules.journals,
+            modules.fifoengin,
             // modules.generalLedgers,
             // modules.trialBalances,
             // modules.profitLosses,

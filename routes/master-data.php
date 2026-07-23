@@ -237,7 +237,31 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::resource(
+        Route::prefix('units')->name('units.')->group(function () {
+
+                Route::get('preview-code', [UnitController::class, 'previewCode'])
+                    ->name('preview-code');
+
+                Route::delete('bulk-delete', [UnitController::class, 'bulkDelete'])
+                    ->name('bulk-delete');
+
+                Route::patch('bulk-activate', [UnitController::class, 'bulkActivate'])
+                    ->name('bulk-activate');
+
+                Route::patch('bulk-deactivate', [UnitController::class, 'bulkDeactivate'])
+                    ->name('bulk-deactivate');
+
+                Route::post('{unit}/duplicate', [UnitController::class, 'duplicate'])
+                    ->name('duplicate');
+
+            });
+
+            Route::resource('units', UnitController::class);
+                    Route::get(
+                        'units/preview-code',
+                        [UnitController::class, 'previewCode']
+                    )->name('units.preview-code');
+                    Route::resource(
 
             'units',
 

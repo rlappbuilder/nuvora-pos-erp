@@ -7,12 +7,11 @@ import BaseModal from '@/Components/UI/BaseModal.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
 import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
 const isEdit = ref(false)
 
 const selectedId = ref(null)
 const showDeleteModal = ref(false)
-const selectedSize = ref(null)
+const selectedUnit = ref(null)
 const showToast = ref(false)
 const toastMessage = ref('')
 
@@ -24,7 +23,7 @@ const page = usePage()
 
 const props = defineProps({
 
-    sizes: Object,
+    units: Object,
 
     filters: Object
 
@@ -38,7 +37,7 @@ const doSearch = () => {
 
     router.get(
 
-        route('sizes.index'),
+        route('units.index'),
 
         {
             search: search.value
@@ -56,38 +55,35 @@ const doSearch = () => {
 const showModal = ref(false)
 
 const form = useForm({
-
+   
     name: '',
-
-    sort_order: 0,
-
+    description: '',
     status: true
-
 })
 
 const openModal = () => {
     showModal.value = true
 }
-const editSize = (size) => {
+const editUnit = (unit) => {
 
     isEdit.value = true
 
-    selectedId.value = size.id
+    selectedId.value = unit.id
 
-    form.name = size.name
+    form.name = unit.name
 
-    form.sort_order = size.sort_order
+    form.description = unit.description
 
-    form.status = size.status
+    form.status = unit.status
 
     showModal.value = true
 
 }
-const deleteSize = (size) => {
+const deleteUnit = (unit) => {
 
-    selectedSize.value = size
+    selectedUnit.value = unit
 
-    selectedId.value = size.id
+    selectedId.value = unit.id
 
     showDeleteModal.value = true
 
@@ -101,14 +97,6 @@ const closeModal = () => {
     selectedId.value = null
 
     form.reset()
-
-    form.clearErrors()
-
-    form.name = ''
-
-    form.sort_order = 0
-
-    form.status = true
 
 }
 const showNotification = (message) => {
@@ -124,13 +112,15 @@ const showNotification = (message) => {
     }, 3000)
 
 }
-const saveSize = () => {
+const saveUnit = () => {
 
     if (isEdit.value) {
 
-      form.put(
+        form.put(
 
-    '/master-data/sizes/' + selectedId.value,
+            route(
+                'units.update',
+                selectedId.value
             ),
 
             {
@@ -143,9 +133,9 @@ const saveSize = () => {
 
         isEdit.value
 
-            ? 'Size updated successfully'
+            ? 'Unit updated successfully'
 
-            : 'Size created successfully'
+            : 'Unit created successfully'
 
     )
 
@@ -153,23 +143,27 @@ const saveSize = () => {
 
             }
 
-        
+        )
 
     } else {
 
-        form.post('/master-data/sizes',
+        form.post(
 
-    {
+            route(
+                'units.store'
+            ),
 
-        onSuccess: () => {
+            {
 
-            closeModal()
+                onSuccess: () => {
 
-        }
+                    closeModal()
 
-    }
+                }
 
-)
+            }
+
+        )
 
     }
 
@@ -178,25 +172,28 @@ const confirmDelete = () => {
 
     form.delete(
 
-        '/master-data/sizes/' + selectedId.value,
+        route(
+            'units.destroy',
+            selectedId.value
+        ),
 
         {
 
-            onSuccess: () => {
+           onSuccess: () => {
 
-                showDeleteModal.value = false
+    showDeleteModal.value = false
 
-                selectedId.value = null
+    selectedId.value = null
 
-                selectedSize.value = null
+    selectedUnit.value = null
 
-                showNotification(
+    showNotification(
 
-                    'Size deleted successfully'
+        'Unit deleted successfully'
 
-                )
+    )
 
-            }
+}
 
         }
 
@@ -204,13 +201,11 @@ const confirmDelete = () => {
 
 }
 
-   
-
 </script>
 
 <template>
 
-    <Head title="Sizes" />
+    <Head title="Units" />
 
     <AuthenticatedLayout>
 
@@ -221,11 +216,11 @@ const confirmDelete = () => {
                 <div>
 
                     <h2 class="text-2xl font-bold text-gray-800">
-                    Sizes 
+                    Units 
                      </h2>
                     
                     <p class="text-sm text-gray-500">
-                        Master Data Size
+                        Master Data Unit
                     </p>
 
                 </div>
@@ -234,7 +229,7 @@ const confirmDelete = () => {
                     @click="openModal"
                     class="rounded-xl bg-blue-600 px-5 py-3 text-white hover:bg-blue-700"
                 >
-                    + Add Size
+                    + Add Unit
                 </button>
 
             </div>
@@ -254,7 +249,7 @@ const confirmDelete = () => {
 
         type="text"
 
-        placeholder="Search size..."
+        placeholder="Search unit..."
 
         class="w-full rounded-xl border border-gray-300 px-4 py-3"
 
@@ -298,23 +293,23 @@ const confirmDelete = () => {
                     <tbody>
 
                         <tr
-                            v-for="size in sizes.data"
-                            :key="size.id"
+                            v-for="unit in units.data"
+                            :key="unit.id"
                             class="border-t"
                         >
 
                             <td class="px-6 py-4">
-                                {{ size.code }}
+                                {{ unit.code }}
                             </td>
 
                             <td class="px-6 py-4">
-                                {{ size.name }}
+                                {{ unit.name }}
                             </td>
 
                             <td class="px-6 py-4">
 
                                 <span
-                                    v-if="size.status"
+                                    v-if="unit.status"
                                     class="rounded-full bg-green-100 px-3 py-1 text-sm text-green-700"
                                 >
                                     Active
@@ -336,7 +331,7 @@ const confirmDelete = () => {
 
                                         <button
 
-                                                @click="editSize(size)"
+                                                @click="editUnit(unit)"
 
                                                 class="rounded-lg bg-amber-500 px-3 py-1 text-white hover:bg-amber-600"
 
@@ -348,7 +343,7 @@ const confirmDelete = () => {
 
                                        <button
 
-                                            @click="deleteSize(size)"
+                                            @click="deleteUnit(unit)"
 
                                             class="rounded-lg bg-red-500 px-3 py-1 text-white hover:bg-red-600"
 
@@ -371,7 +366,7 @@ const confirmDelete = () => {
                     >
 
                         <template
-                            v-for="link in sizes.links"
+                            v-for="link in units.links"
                             :key="link.label"
                         >
 
@@ -403,7 +398,7 @@ const confirmDelete = () => {
 
            <template #title>
 
-                {{ isEdit ? 'Edit Size' : 'Add Size' }}
+                {{ isEdit ? 'Edit Unit' : 'Add Unit' }}
 
             </template>
 
@@ -435,7 +430,7 @@ const confirmDelete = () => {
                     <label
                         class="mb-2 block text-sm font-medium"
                     >
-                        Sort Order
+                        Description
                     </label>
 
                     <textarea
@@ -472,7 +467,7 @@ const confirmDelete = () => {
                 </button>
 
                 <button
-                    @click="saveSize"
+                    @click="saveUnit"
                     class="rounded-xl bg-blue-600 px-5 py-2 text-white"
                 >
                    {{ isEdit ? 'Update' : 'Save' }}
@@ -491,7 +486,7 @@ const confirmDelete = () => {
 
     <template #title>
 
-        Delete Size
+        Delete Unit
 
     </template>
 
@@ -503,7 +498,7 @@ const confirmDelete = () => {
 
             <strong>
 
-                {{ selectedSize?.name }}
+                {{ selectedUnit?.name }}
 
             </strong>
 

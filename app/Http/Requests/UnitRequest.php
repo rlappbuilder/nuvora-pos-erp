@@ -13,14 +13,36 @@ class UnitRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+       return [
 
-            'name' => 'required|max:255',
+    'code' => [
+        'required',
+        'string',
+        'max:50',
+    ],
 
-            'description' => 'nullable',
+    'name' => [
+        'required',
+        'string',
+        'max:255',
+    ],
 
-            'status' => 'required|boolean',
+    'symbol' => [
+        'required',
+        'string',
+        'max:20',
+    ],
 
-        ];
+    'description' => [
+        'nullable',
+        'string',
+    ],
+
+    'is_active' => [
+        'required',
+        'boolean',
+    ],
+
+];
     }
 }

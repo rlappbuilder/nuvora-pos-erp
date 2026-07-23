@@ -32,20 +32,15 @@ import {
     success,
     error,
 } from '@/Utils'
-import Swal from 'sweetalert2'
 import {
 
     LoadingOverlay,
 
 } from '@/Components/Feedback'
-import {
 
-    useLoading,
-
-} from '@/Composables/useLoading'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ChartNoAxesColumnIcon } from 'lucide-vue-next'
+
 
 
 const props = defineProps({
@@ -805,7 +800,7 @@ function sortBy(column)
                                     :sort="sort"
                                     :direction="direction"
                                     @sort="sortBy"
-                                    width="200px"
+                                    width="250px"
                                 >
                                     Name
                                 </DataTableHeaderCell>
