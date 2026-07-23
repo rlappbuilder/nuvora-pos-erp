@@ -24,7 +24,7 @@ class BrandRequest extends FormRequest
                 'nullable'
             ],
 
-            'status' => [
+            'is_active' => [
                 'required',
                 'boolean'
             ],

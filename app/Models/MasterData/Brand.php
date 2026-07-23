@@ -21,7 +21,7 @@ class Brand extends Model
 
         'description',
 
-        'status',
+        'is_active',
 
         'created_by',
 

@@ -222,7 +222,39 @@ Route::middleware(
         | Brands
         |--------------------------------------------------------------------------
         */
+            Route::prefix('brands')->name('brands.')->group(function () {
 
+                Route::get(
+                    'preview-code',
+                    [BrandController::class, 'previewCode']
+                )->name('preview-code');
+
+                Route::post(
+                    'bulk-delete',
+                    [BrandController::class, 'bulkDelete']
+                )->name('bulk-delete');
+
+                Route::post(
+                    'bulk-activate',
+                    [BrandController::class, 'bulkActivate']
+                )->name('bulk-activate');
+
+                Route::post(
+                    'bulk-deactivate',
+                    [BrandController::class, 'bulkDeactivate']
+                )->name('bulk-deactivate');
+
+                Route::post(
+                    '{brand}/duplicate',
+                    [BrandController::class, 'duplicate']
+                )->name('duplicate');
+
+            });
+
+            Route::resource(
+                'brands',
+                BrandController::class
+);
         Route::resource(
 
             'brands',
