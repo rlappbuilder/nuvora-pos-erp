@@ -14,6 +14,8 @@ use App\Http\Controllers\MasterData\ProductController;
 use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\MasterData\TaxController;
+use App\Http\Controllers\MasterData\CurrencyController;
+
 Route::middleware(
 
     'auth'
@@ -240,6 +242,44 @@ Route::middleware(
         });
 
         Route::resource('taxes', TaxController::class);
+/*
+        |--------------------------------------------------------------------------
+        | Currency
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('currencies')->name('currencies.')->group(function () {
+
+            Route::post(
+                'sync-code',
+                [CurrencyController::class, 'syncCode']
+            )->name('sync-code');
+
+            Route::post(
+                'bulk-delete',
+                [CurrencyController::class, 'bulkDelete']
+            )->name('bulk-delete');
+
+            Route::post(
+                'bulk-activate',
+                [CurrencyController::class, 'bulkActivate']
+            )->name('bulk-activate');
+
+            Route::post(
+                'bulk-deactivate',
+                [CurrencyController::class, 'bulkDeactivate']
+            )->name('bulk-deactivate');
+
+            Route::get(
+                '{currency}/duplicate',
+                [CurrencyController::class, 'duplicate']
+            )->name('duplicate');
+
+        });
+
+        Route::resource(
+            'currencies',
+            CurrencyController::class 
+        ); 
         /*
         |--------------------------------------------------------------------------
         | Brands

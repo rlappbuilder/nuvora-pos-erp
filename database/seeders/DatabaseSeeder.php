@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Database\Seeders\Core\CodeGeneratorSeeder;
+use Database\Seeders\MasterData\TaxSeeder;
+use Database\Seeders\MasterData\CurrencySeeder;
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
@@ -19,6 +21,7 @@ class DatabaseSeeder extends Seeder
             MasterDataSeeder::class,
             AccountingSeeder::class,
             CodeGeneratorSeeder::class,
+            currencySeeder::class,
         ]);
     }
 }

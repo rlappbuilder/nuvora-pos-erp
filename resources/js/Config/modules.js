@@ -102,8 +102,8 @@ const modules = {
         key: 'currency',
         title: 'Currency',
         icon: CubeIcon,
-        route: 'products.index',
-        permission: 'products.index',
+        route: 'currencies.index',
+        permission: 'currencies.index',
     },
 
      suppliers: {

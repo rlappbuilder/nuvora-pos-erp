@@ -1,0 +1,211 @@
+<script setup>
+import FormSection from '@/Components/Form/FormSection.vue'
+import FormField from '@/Components/Form/FormField.vue'
+import FormInput from '@/Components/Form/FormInput.vue'
+import FormTextarea from '@/Components/Form/FormTextarea.vue'
+import FormCheckbox from '@/Components/Form/FormCheckbox.vue'
+import BaseButton from '@/Components/Button/BaseButton.vue'
+import DecimalInput from '@/Components/Form/DecimalInput.vue'
+
+const props = defineProps({
+    form: {
+        type: Object,
+        required: true,
+    },
+
+    mode: {
+        type: String,
+        default: 'create',
+    },
+})
+
+const emit = defineEmits([
+    'submit',
+    'submitAndNew',
+    'cancel',
+])
+</script>
+<template>
+<form @submit.prevent="emit('submit')">
+        <!-- ========================================================= -->
+    <!-- Tax Information -->
+    <!-- ========================================================= -->
+
+ 
+    <FormSection
+        icon="📂"
+        title="Currency Information"
+        description="Basic information about this Currency."
+        :columns="2"
+    >
+
+        <!-- Code -->
+
+        <FormField
+            label="Code"
+            :error="form.errors.code"
+        >
+
+            <FormInput
+                v-model="form.code"
+                placeholder="example: IDR,SGD,USD"
+                
+                "
+            />
+
+        </FormField>
+
+            <!-- Currency Name -->
+
+            <FormField
+                label="Currency Name"
+                required
+                :error="form.errors.name"
+            >
+
+                <FormInput
+                    v-model="form.name"
+                    placeholder="Example: Indonesian Rupiah"
+                />
+
+            </FormField>
+            <FormField
+                label="Symbol"
+                required
+                :error="form.errors.symbol"
+            >
+                <FormInput
+                    v-model="form.symbol"
+                    placeholder="Rp"
+                />
+            </FormField>
+
+            <FormField
+                label="Decimal Places"
+                required
+                :error="form.errors.decimal_places"
+            >
+                <FormInput
+                    v-model="form.decimal_places"
+                    type="number"
+                    min="0"
+                    max="8"
+                />
+            </FormField>
+
+           <FormField
+                class="md:col-span-2"
+                label="Exchange Rate"
+                required
+                :error="form.errors.exchange_rate"
+            >
+                <DecimalInput
+                    v-model="form.exchange_rate"
+                    :decimals="6"
+                />
+            </FormField>
+            
+        </FormSection>
+        <!-- ========================================================= -->
+        <!-- Settings -->
+        <!-- ========================================================= -->
+
+        <FormSection
+            icon="📝"
+            title="Description"
+            description="Additional information about this currency."
+            :columns="1"
+        >
+
+        <FormField
+
+                label="Description"
+
+                :error="form.errors.description"
+
+            >
+
+                <FormTextarea
+
+                    v-model="form.description"
+
+                    :rows="4"
+
+                    placeholder="Write additional notes..."
+
+                />
+
+            </FormField>
+
+        </FormSection>
+
+
+        <FormSection
+            icon="⚙️"
+            title="Settings"
+            description="Configure currency settings."
+            :columns="1"
+        >
+
+            <FormCheckbox
+            v-model="form.is_base_currency"
+            label="Base Currency"
+            description="Use this Currency as the company's base Currency."
+            variant="switch"
+            />
+
+            <FormCheckbox
+                v-model="form.is_active"
+                label="Active"
+                description="Enable or disable this currency."
+                variant="switch"
+            />
+
+        </FormSection>
+        <!-- ========================================================= -->
+        <!-- Action -->
+        <!-- ========================================================= -->
+
+        <div
+            class="
+                flex
+                justify-end
+                gap-3
+                mt-8
+            "
+        >
+
+            <BaseButton
+                type="button"
+                variant="secondary"
+                @click="emit('cancel')"
+            >
+
+                Cancel
+
+            </BaseButton>
+
+            <BaseButton
+                type="submit"
+                :loading="form.processing"
+            >
+
+                {{ mode === 'create' ? 'Save' : 'Update' }}
+
+            </BaseButton>
+
+            <BaseButton
+                v-if="mode === 'create'"
+                type="button"
+                variant="success"
+                :loading="form.processing"
+                @click="emit('submitAndNew')"
+            >
+
+                Save &amp; New
+
+            </BaseButton>
+
+        </div>
+</form>
+</template>
