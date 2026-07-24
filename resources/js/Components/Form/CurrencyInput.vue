@@ -243,29 +243,7 @@ function onBlur(
     )
 
 }
-{
 
-    displayValue.value =
-
-        formatCurrency(
-
-            props.modelValue,
-
-            'id-ID',
-
-            props.decimals
-
-        )
-
-    emit(
-
-        'blur',
-
-        event
-
-    )
-
-}
 
 defineExpose({
 

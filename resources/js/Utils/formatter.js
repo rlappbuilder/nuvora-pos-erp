@@ -42,7 +42,27 @@ export function formatNumber(
     )
 
 }
+export function formatDecimal(
+    value,
+    decimals = 6,
+    locale = 'en-US'
+) {
+    if (
+        value === null ||
+        value === undefined ||
+        value === ''
+    ) {
+        return ''
+    }
 
+    return Number(value).toLocaleString(
+        locale,
+        {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+        }
+    )
+}
 export function unformatNumber(
     value
 )

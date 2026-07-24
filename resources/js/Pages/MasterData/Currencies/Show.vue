@@ -15,7 +15,9 @@ import ButtonGroup from '@/Components/Button/ButtonGroup.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 
 import DetailRow from '@/Components/Display/DetailRow.vue'
-
+import {
+    formatDecimal,
+} from '@/Utils/formatter'
 import {
     formatDate,
     formatCurrency,
@@ -24,7 +26,7 @@ import {
 
 const props = defineProps({
 
-    tax: {
+    currency: {
 
         type: Object,
 
@@ -37,7 +39,7 @@ const props = defineProps({
 function back()
 {
     router.visit(
-        route('taxes.index')
+        route('currencies.index')
     )
 }
 
@@ -45,8 +47,8 @@ function edit()
 {
     router.visit(
         route(
-            'taxes.edit',
-            props.tax.id
+            'currencies.edit',
+            props.currency.id
         )
     )
 }
@@ -56,9 +58,9 @@ function print()
 
         route(
 
-            'taxes.print',
+            'currencies.print',
 
-            props.tax.id
+            props.currency.id
 
         )
 
@@ -73,8 +75,8 @@ function print()
 
     <PageHeader
     icon="📂"
-    title="Tax Detail"
-    subtitle="View tax information."
+    title="Currency Detail"
+    subtitle="View currency information."
     />
 
     <ActionBar />
@@ -84,43 +86,44 @@ function print()
         <Card
             icon="📂"
             title="General Information"
-            description="Basic information about this tax."
+            description="Basic information about this currency."
         >
             <!-- General Information -->
              <DetailRow
                     label="Code"
-                    :value="tax.code"
+                    :value="currency.code"
                 />
 
                 <DetailRow
                     label="Name"
-                    :value="tax.name"
+                    :value="currency.name"
                 />
 
                 <DetailRow
-                    label="Type"
-                    :value="tax.type"
+                    label="Symbol"
+                    :value="currency.symbol"
                 />
 
                 <DetailRow
-                    label="Rate"
-                    :value="
-                        tax.type === 'Percentage'
-                            ? `${tax.rate}%`
-                            : formatCurrency(tax.rate)
-                    "
+                    label="Decimal Places"
+                    :value="currency.decimal_places"
                 />
 
                 <DetailRow
-                    label="Default Tax"
-                    :value="tax.is_default ? 'Yes' : 'No'"
-                    :icon="tax.is_default ? '✅' : '❌'"
+                    label="Exchange Rate"
+                    :value="formatDecimal(currency.exchange_rate)"
                 />
 
+                <DetailRow
+                    label="Base Currency"
+                    :value="currency.is_base_currency ? 'Yes' : 'No'"
+                    :icon="currency.is_base_currency ? '✅' : '❌'"
+                />
+           
                 <DetailRow
                     label="Status"
-                    :value="tax.is_active ? 'Active' : 'Inactive'"
-                    :icon="tax.is_active ? '🟢' : '🔴'"
+                    :value="currency.is_active ? 'Active' : 'Inactive'"
+                    :icon="currency.is_active ? '🟢' : '🔴'"
                 />
         </Card>
 
@@ -132,22 +135,22 @@ function print()
             <!-- System Information -->
              <DetailRow
                 label="Created By"
-                :value="tax.created_by?.name ?? '-'"
+                :value="currency.created_by?.name ?? '-'"
             />
 
             <DetailRow
                 label="Created At"
-                :value="formatDate(tax.created_at)"
+                :value="formatDate(currency.created_at)"
             />
 
             <DetailRow
                 label="Updated By"
-                :value="tax.updated_by?.name ?? '-'"
+                :value="currency.updated_by?.name ?? '-'"
             />
 
             <DetailRow
                 label="Updated At"
-                :value="formatDate(tax.updated_at)"
+                :value="formatDate(currency.updated_at)"
             />
         </Card>
 
@@ -169,7 +172,7 @@ function print()
                     text-gray-700
                 "
             >
-                {{ tax.description || '-' }}
+                {{ currency.description || '-' }}
             </div>
 
         </Card>
