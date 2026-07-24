@@ -1,5 +1,6 @@
 // resources/js/Config/modules.js
 
+import { currency } from '@/Utils'
 import {
     HomeIcon,
     BuildingOfficeIcon,
@@ -7,6 +8,7 @@ import {
     CubeIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline'
+import { Warehouse } from 'lucide-vue-next'
 
 const modules = {
     dashboard: {
@@ -67,7 +69,13 @@ const modules = {
     },
 
   
-
+     warehouse: {
+        key: 'warehouse',
+        title: 'Warehouse',
+        icon: UsersIcon,
+        route: 'warehouses.index',
+        permission: 'warehouse.view',
+    },
     branches: {
         key: 'branches',
         title: 'Branch',
@@ -83,7 +91,28 @@ const modules = {
         route: 'products.index',
         permission: 'products.view',
     },
+     tax: {
+        key: 'tax',
+        title: 'Tax',
+        icon: CubeIcon,
+        route: 'taxes.index',
+        permission: 'taxes.index',
+    },
+     currency: {
+        key: 'currency',
+        title: 'Currency',
+        icon: CubeIcon,
+        route: 'products.index',
+        permission: 'products.index',
+    },
 
+     suppliers: {
+        key: 'suppliers',
+        title: 'Suppliers',
+        icon: UsersIcon,
+        route: 'suppliers.index',
+        permission: 'suppliers.view',
+    },
     customers: {
         key: 'customers',
         title: 'Customer',

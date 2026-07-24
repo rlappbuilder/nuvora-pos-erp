@@ -5,9 +5,8 @@ import {
     router,
     usePage
 } from '@inertiajs/vue3'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import BaseToast from '@/Components/UI/BaseToast.vue'
 
 const page = usePage()
 
@@ -47,7 +46,7 @@ const deleteSupplier = (id) => {
 
     <Head title="Customers" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
         
         
         <!-- batas template -->
@@ -419,6 +418,6 @@ const deleteSupplier = (id) => {
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

@@ -2,7 +2,7 @@
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const form = useForm({
 
     company_name: '',
@@ -57,7 +57,7 @@ const submit = () => {
 
     <Head title="Create Company" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -441,6 +441,6 @@ const submit = () => {
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

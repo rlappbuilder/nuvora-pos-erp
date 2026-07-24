@@ -13,7 +13,7 @@ use App\Http\Controllers\MasterData\WarehouseController;
 use App\Http\Controllers\MasterData\ProductController;
 use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
-
+use App\Http\Controllers\MasterData\TaxController;
 Route::middleware(
 
     'auth'
@@ -216,7 +216,30 @@ Route::middleware(
             WarehouseController::class
 
         );
+                /*
+        |--------------------------------------------------------------------------
+        | Tax
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('taxes')->name('taxes.')->group(function () {
 
+            Route::get('preview-code', [TaxController::class, 'previewCode'])
+                ->name('preview-code');
+
+            Route::post('bulk-delete', [TaxController::class, 'bulkDelete'])
+                ->name('bulk-delete');
+
+            Route::post('bulk-activate', [TaxController::class, 'bulkActivate'])
+                ->name('bulk-activate');
+
+            Route::post('bulk-deactivate', [TaxController::class, 'bulkDeactivate'])
+                ->name('bulk-deactivate');
+
+            Route::post('{tax}/duplicate', [TaxController::class, 'duplicate'])
+                ->name('duplicate');
+        });
+
+        Route::resource('taxes', TaxController::class);
         /*
         |--------------------------------------------------------------------------
         | Brands

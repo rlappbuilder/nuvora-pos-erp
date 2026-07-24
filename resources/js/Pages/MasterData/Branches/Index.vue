@@ -2,7 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const page = usePage()
 
 const props = defineProps({
@@ -37,7 +37,7 @@ const deleteBranch  = (id) => {
 
     <Head title="Branch Management" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -344,6 +344,6 @@ const deleteBranch  = (id) => {
 
         />
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

@@ -5,7 +5,7 @@ import { usePage } from '@inertiajs/vue3'
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const page = usePage()
 
 defineProps({
@@ -20,7 +20,7 @@ defineProps({
 
     <Head title="Warehouse Detail" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -302,6 +302,6 @@ defineProps({
 
         />
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

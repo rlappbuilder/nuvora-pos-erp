@@ -12,12 +12,15 @@ const navigation = [
             modules.colors,
             modules.size,
             modules.companies,
+            modules.warehouse,
             modules.branches,
-            modules.warehouses,
             modules.products,
             modules.customers,
             modules.suppliers,
+            modules.tax,
+            modules.currency,
         ].filter(Boolean),
+        
     },
 
     {

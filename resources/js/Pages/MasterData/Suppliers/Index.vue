@@ -6,8 +6,8 @@ import {
     usePage
 } from '@inertiajs/vue3'
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import BaseToast from '@/Components/UI/BaseToast.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+
 
 const page = usePage()
 
@@ -47,7 +47,7 @@ const deleteSupplier = (id) => {
 
     <Head title="Suppliers" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <div class="space-y-6">
 
@@ -417,6 +417,6 @@ const deleteSupplier = (id) => {
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

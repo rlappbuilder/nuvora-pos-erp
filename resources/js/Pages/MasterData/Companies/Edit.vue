@@ -2,7 +2,7 @@
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
     company: Object
@@ -77,7 +77,7 @@ const submit = () => {
 
     <Head title="Edit Company" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -480,6 +480,6 @@ const submit = () => {
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

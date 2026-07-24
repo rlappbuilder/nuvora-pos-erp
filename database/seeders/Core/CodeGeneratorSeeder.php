@@ -16,6 +16,7 @@ class CodeGeneratorSeeder extends Seeder
             ['module' => 'brand',            'prefix' => 'BRD', 'format' => '{PREFIX}{SEQ}',               'digit' => 4],
             ['module' => 'color',            'prefix' => 'CLR', 'format' => '{PREFIX}{SEQ}',               'digit' => 4],
             ['module' => 'size',             'prefix' => 'SIZ', 'format' => '{PREFIX}{SEQ}',               'digit' => 4],
+            ['module' => 'Tax',              'prefix' => 'TAX', 'format' => '{PREFIX}{SEQ}',                'digit' => 4],
             ['module' => 'warehouse',        'prefix' => 'WH',  'format' => '{PREFIX}{SEQ}',               'digit' => 4],
             ['module' => 'supplier',         'prefix' => 'SUP', 'format' => '{PREFIX}{SEQ}',               'digit' => 4],
             ['module' => 'customer',         'prefix' => 'CUS', 'format' => '{PREFIX}{SEQ}',               'digit' => 4],

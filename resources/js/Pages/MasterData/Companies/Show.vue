@@ -2,7 +2,7 @@
 
 import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
     company: Object
@@ -17,7 +17,7 @@ const props = defineProps({
         :title="company.company_name"
     />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -434,6 +434,6 @@ const props = defineProps({
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

@@ -44,7 +44,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
-    brands: Object,
+    taxes: Object,
 
     stats: Object,
 
@@ -58,7 +58,7 @@ const status = ref(props.filters.is_active ?? '')
 const perPage = ref(props.filters.per_page ?? 10)
 
 
-const pageTitle = computed(() => 'Brand')
+const pageTitle = computed(() => 'Tax')
 const loading = ref(false)
 //const {
 
@@ -82,7 +82,7 @@ let debounceTimer = null
 function loadData()
 {
     router.get(
-        route('brands.index'),
+        route('taxes.index'),
         filters,
         {
             preserveState: true,
@@ -175,8 +175,8 @@ const selectAllRef = ref(null)
 const isAllSelected = computed(() => {
 
     return (
-        props.brands.data.length > 0 &&
-        selectedRows.value.length === props.brands.data.length
+        props.taxes.data.length > 0 &&
+        selectedRows.value.length === props.taxes.data.length
     )
 
 })
@@ -185,7 +185,7 @@ const isIndeterminate = computed(() => {
 
     return (
         selectedRows.value.length > 0 &&
-        selectedRows.value.length < props.brands.data.length
+        selectedRows.value.length < props.taxes.data.length
     )
 
 })
@@ -214,7 +214,7 @@ function toggleSelectAll(event)
 {
     if (event.target.checked) {
 
-        selectedRows.value = props.brands.data.map(
+        selectedRows.value = props.taxes.data.map(
 
             item => item.id
 
@@ -231,48 +231,48 @@ const deleteItem = ref(null)
 function create()
 {
     router.visit(
-        route('brands.create')
+        route('taxes.create')
     )
 }
 
-function showBrand(brand)
+function showTax(tax)
 {
     router.visit(
 
         route(
-            'brands.show',
-            brand.id
+            'taxes.show',
+            tax.id
         )
 
     )
 }
 
-function editBrand(brand)
+function editTax(tax)
 {
     router.visit(
 
         route(
-            'brands.edit',
-            brand.id
+            'taxes.edit',
+            tax.id
         )
 
     )
 }
 
-function duplicate(brand)
+function duplicate(tax)
 {
     router.post(
 
         route(
-            'brands.duplicate',
-            brand.id
+            'taxes.duplicate',
+            tax.id
         )
 
     )
 }
-function openDelete(brand)
+function openDelete(tax)
 {
-    deleteItem.value = brand
+    deleteItem.value = tax
 
     showDelete.value = true
 }
@@ -339,7 +339,7 @@ const deleteMessage = computed(() => {
 const bulkDelete = () => {
 
     router.post(
-    route('brands.bulk-delete'),
+    route('taxes.bulk-delete'),
     {
         ids: selectedRows.value,
     },
@@ -348,7 +348,7 @@ const bulkDelete = () => {
         onSuccess: () => {
             success(
                 'Succes',
-                'Brand Deleted.'
+                'Tax Deleted.'
             )
             showBulkDelete.value = false
 
@@ -370,7 +370,7 @@ const bulkDeleteMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to delete ${total} selected Brand(s)?`
+    return `Are you sure you want to delete ${total} selected Tax(s)?`
 
 })
 
@@ -380,7 +380,7 @@ const bulkDeleteMessage = computed(() => {
 const bulkActivate = () => {
 
     router.post(
-        route('brands.bulk-activate'),
+        route('taxes.bulk-activate'),
         {
             ids: selectedRows.value,
         },
@@ -408,13 +408,13 @@ const bulkActivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to activate ${total} selected Brand(s)?`
+    return `Are you sure you want to activate ${total} selected Tax(s)?`
 
 })
 const bulkDeactivate = () => {
 
     router.post(
-        route('brands.bulk-deactivate'),
+        route('taxes.bulk-deactivate'),
         {
             ids: selectedRows.value,
         },
@@ -446,7 +446,7 @@ const bulkDeactivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to deactivate ${total} selected Brand(s)?`
+    return `Are you sure you want to deactivate ${total} selected Tax(s)?`
 
 })
 
@@ -455,7 +455,7 @@ const bulkDeactivateMessage = computed(() => {
 
 function confirmDelete()
 {
-    console.log(route('brands.destroy',deleteItem.value.id))
+    console.log(route('taxes.destroy',deleteItem.value.id))
     if (!deleteItem.value) {
 
         return
@@ -465,7 +465,7 @@ function confirmDelete()
     router.delete(
 
         route(
-            'brands.destroy',
+            'taxes.destroy',
             deleteItem.value.id
         ),
 
@@ -478,7 +478,7 @@ function confirmDelete()
                 closeDelete()
 
                 success(
-                    'Brand deleted successfully.'
+                    'Tax deleted successfully.'
                 )
 
             },
@@ -486,7 +486,7 @@ function confirmDelete()
             onError: () => {
 
                 error(
-                    'Failed to delete brand.'
+                    'Failed to delete tax.'
                 )
 
             },
@@ -519,7 +519,7 @@ function sortBy(column)
     }
 
     router.get(
-        route('brands.index'),
+        route('taxes.index'),
         {
             search: search.value,
             status: status.value,
@@ -547,9 +547,9 @@ function sortBy(column)
 
                 icon="📂"
 
-                title="Brand"
+                title="Tax"
 
-                subtitle="Manage product brands."
+                subtitle="Manage product Taxes."
 
             />
 
@@ -565,7 +565,7 @@ function sortBy(column)
 
                 <StatsCard
 
-                    title="Total Brand"
+                    title="Total Tax"
 
                     :value="stats.total"
 
@@ -660,7 +660,7 @@ function sortBy(column)
                                     <input
                                         v-model="filters.search"
                                         type="text"
-                                        placeholder="Search brand code or name..."
+                                        placeholder="Search tax code or name..."
                                         class="
                                             w-full
                                             lg:w-80
@@ -757,13 +757,13 @@ function sortBy(column)
 
                         <LoadingOverlay
                             :show="loading"
-                            text="Loading Brands..."
+                            text="Loading Taxes..."
                         />
 
                         <!-- End Loading -->
 
                         <DataTable 
-                            v-if="brands.data.length"
+                            v-if="taxes.data.length"
                             sticky-header
                             max-height="650px"
                         >
@@ -806,7 +806,16 @@ function sortBy(column)
                                 >
                                     Name
                                 </DataTableHeaderCell>
-                                   
+                                    <DataTableHeaderCell
+                                    sortable
+                                    column="percent"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="100px"
+                                >
+                                    Rate
+                                </DataTableHeaderCell>
 
                                 <DataTableHeaderCell
                                     sortable
@@ -843,7 +852,7 @@ function sortBy(column)
                             <DataTableBody>
 
                                 <DataTableRow
-                                    v-for="item in brands.data"
+                                    v-for="item in taxes.data"
                                     :key="item.id"
                                 >
 
@@ -867,7 +876,9 @@ function sortBy(column)
                                     <DataTableCell>
                                         {{ item.name }}
                                     </DataTableCell>
-
+                                    <DataTableCell>
+                                        {{ item.rate || '%' }}
+                                    </DataTableCell>
                                     <DataTableCell>
                                         {{ item.description || '-' }}
                                     </DataTableCell>
@@ -887,8 +898,9 @@ function sortBy(column)
                                     >
 
                                         <ActionDropdown
+                                            @view="showTax(item)"
 
-                                            @edit="editBrand(item)"
+                                            @edit="editTax(item)"
 
                                             @duplicate="duplicate(item)"
 
@@ -908,15 +920,15 @@ function sortBy(column)
                         <TableEmpty
                                 v-else
                                 icon="🗂️"
-                                title="No Brands Found"
-                                description="There are no brands available."
+                                title="No Taxes Found"
+                                description="There are no taxes available."
                             >
                                 <template #action>
 
                                     <BaseButton
-                                        @click="router.visit(route('brands.create'))"
+                                        @click="router.visit(route('taxes.create'))"
                                     >
-                                        Create Brand
+                                        Create Tax
                                     </BaseButton>
 
                                 </template>
@@ -928,8 +940,8 @@ function sortBy(column)
                     >
 
                         <TablePagination
-                            :data="brands"
-                            label="Brands"
+                            :data="taxes"
+                            label="Taxes"
                         />
 
                     </div>

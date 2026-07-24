@@ -2,7 +2,8 @@
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+
 
 import BaseToast from '@/Components/UI/BaseToast.vue'
 import { usePage } from '@inertiajs/vue3'
@@ -63,7 +64,7 @@ const submit = () => {
 
     <Head title="Edit suppliers" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -312,7 +313,7 @@ const submit = () => {
             :message="page.props.flash.success"
 
         />
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>
                    

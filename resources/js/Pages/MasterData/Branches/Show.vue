@@ -5,7 +5,7 @@ import { usePage } from '@inertiajs/vue3'
 const page = usePage()
 import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
     branch: Object
@@ -18,7 +18,7 @@ const props = defineProps({
 
     <Head :title="branch.name" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -461,6 +461,6 @@ const props = defineProps({
     :message="page.props.flash.success"
 
 />
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

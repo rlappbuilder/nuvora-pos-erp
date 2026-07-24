@@ -2,7 +2,7 @@
 
 import { Head, Link } from '@inertiajs/vue3'
 
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
 
@@ -16,7 +16,7 @@ const props = defineProps({
 
     <Head title="Supplier Detail" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <div class="space-y-6">
 
@@ -238,6 +238,6 @@ const props = defineProps({
 
         </div>
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

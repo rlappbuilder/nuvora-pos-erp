@@ -1,7 +1,7 @@
 <script setup>
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 import BaseToast from '@/Components/UI/BaseToast.vue'
@@ -49,7 +49,7 @@ const submit = () => {
 
     <Head title="Create Customers" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -311,7 +311,7 @@ const submit = () => {
             :message="page.props.flash.success"
 
         />
-</AuthenticatedLayout>
+</AppLayout>
 
 </template>
                    

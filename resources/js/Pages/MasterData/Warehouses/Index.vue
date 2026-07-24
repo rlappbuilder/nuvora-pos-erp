@@ -2,7 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const page = usePage()
 
 const props = defineProps({
@@ -37,7 +37,7 @@ const deletewarehouse  = (id) => {
 
     <Head title="Warehouse Management" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -474,6 +474,6 @@ const deletewarehouse  = (id) => {
 
         />
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>

@@ -2,7 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const page = usePage()
 
 const props = defineProps({
@@ -37,7 +37,7 @@ const deleteCompany = (id) => {
 
     <Head title="Company Management" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
 
         <template #header>
 
@@ -391,6 +391,6 @@ const deleteCompany = (id) => {
 
         />
 
-    </AuthenticatedLayout>
+    </AppLayout>
 
 </template>
