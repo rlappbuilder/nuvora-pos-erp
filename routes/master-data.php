@@ -15,6 +15,7 @@ use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\MasterData\TaxController;
 use App\Http\Controllers\MasterData\CurrencyController;
+use App\Http\Controllers\Product\ProductAttributeController;
 
 Route::middleware(
 
@@ -190,7 +191,41 @@ Route::middleware(
             ProductController::class
 
         );
+        /*
+        |--------------------------------------------------------------------------
+        | Product Attributes
+        |--------------------------------------------------------------------------
+        */
 
+        Route::get(
+            'product-attributes/preview-code',
+            [ProductAttributeController::class, 'previewCode']
+        )->name('product-attributes.preview-code');
+
+        Route::get(
+            'product-attributes/{productAttribute}/duplicate',
+            [ProductAttributeController::class, 'duplicate']
+        )->name('product-attributes.duplicate');
+
+        Route::delete(
+            'product-attributes/bulk-delete',
+            [ProductAttributeController::class, 'bulkDelete']
+        )->name('product-attributes.bulk-delete');
+
+        Route::patch(
+            'product-attributes/bulk-activate',
+            [ProductAttributeController::class, 'bulkActivate']
+        )->name('product-attributes.bulk-activate');
+
+        Route::patch(
+            'product-attributes/bulk-deactivate',
+            [ProductAttributeController::class, 'bulkDeactivate']
+        )->name('product-attributes.bulk-deactivate');
+
+        Route::resource(
+            'product-attributes',
+            ProductAttributeController::class
+        );
         /*
         |--------------------------------------------------------------------------
         | Branches

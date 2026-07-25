@@ -915,7 +915,7 @@ function sortBy(column)
                         </DataTable>
                         <TableEmpty
                                 v-else
-                                icon="🗂️"
+                                icon="📂"
                                 title="No Colors Found"
                                 description="There are no Colors available."
                             >

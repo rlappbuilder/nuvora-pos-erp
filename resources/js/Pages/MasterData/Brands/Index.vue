@@ -907,7 +907,7 @@ function sortBy(column)
                         </DataTable>
                         <TableEmpty
                                 v-else
-                                icon="🗂️"
+                                icon="📂"
                                 title="No Brands Found"
                                 description="There are no brands available."
                             >

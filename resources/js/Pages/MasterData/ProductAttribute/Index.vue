@@ -1,6 +1,5 @@
 <script setup>
 
-import { Head } from '@inertiajs/vue3'
 import StatsCard from '@/Components/Card/StatsCard.vue'
 import PageHeader from '@/Components/Layout/PageHeader.vue'
 import Card from '@/Components/Layout/Card.vue'
@@ -11,7 +10,7 @@ import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted ,toRefs} from 'vue'
 import { router } from '@inertiajs/vue3'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
@@ -31,6 +30,7 @@ import {
 import {
     success,
     error,
+    currency,
 } from '@/Utils'
 import {
 
@@ -41,34 +41,15 @@ import {
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
-
-
 const props = defineProps({
-
-    categories: Object,
-
-    stats: Object,
-
+    productAttributes: Object,
+    statistics: Object,
     filters: Object,
-
 })
-const search = ref(props.filters.search ?? '')
+const { productAttributes, statistics  } = toRefs(props)
 
-const status = ref(props.filters.is_active ?? '')
-
-const perPage = ref(props.filters.per_page ?? 10)
-
-
-const pageTitle = computed(() => 'Category')
+const pageTitle = computed(() => 'Product Attribute')
 const loading = ref(false)
-//const {
-
- //   loading,
-   // showLoading,
-    // hideLoading,
-
-//} = useLoading()
-
 const filters = reactive({
 
     search: props.filters?.search ?? '',
@@ -83,7 +64,7 @@ let debounceTimer = null
 function loadData()
 {
     router.get(
-        route('categories.index'),
+        route('product-attributes.index'),
         filters,
         {
             preserveState: true,
@@ -108,6 +89,14 @@ watch(
 )
 watch(
     () => filters.is_active,
+    () => {
+
+        loadData()
+
+    }
+)
+watch(
+    () => filters.per_page,
     () => {
 
         loadData()
@@ -175,18 +164,21 @@ const selectedRows = ref([])
 const selectAllRef = ref(null)
 const isAllSelected = computed(() => {
 
+    const totalRows = props.productAttributes?.data?.length ?? 0
+
     return (
-        props.categories.data.length > 0 &&
-        selectedRows.value.length === props.categories.data.length
+        totalRows > 0 &&
+        selectedRows.value.length === totalRows
     )
 
 })
-
 const isIndeterminate = computed(() => {
+
+    const totalRows = props.productAttributes?.data?.length ?? 0
 
     return (
         selectedRows.value.length > 0 &&
-        selectedRows.value.length < props.categories.data.length
+        selectedRows.value.length < totalRows
     )
 
 })
@@ -215,11 +207,10 @@ function toggleSelectAll(event)
 {
     if (event.target.checked) {
 
-        selectedRows.value = props.categories.data.map(
+       selectedRows.value = props.productAttributes?.data?.map(
+    item => item.id
 
-            item => item.id
-
-        )
+) ?? []
 
     } else {
 
@@ -232,48 +223,46 @@ const deleteItem = ref(null)
 function create()
 {
     router.visit(
-        route('categories.create')
+        route('product-attributes.create')
     )
 }
 
-function showCategory(category)
+function showProductAttribute(productAttribute)
 {
     router.visit(
 
         route(
-            'categories.show',
-            category.id
+            'product-attributes.show',
+            productAttribute.id
         )
 
     )
 }
 
-function editCategory(category)
+function editProductAttribute(productAttribute)
 {
     router.visit(
 
         route(
-            'categories.edit',
-            category.id
+            'product-attributes.edit',
+            productAttribute.id
         )
 
     )
 }
 
-function duplicate(category)
+function duplicate(productAttribute)
 {
     router.get(
-
         route(
-            'categories.duplicate',
-            category.id
+            'product-attributes.duplicate',
+            productAttribute.id
         )
-
     )
 }
-function openDelete(category)
+function openDelete(productAttribute)
 {
-    deleteItem.value = category
+    deleteItem.value = productAttribute
 
     showDelete.value = true
 }
@@ -339,22 +328,24 @@ const deleteMessage = computed(() => {
 /** bulk delete */
 const bulkDelete = () => {
 
-    router.delete(
-        route('categories.bulk-delete'),
-        {
-            data: {
-                ids: selectedRows.value,
-            },
-            preserveScroll: true,
-            onSuccess: () => {
+router.delete(
+    route('product-attributes.bulk-delete'),
+    {
+        data: {
+            ids: selectedRows.value,
+        },
+        preserveScroll: true,
+        onSuccess: () => {
+            success(
+                'Success',
+                'Product Attribute Deleted.'
+            )
 
-                showBulkDelete.value = false
-
-                selectedRows.value = []
-
-            },
-        }
-    )
+            showBulkDelete.value = false
+            selectedRows.value = []
+        },
+    }
+)
 
 }
 const showBulkDelete = ref(false)
@@ -368,7 +359,7 @@ const bulkDeleteMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to delete ${total} selected Category(s)?`
+    return `Are you sure you want to delete ${total} selected Product Attribute(s)?`
 
 })
 
@@ -378,7 +369,7 @@ const bulkDeleteMessage = computed(() => {
 const bulkActivate = () => {
 
     router.patch(
-        route('categories.bulk-activate'),
+        route('product-attributes.bulk-activate'),
         {
             ids: selectedRows.value,
         },
@@ -406,13 +397,13 @@ const bulkActivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to activate ${total} selected Category(s)?`
+    return `Are you sure you want to activate ${total} selected Product Attribute(s)?`
 
 })
 const bulkDeactivate = () => {
 
     router.patch(
-        route('categories.bulk-deactivate'),
+        route('product-attributes.bulk-deactivate'),
         {
             ids: selectedRows.value,
         },
@@ -444,7 +435,7 @@ const bulkDeactivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to deactivate ${total} selected Category(s)?`
+    return `Are you sure you want to deactivate ${total} selected Product Attribute(s)?`
 
 })
 
@@ -453,7 +444,7 @@ const bulkDeactivateMessage = computed(() => {
 
 function confirmDelete()
 {
-    console.log(route('categories.destroy',deleteItem.value.id))
+    console.log(route('product-attributes.destroy',deleteItem.value.id))
     if (!deleteItem.value) {
 
         return
@@ -463,7 +454,7 @@ function confirmDelete()
     router.delete(
 
         route(
-            'categories.destroy',
+            'product-attributes.destroy',
             deleteItem.value.id
         ),
 
@@ -476,7 +467,8 @@ function confirmDelete()
                 closeDelete()
 
                 success(
-                    'Category deleted successfully.'
+                    'Success',
+                    'Product Attribute deleted successfully.'
                 )
 
             },
@@ -484,7 +476,7 @@ function confirmDelete()
             onError: () => {
 
                 error(
-                    'Failed to delete category.'
+                    'Failed to delete Product Attribute.'
                 )
 
             },
@@ -494,11 +486,11 @@ function confirmDelete()
     )
 }
 const sort = ref(
-    props.filters.sort
+    props.filters.sort_by ?? 'id'
 )
 
 const direction = ref(
-    props.filters.direction
+    props.filters.sort_direction ?? 'desc'
 )
 function sortBy(column)
 {
@@ -516,21 +508,21 @@ function sortBy(column)
 
     }
 
-    router.get(
-        route('categories.index'),
-        {
-            search: search.value,
-            status: status.value,
-            per_page: perPage.value,
-            sort: sort.value,
-            direction: direction.value,
-        },
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        }
-    )
+       router.get(
+            route('product-attributes.index'),
+            {
+                search: filters.search,
+                is_active: filters.is_active,
+                per_page: filters.per_page,
+                sort_by: sort.value,
+                sort_direction: direction.value,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            }
+        )
 }
 </script>
 <template>
@@ -545,62 +537,49 @@ function sortBy(column)
 
                 icon="📂"
 
-                title="Category"
+                title="Product Attribute"
 
-                subtitle="Manage product categories."
+                subtitle="Manage Product Attributes."
 
             />
 
             <div
                 class="
                     grid
-                    grid-cols-1
-                    gap-6
-                    md:grid-cols-2
-                    xl:grid-cols-4
+                    grid-cols-5
+                    gap-4
+                    
                 "
             >
-
                 <StatsCard
-
-                    title="Total Category"
-
-                    :value="stats.total"
-
+                    title="Total Product Attributes"
+                    :value="statistics?.total ?? 0"
                     icon="📂"
-
                 />
 
                 <StatsCard
-
                     title="Active"
-
-                    :value="stats.active"
-
+                    :value="statistics?.active ?? 0"
                     icon="✅"
-
                 />
 
                 <StatsCard
-
                     title="Inactive"
-
-                    :value="stats.inactive"
-
+                    :value="statistics?.inactive ?? 0"
                     icon="⛔"
-
                 />
 
                 <StatsCard
-
-                    title="Deleted"
-
-                    :value="stats.deleted"
-
-                    icon="🗑️"
-
+                    title="Variant"
+                    :value="statistics?.variant ?? 0"
+                    icon="🧩"
                 />
 
+                <StatsCard
+                    title="Required"
+                    :value="statistics?.required ?? 0"
+                    icon="⭐"
+                />
             </div>
 
         </div>
@@ -658,7 +637,8 @@ function sortBy(column)
                                     <input
                                         v-model="filters.search"
                                         type="text"
-                                        placeholder="Search category code or name..."
+                                        placeholder="Search
+                                         code or name..."
                                         class="
                                             w-full
                                             lg:w-80
@@ -730,8 +710,7 @@ function sortBy(column)
                             </div>
 
                       <!--   </Actionbar> -->
-                        <!-- bulkt action-->
-                        <!-- end bulk action -->
+
 
                     </div>
 
@@ -755,13 +734,13 @@ function sortBy(column)
 
                         <LoadingOverlay
                             :show="loading"
-                            text="Loading Categories..."
+                            text="Loading Product Attributes..."
                         />
 
                         <!-- End Loading -->
 
-                        <DataTable 
-                            v-if="categories.data.length"
+                        <DataTable
+                            v-if="productAttributes?.data?.length"
                             sticky-header
                             max-height="650px"
                         >
@@ -804,7 +783,16 @@ function sortBy(column)
                                 >
                                     Name
                                 </DataTableHeaderCell>
-                                   
+                                    <DataTableHeaderCell
+                                    sortable
+                                    column="percent"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="100px"
+                                >
+                                    Display Name
+                                </DataTableHeaderCell>
 
                                 <DataTableHeaderCell
                                     sortable
@@ -825,7 +813,7 @@ function sortBy(column)
                                     width="120px"
                                     align="center"
                                 >
-                                    status
+                                    Status
                                 </DataTableHeaderCell>
                                
 
@@ -841,7 +829,7 @@ function sortBy(column)
                             <DataTableBody>
 
                                 <DataTableRow
-                                    v-for="item in categories.data"
+                                    v-for="item in productAttributes.data"
                                     :key="item.id"
                                 >
 
@@ -865,7 +853,9 @@ function sortBy(column)
                                     <DataTableCell>
                                         {{ item.name }}
                                     </DataTableCell>
-
+                                    <DataTableCell>
+                                        {{ item.display_name }}
+                                    </DataTableCell>
                                     <DataTableCell>
                                         {{ item.description || '-' }}
                                     </DataTableCell>
@@ -885,8 +875,9 @@ function sortBy(column)
                                     >
 
                                         <ActionDropdown
+                                            @view="showProductAttribute(item)"
 
-                                            @edit="editCategory(item)"
+                                            @edit="editProductAttribute(item)"
 
                                             @duplicate="duplicate(item)"
 
@@ -906,15 +897,15 @@ function sortBy(column)
                         <TableEmpty
                                 v-else
                                 icon="📂"
-                                title="No Categories Found"
-                                description="There are no categories available."
+                                title="No Product Attributes Found"
+                                description="There are no Product Attributes available."
                             >
                                 <template #action>
 
                                     <BaseButton
-                                        @click="router.visit(route('categories.create'))"
+                                        @click="router.visit(route('product-attributes.create'))"
                                     >
-                                        Create Category
+                                        Create Product Attribute
                                     </BaseButton>
 
                                 </template>
@@ -926,8 +917,8 @@ function sortBy(column)
                     >
 
                         <TablePagination
-                            :data="categories"
-                            label="Categories"
+                            :data="productAttributes"
+                            label="Product Attribute"
                         />
 
                     </div>

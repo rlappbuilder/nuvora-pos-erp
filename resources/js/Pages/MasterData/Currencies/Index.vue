@@ -910,7 +910,7 @@ function sortBy(column)
                         </DataTable>
                         <TableEmpty
                                 v-else
-                                icon="🗂️"
+                                icon="📂"
                                 title="No Currencies Found"
                                 description="There are no currencies available."
                             >

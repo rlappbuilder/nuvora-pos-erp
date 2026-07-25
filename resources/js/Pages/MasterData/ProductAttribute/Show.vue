@@ -27,7 +27,7 @@ import {
 
 const props = defineProps({
 
-    currency: {
+    productAttribute: {
 
         type: Object,
 
@@ -40,7 +40,7 @@ const props = defineProps({
 function back()
 {
     router.visit(
-        route('currencies.index')
+        route('product-attributes.index')
     )
 }
 
@@ -48,8 +48,8 @@ function edit()
 {
     router.visit(
         route(
-            'currencies.edit',
-            props.currency.id
+            'product-attributes.edit',
+            props.productAttribute.id
         )
     )
 }
@@ -59,9 +59,9 @@ function print()
 
         route(
 
-            'currencies.print',
+            'product-attributes.print',
 
-            props.currency.id
+            props.productAttribute.id
 
         )
 
@@ -76,8 +76,8 @@ function print()
 
     <PageHeader
     icon="📂"
-    title="Currency Detail"
-    subtitle="View currency information."
+    title="Product Attribute Detail"
+    subtitle="View product attribute information."
     />
 
     <ActionBar />
@@ -87,44 +87,47 @@ function print()
         <Card
             icon="📂"
             title="General Information"
-            description="Basic information about this currency."
+            description="Basic information about this prduct attribut."
         >
             <!-- General Information -->
              <DetailRow
                     label="Code"
-                    :value="currency.code"
+                    :value="productAttribute.code"
                 />
 
                 <DetailRow
                     label="Name"
-                    :value="currency.name"
+                    :value="productAttribute.name"
                 />
 
                 <DetailRow
-                    label="Symbol"
-                    :value="currency.symbol"
+                    label="Display Name"
+                    :value="productAttribute.display_name"
                 />
 
                 <DetailRow
-                    label="Decimal Places"
-                    :value="currency.decimal_places"
+                    label="Input Type"
+                    :value="productAttribute.input_type"
                 />
-
                 <DetailRow
-                    label="Exchange Rate"
-                    :value="formatDecimal(currency.exchange_rate)"
+                    label="Required"
+                    :value="productAttribute.is_required ? 'Yes' : 'No'"
+                    :icon="productAttribute.is_required ? '✅' : '❌'"
                 />
-
                 <DetailRow
-                    label="Base Currency"
-                    :value="currency.is_base_currency ? 'Yes' : 'No'"
-                    :icon="currency.is_base_currency ? '✅' : '❌'"
+                    label="Variant"
+                    :value="productAttribute.is_variant ? 'Yes' : 'No'"
+                    :icon="productAttribute.is_variant ? '✅' : '❌'"
+                />
+                <DetailRow
+                    label="Sort Order"
+                    :value="productAttribute.sort_order"
                 />
            
                 <DetailRow
                     label="Status"
-                    :value="currency.is_active ? 'Active' : 'Inactive'"
-                    :icon="currency.is_active ? '🟢' : '🔴'"
+                    :value="productAttribute.is_active ? 'Active' : 'Inactive'"
+                    :icon="productAttribute.is_active ? '🟢' : '🔴'"
                 />
         </Card>
 
@@ -136,22 +139,22 @@ function print()
             <!-- System Information -->
              <DetailRow
                 label="Created By"
-                :value="currency.created_by?.name ?? '-'"
+                :value="productAttribute.created_by?.name ?? '-'"
             />
 
             <DetailRow
                 label="Created At"
-                :value="formatDate(currency.created_at)"
+                :value="formatDate(productAttribute.created_at)"
             />
 
             <DetailRow
                 label="Updated By"
-                :value="currency.updated_by?.name ?? '-'"
+                :value="productAttribute.updated_by?.name ?? '-'"
             />
 
             <DetailRow
                 label="Updated At"
-                :value="formatDate(currency.updated_at)"
+                :value="formatDate(productAttribute.updated_at)"
             />
         </Card>
 
@@ -173,7 +176,7 @@ function print()
                     text-gray-700
                 "
             >
-                {{ currency.description || '-' }}
+                {{ productAttribute.description || '-' }}
             </div>
 
         </Card>

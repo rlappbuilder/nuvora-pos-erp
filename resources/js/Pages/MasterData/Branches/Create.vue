@@ -1,7 +1,6 @@
 <script setup>
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
 
