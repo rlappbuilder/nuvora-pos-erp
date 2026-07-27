@@ -106,32 +106,39 @@ class ProductAttributeController extends Controller
      * Store a newly created resource.
      */
   public function store(ProductAttributeStoreRequest $request)
-    {
-        $data = $request->validated();
+{
+    $data = $request->validated();
 
-        try {
-            \DB::beginTransaction();
+    try {
+        \DB::beginTransaction();
 
-            $data['created_by'] = auth()->id();
+        $data['created_by'] = auth()->id();
 
-            ProductAttribute::create($data);
+        ProductAttribute::create($data);
 
-            \DB::commit();
+        \DB::commit();
 
+        if ($request->boolean('create_another')) {
             return redirect()
-                ->route('product-attributes.index')
-                ->with('success', 'Product Attribute Succes Added.');
-        } catch (\Throwable $e) {
-            \DB::rollBack();
-
-            report($e);
-
-            return back()
-                ->withInput()
-                ->with('error', 'Failed to Save Product Attribute.');
+                ->route('product-attributes.create')
+                ->with('success', 'Product Attribute berhasil ditambahkan.');
         }
-    }
 
+        return redirect()
+            ->route('product-attributes.index')
+            ->with('success', 'Product Attribute berhasil ditambahkan.');
+
+    } catch (\Throwable $e) {
+
+        \DB::rollBack();
+
+        report($e);
+
+        return back()
+            ->withInput()
+            ->with('error', 'Failed to Save Product Attribute.');
+    }
+}
     /**
      * Display the specified resource.
      */
@@ -205,31 +212,37 @@ class ProductAttributeController extends Controller
      * Remove the specified resource.
      */
     public function destroy(ProductAttribute $productAttribute)
-        {
-            try {
-                DB::beginTransaction();
+{
+    if (! $productAttribute->canDelete()) {
+        return back()->with(
+            'error',
+            'Product Attribute tidak dapat dihapus karena masih digunakan.'
+        );
+    }
 
-                $productAttribute->update([
-                    'deleted_by' => auth()->id(),
-                ]);
+    try {
+        DB::beginTransaction();
 
-                $productAttribute->delete();
+        $productAttribute->update([
+            'deleted_by' => auth()->id(),
+        ]);
 
-                DB::commit();
+        $productAttribute->delete();
 
-                return redirect()
-                    ->route('product-attributes.index')
-                    ->with('success', 'Product Attribute berhasil dihapus.');
-            } catch (\Throwable $e) {
-                DB::rollBack();
+        DB::commit();
 
-                report($e);
+        return redirect()
+            ->route('product-attributes.index')
+            ->with('success', 'Product Attribute berhasil dihapus.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
 
-                return back()
-                    ->with('error', 'Gagal menghapus Product Attribute.');
-            }
-        }
+        report($e);
 
+        return back()
+            ->with('error', 'Gagal menghapus Product Attribute.');
+    }
+}
    public function duplicate(ProductAttribute $productAttribute)
     {
         return Inertia::render(
@@ -259,7 +272,7 @@ class ProductAttributeController extends Controller
         );
     }
 
-    public function bulkDelete(Request $request)
+   public function bulkDelete(Request $request)
 {
     $request->validate([
         'ids' => ['required', 'array'],
@@ -272,9 +285,13 @@ class ProductAttributeController extends Controller
 
         $productAttributes = ProductAttribute::whereIn('id', $request->ids)->get();
 
+        $deleted = 0;
+        $failed = 0;
+
         foreach ($productAttributes as $productAttribute) {
 
             if (! $productAttribute->canDelete()) {
+                $failed++;
                 continue;
             }
 
@@ -283,20 +300,43 @@ class ProductAttributeController extends Controller
             ]);
 
             $productAttribute->delete();
+
+            $deleted++;
         }
 
         DB::commit();
 
-                return back()->with('success', 'Product Attribute Deleted.');
-
-            } catch (\Throwable $e) {
-
-                DB::rollBack();
-
-                throw $e;
-            }
+        if ($deleted === 0) {
+            return back()->with(
+                'error',
+                'Tidak ada Product Attribute yang dapat dihapus karena masih memiliki Product Attribute Value.'
+            );
         }
 
+        if ($failed > 0) {
+            return back()->with(
+                'warning',
+                "{$deleted} Product Attribute berhasil dihapus, {$failed} data tidak dapat dihapus karena masih digunakan."
+            );
+        }
+
+        return back()->with(
+            'success',
+            'Product Attribute berhasil dihapus.'
+        );
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        report($e);
+
+        return back()->with(
+            'error',
+            'Gagal menghapus Product Attribute.'
+        );
+    }
+}
     public function bulkActivate(Request $request)
         {
             $request->validate([

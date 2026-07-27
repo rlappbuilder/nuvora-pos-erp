@@ -111,17 +111,32 @@ function print()
                     "
                 />
 
-                <DetailRow
-                    label="Default Tax"
-                    :value="tax.is_default ? 'Yes' : 'No'"
-                    :icon="tax.is_default ? '✅' : '❌'"
-                />
+                
+                <DetailRow label="Default Tax">
+                    <span
+                        :class="[
+                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+                            tax.is_default
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                        ]"
+                    >
+                        {{ tax.is_default ? '🟢 Active' : '🔴 Inactive' }}
+                    </span>
+                </DetailRow>
 
-                <DetailRow
-                    label="Status"
-                    :value="tax.is_active ? 'Active' : 'Inactive'"
-                    :icon="tax.is_active ? '🟢' : '🔴'"
-                />
+               <DetailRow label="Status">
+                <span
+                    :class="[
+                        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+                        tax.is_active
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                    ]"
+                >
+                    {{ tax.is_active ? '🟢 Active' : '🔴 Inactive' }}
+                </span>
+            </DetailRow>
         </Card>
 
         <Card

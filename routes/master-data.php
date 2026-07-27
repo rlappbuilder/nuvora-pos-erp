@@ -16,7 +16,7 @@ use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\MasterData\TaxController;
 use App\Http\Controllers\MasterData\CurrencyController;
 use App\Http\Controllers\Product\ProductAttributeController;
-
+use App\Http\Controllers\Product\ProductAttributeValueController;
 Route::middleware(
 
     'auth'
@@ -226,7 +226,35 @@ Route::middleware(
             'product-attributes',
             ProductAttributeController::class
         );
-        /*
+
+         /*
+        |--------------------------------------------------------------------------
+        | Product Attributes
+        |--------------------------------------------------------------------------
+        */
+
+       Route::prefix('product-attribute-values')
+    ->name('product-attribute-values.')
+    ->controller(ProductAttributeValueController::class)
+    ->group(function () {
+
+        Route::get('/', 'index')->name('index');
+
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+
+        // Bulk routes HARUS sebelum route parameter
+        Route::delete('/bulk-delete', 'bulkDelete')->name('bulk-delete');
+        Route::post('/bulk-activate', 'bulkActivate')->name('bulk-activate');
+        Route::post('/bulk-deactivate', 'bulkDeactivate')->name('bulk-deactivate');
+
+        Route::get('/{product_attribute_value}', 'show')->name('show');
+        Route::get('/{product_attribute_value}/edit', 'edit')->name('edit');
+        Route::put('/{product_attribute_value}', 'update')->name('update');
+        Route::delete('/{product_attribute_value}', 'destroy')->name('destroy');
+        Route::get('/{product_attribute_value}/duplicate', 'duplicate')
+            ->name('duplicate');
+    }); /*
         |--------------------------------------------------------------------------
         | Branches
         |--------------------------------------------------------------------------

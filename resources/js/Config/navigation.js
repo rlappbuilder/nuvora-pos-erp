@@ -16,6 +16,7 @@ const navigation = [
             modules.branches,
             modules.products,
             modules.productsattributes,
+            modules.productsAttributeValues,
             modules.customers,
             modules.suppliers,
             modules.tax,

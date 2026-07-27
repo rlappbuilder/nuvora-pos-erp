@@ -13,6 +13,11 @@ const props = defineProps({
         required: true,
     },
 
+    productAttributes: {
+        type: Array,
+        default: () => [],
+    },
+
     mode: {
         type: String,
         default: 'create',
@@ -28,19 +33,32 @@ const emit = defineEmits([
 <template>
 <form @submit.prevent="emit('submit')">
         <!-- ========================================================= -->
-    <!-- Tax Information -->
+    <!-- PRoduct Attribute Value Information -->
     <!-- ========================================================= -->
 
  
     <FormSection
         icon="📂"
-        title="Product Attribute Information"
-        description="Basic information about this Product Attribute."
+        title="Product Attribute Value Information"
+        description="Basic information about this Product Attribute Value."
         :columns="2"
     >
 
         <!-- Code -->
+         <FormField
+                label="Product Attribute"
+                required
+                :error="form.errors.product_attribute_id"
+            >
+                <SearchableSelect
+                    v-model="form.product_attribute_id"
+                    :options="productAttributes"
+                    label="name"
+                    value-key="id"
+                    placeholder="Select Product Attribute"
+                />
 
+            </FormField>
         <FormField
             label="Code"
             :error="form.errors.code"
@@ -55,46 +73,36 @@ const emit = defineEmits([
 
             <!-- Product Attribute Name -->
 
+           
             <FormField
-                label="Atribute Name"
-                required
-                :error="form.errors.name"
-            >
-
-                <FormInput
-                    v-model="form.name"
-                    placeholder="Color"
-                />
-
-            </FormField>
-            <FormField
-                label="Display Name"
-                :error="form.errors.display_name"
-            >
-                <FormInput
-                    v-model="form.display_name"
-                    placeholder="Example: Product Color"
-                />
-            </FormField>
-        <FormField
-            label="Input Type"
+            label="Value"
             required
-            :error="form.errors.input_type"
+            :error="form.errors.value"
         >
-            <SearchableSelect
-                v-model="form.input_type"
-                :options="[
-                    { label: 'Text', value: 'Text' },
-                    { label: 'Select', value: 'Select' },
-                    { label: 'Radio', value: 'Radio' },
-                    { label: 'Button', value: 'Button' },
-                    { label: 'Color', value: 'Color' },
-                ]"
-                label="label"
-                value-key="value"
-                placeholder="Select Input Type"
+            <FormInput
+                v-model="form.value"
+                placeholder="Example: Red"
             />
         </FormField>
+
+        <FormField
+            label="Display Value"
+            :error="form.errors.display_value"
+        >
+            <FormInput
+                v-model="form.display_value"
+                placeholder="Example: Bright Red"
+            />
+        </FormField>
+        <FormField
+                label="Color Code"
+                :error="form.errors.color_code"
+            >
+                <FormInput
+                    v-model="form.color_code"
+                    placeholder="#FF0000 ( Optional)"
+                />
+            </FormField>
             <FormField
                 label="Sort Order"
                 :error="form.errors.sort_order"
@@ -113,7 +121,7 @@ const emit = defineEmits([
         <FormSection
             icon="📝"
             title="Description"
-            description="Additional information about this Product Attribute."
+            description="Additional information about this Product Attribute Value."
             :columns="1"
         >
 
@@ -143,28 +151,17 @@ const emit = defineEmits([
         <FormSection
             icon="⚙️"
             title="Settings"
-            description="Configure Product Attribute settings."
+            description="Configure Product Attribute Value settings."
             :columns="1"
         >
 
-           <FormCheckbox
-                v-model="form.is_required"
-                label="Required"
-                description="Users must fill this attribute."
-                variant="switch"
-            />
             <FormCheckbox
                 v-model="form.is_active"
                 label="Active"
-                description="Enable or disable this Product Attribute."
+                description="Enable or disable this Product Attribute Value."
                 variant="switch"
             />
-            <FormCheckbox
-                v-model="form.is_variant"
-                label="Variant Attribute"
-                description="Use this attribute to generate product variants."
-                variant="switch"
-            />
+            
         </FormSection>
         <!-- ========================================================= -->
         <!-- Action -->

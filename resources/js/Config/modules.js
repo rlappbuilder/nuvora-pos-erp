@@ -98,6 +98,13 @@ const modules = {
         route: 'product-attributes.index',
         permission: 'product-attributes.view',
     },
+        productsAttributeValues: {
+       key: 'productsAttributeValues',
+       title: 'Attribute Values',
+          icon: CubeIcon,
+          route: 'product-attribute-values.index',
+        permission: 'product-attribute-values.view',
+     },
      tax: {
         key: 'tax',
         title: 'Tax',

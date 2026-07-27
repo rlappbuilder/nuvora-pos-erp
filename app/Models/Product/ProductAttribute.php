@@ -104,7 +104,7 @@ class ProductAttribute extends Model
     | Helpers
     |--------------------------------------------------------------------------
     */
-    /* public function isUsed(): bool
+    public function isUsed(): bool
     {
         return $this->values()->exists();
     }
@@ -113,7 +113,7 @@ class ProductAttribute extends Model
     {
         return ! $this->isUsed();
     }
-        */
+        
     public function canActivate(): bool
     {
         return ! $this->is_active;

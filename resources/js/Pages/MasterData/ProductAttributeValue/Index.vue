@@ -37,18 +37,18 @@ import {
     LoadingOverlay,
 
 } from '@/Components/Feedback'
-import { warning } from '@/Utils/swal'
+
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({
-    productAttributes: Object,
+    productAttributeValues: Object,
     statistics: Object,
     filters: Object,
 })
-const { productAttributes, statistics  } = toRefs(props)
+const { productAttributeValues, statistics  } = toRefs(props)
 
-const pageTitle = computed(() => 'Product Attribute')
+const pageTitle = computed(() => 'Product Attribute Value')
 const loading = ref(false)
 const filters = reactive({
 
@@ -64,7 +64,7 @@ let debounceTimer = null
 function loadData()
 {
     router.get(
-        route('product-attributes.index'),
+        route('product-attribute-values.index'),
         filters,
         {
             preserveState: true,
@@ -164,7 +164,7 @@ const selectedRows = ref([])
 const selectAllRef = ref(null)
 const isAllSelected = computed(() => {
 
-    const totalRows = props.productAttributes?.data?.length ?? 0
+    const totalRows = props.productAttributeValues?.data?.length ?? 0
 
     return (
         totalRows > 0 &&
@@ -174,7 +174,7 @@ const isAllSelected = computed(() => {
 })
 const isIndeterminate = computed(() => {
 
-    const totalRows = props.productAttributes?.data?.length ?? 0
+    const totalRows = props.productAttributeValues?.data?.length ?? 0
 
     return (
         selectedRows.value.length > 0 &&
@@ -207,7 +207,7 @@ function toggleSelectAll(event)
 {
     if (event.target.checked) {
 
-       selectedRows.value = props.productAttributes?.data?.map(
+       selectedRows.value = props.productAttributeValues?.data?.map(
     item => item.id
 
 ) ?? []
@@ -223,46 +223,46 @@ const deleteItem = ref(null)
 function create()
 {
     router.visit(
-        route('product-attributes.create')
+        route('product-attribute-values.create')
     )
 }
 
-function showProductAttribute(productAttribute)
+function showProductAttributeValue(productAttributeValue)
 {
     router.visit(
 
         route(
-            'product-attributes.show',
-            productAttribute.id
+            'product-attribute-values.show',
+            productAttributeValue.id
         )
 
     )
 }
 
-function editProductAttribute(productAttribute)
+function editProductAttributeValue(productAttributeValue)
 {
     router.visit(
 
         route(
-            'product-attributes.edit',
-            productAttribute.id
+            'product-attribute-values.edit',
+            productAttributeValue.id
         )
 
     )
 }
 
-function duplicate(productAttribute)
+function duplicate(productAttributeValue)
 {
     router.get(
         route(
-            'product-attributes.duplicate',
-            productAttribute.id
+            'product-attribute-values.duplicate',
+            productAttributeValue.id
         )
     )
 }
-function openDelete(productAttribute)
+function openDelete(productAttributeValue)
 {
-    deleteItem.value = productAttribute
+    deleteItem.value = productAttributeValue
 
     showDelete.value = true
 }
@@ -319,7 +319,7 @@ const deleteMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to delete "${deleteItem.value.name}"?`
+    return `Are you sure you want to delete "${deleteItem.value.value}"?`
 
 })
 
@@ -328,38 +328,38 @@ const deleteMessage = computed(() => {
 /** bulk delete */
 const bulkDelete = () => {
 
-    router.delete(
-        route('product-attributes.bulk-delete'),
-        {
-            data: {
-                ids: selectedRows.value,
-            },
-            preserveScroll: true,
+router.delete(
+    route('product-attribute-values.bulk-delete'),
+    {
+        data: {
+            ids: selectedRows.value,
+        },
+        preserveScroll: true,
             onSuccess: (page) => {
 
-                console.log('FLASH:', page.props.flash)
+            const flash = page.props.flash
 
-                if (page.props.flash?.success) {
-                    success(page.props.flash.success)
-                }
+            if (flash?.error) {
+                error('Error', flash.error)
+                return
+            }
 
-                if (page.props.flash?.error) {
-                    error(page.props.flash.error)
-                }
+            if (flash?.warning) {
+                warning('Warning', flash.warning)
+            } else {
+                success(
+                    'Success',
+                    flash?.success ?? 'Product Attribute Deleted.'
+                )
+            }
 
-                if (page.props.flash?.warning) {
-                    warning(page.props.flash.warning)
-                }
+            showBulkDelete.value = false
+            selectedRows.value = []
+        },
+    }
+)
 
-                showBulkDelete.value = false
-                selectedRows.value = []
-
-            },
-        }
-    )
 }
-
-
 const showBulkDelete = ref(false)
 const bulkDeleteMessage = computed(() => {
 
@@ -371,7 +371,7 @@ const bulkDeleteMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to delete ${total} selected Product Attribute(s)?`
+    return `Are you sure you want to delete ${total} selected Product Attribute Value(s)?`
 
 })
 
@@ -380,8 +380,8 @@ const bulkDeleteMessage = computed(() => {
 /** bulk activate */
 const bulkActivate = () => {
 
-    router.patch(
-        route('product-attributes.bulk-activate'),
+    router.post(
+        route('product-attribute-values.bulk-activate'),
         {
             ids: selectedRows.value,
         },
@@ -409,13 +409,13 @@ const bulkActivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to activate ${total} selected Product Attribute(s)?`
+    return `Are you sure you want to activate ${total} selected Product Attribute Value(s)?`
 
 })
 const bulkDeactivate = () => {
 
-    router.patch(
-        route('product-attributes.bulk-deactivate'),
+    router.post(
+        route('product-attribute-values.bulk-deactivate'),
         {
             ids: selectedRows.value,
         },
@@ -447,7 +447,7 @@ const bulkDeactivateMessage = computed(() => {
 
     }
 
-    return `Are you sure you want to deactivate ${total} selected Product Attribute(s)?`
+    return `Are you sure you want to deactivate ${total} selected Product Attribute Value(s)?`
 
 })
 
@@ -456,7 +456,7 @@ const bulkDeactivateMessage = computed(() => {
 
 function confirmDelete()
 {
-    console.log(route('product-attributes.destroy',deleteItem.value.id))
+    console.log(route('product-attribute-values.destroy',deleteItem.value.id))
     if (!deleteItem.value) {
 
         return
@@ -466,7 +466,7 @@ function confirmDelete()
     router.delete(
 
         route(
-            'product-attributes.destroy',
+            'product-attribute-values.destroy',
             deleteItem.value.id
         ),
 
@@ -474,28 +474,21 @@ function confirmDelete()
 
             preserveScroll: true,
 
-           onSuccess: (page) => {
+            onSuccess: () => {
 
-            closeDelete()
+                closeDelete()
 
-            if (page.props.flash?.success) {
-                success(page.props.flash.success)
-            }
+                success(
+                    'Success',
+                    'Product Attribute Value deleted successfully.'
+                )
 
-            if (page.props.flash?.error) {
-                error(page.props.flash.error)
-            }
-
-            if (page.props.flash?.warning) {
-                warning(page.props.flash.warning)
-            }
-
-        },
+            },
 
             onError: () => {
 
                 error(
-                    'Failed to delete Product Attribute.'
+                    'Failed to delete Product Attribute Value.'
                 )
 
             },
@@ -528,7 +521,7 @@ function sortBy(column)
     }
 
        router.get(
-            route('product-attributes.index'),
+            route('product-attribute-values.index'),
             {
                 search: filters.search,
                 is_active: filters.is_active,
@@ -556,9 +549,9 @@ function sortBy(column)
 
                 icon="📂"
 
-                title="Product Attribute"
+                title="Product Attribute Value"
 
-                subtitle="Manage Product Attributes."
+                subtitle="Manage Product Attribute  Values."
 
             />
 
@@ -571,7 +564,7 @@ function sortBy(column)
                 "
             >
                 <StatsCard
-                    title="Total Product Attributes"
+                    title="Total Product Attribute Values"
                     :value="statistics?.total ?? 0"
                     icon="📂"
                 />
@@ -753,13 +746,13 @@ function sortBy(column)
 
                         <LoadingOverlay
                             :show="loading"
-                            text="Loading Product Attributes..."
+                            text="Loading Product Attribute Values..."
                         />
 
                         <!-- End Loading -->
 
                         <DataTable
-                            v-if="productAttributes?.data?.length"
+                            v-if="productAttributeValues?.data?.length"
                             sticky-header
                             max-height="650px"
                         >
@@ -800,7 +793,7 @@ function sortBy(column)
                                     @sort="sortBy"
                                     width="250px"
                                 >
-                                    Name
+                                    Value
                                 </DataTableHeaderCell>
                                     <DataTableHeaderCell
                                     sortable
@@ -810,7 +803,7 @@ function sortBy(column)
                                     @sort="sortBy"
                                     width="100px"
                                 >
-                                    Display Name
+                                    Display Value
                                 </DataTableHeaderCell>
 
                                 <DataTableHeaderCell
@@ -848,7 +841,7 @@ function sortBy(column)
                             <DataTableBody>
 
                                 <DataTableRow
-                                    v-for="item in productAttributes.data"
+                                    v-for="item in productAttributeValues.data"
                                     :key="item.id"
                                 >
 
@@ -870,10 +863,10 @@ function sortBy(column)
                                     </DataTableCell>
 
                                     <DataTableCell>
-                                        {{ item.name }}
+                                        {{ item.value }}
                                     </DataTableCell>
                                     <DataTableCell>
-                                        {{ item.display_name }}
+                                        {{ item.display_value }}
                                     </DataTableCell>
                                     <DataTableCell>
                                         {{ item.description || '-' }}
@@ -894,9 +887,9 @@ function sortBy(column)
                                     >
 
                                         <ActionDropdown
-                                            @view="showProductAttribute(item)"
+                                            @view="showProductAttributeValue(item)"
 
-                                            @edit="editProductAttribute(item)"
+                                            @edit="editProductAttributeValue(item)"
 
                                             @duplicate="duplicate(item)"
 
@@ -916,15 +909,15 @@ function sortBy(column)
                         <TableEmpty
                                 v-else
                                 icon="📂"
-                                title="No Product Attributes Found"
-                                description="There are no Product Attributes available."
+                                title="No Product Attribute Values Found"
+                                description="There are no Product Attribute Values available."
                             >
                                 <template #action>
 
                                     <BaseButton
-                                        @click="router.visit(route('product-attributes.create'))"
+                                        @click="router.visit(route('product-attribute-values.create'))"
                                     >
-                                        Create Product Attribute
+                                        Create Attrivute Value
                                     </BaseButton>
 
                                 </template>
@@ -936,8 +929,8 @@ function sortBy(column)
                     >
 
                         <TablePagination
-                            :data="productAttributes"
-                            label="Product Attribute"
+                            :data="productAttributeValues"
+                            label="Product Attribute Value"
                         />
 
                     </div>

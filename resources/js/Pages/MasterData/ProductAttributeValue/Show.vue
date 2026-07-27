@@ -27,7 +27,7 @@ import {
 
 const props = defineProps({
 
-    currency: {
+    productAttributeValue: {
 
         type: Object,
 
@@ -40,7 +40,7 @@ const props = defineProps({
 function back()
 {
     router.visit(
-        route('currencies.index')
+        route('product-attribute-values.index')
     )
 }
 
@@ -48,8 +48,8 @@ function edit()
 {
     router.visit(
         route(
-            'currencies.edit',
-            props.currency.id
+            'product-attributes-values.edit',
+            props.productAttributeValue.id
         )
     )
 }
@@ -59,9 +59,9 @@ function print()
 
         route(
 
-            'currencies.print',
+            'product-attribute-values.print',
 
-            props.currency.id
+            props.productAttributeValue.id
 
         )
 
@@ -76,8 +76,8 @@ function print()
 
     <PageHeader
     icon="📂"
-    title="Currency Detail"
-    subtitle="View currency information."
+    title="Product Attribute Value Detail"
+    subtitle="View product attribute value information."
     />
 
     <ActionBar />
@@ -87,58 +87,45 @@ function print()
         <Card
             icon="📂"
             title="General Information"
-            description="Basic information about this currency."
+            description="Basic information about this prduct attribut value."
         >
             <!-- General Information -->
              <DetailRow
                     label="Code"
-                    :value="currency.code"
+                    :value="productAttributeValue.code"
                 />
 
                 <DetailRow
-                    label="Name"
-                    :value="currency.name"
+                    label="Value"
+                    :value="productAttributeValue.value"
                 />
 
                 <DetailRow
-                    label="Symbol"
-                    :value="currency.symbol"
+                    label="Display Display Value"
+                    :value="productAttributeValue.display_value"
                 />
 
                 <DetailRow
-                    label="Decimal Places"
-                    :value="currency.decimal_places"
+                    label="Color Code"
+                    :value="productAttributeValue.color_code"
                 />
-
+         
+          
                 <DetailRow
-                    label="Exchange Rate"
-                    :value="formatDecimal(currency.exchange_rate)"
+                    label="Sort Order"
+                    :value="productAttributeValue.sort_order"
                 />
-               
-              
-                <DetailRow label="Base Currency">
-                    <span
-                        :class="[
-                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
-                            currency.base_currency
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                        ]"
-                    >
-                        {{ currency.base_currency ? '🟢 Active' : '🔴 Inactive' }}
-                    </span>
-                </DetailRow>
-                          
-               <DetailRow label="Status">
+           
+              <DetailRow label="Status">
                 <span
                     :class="[
                         'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
-                        currency.is_active
+                        productAttributeValue.is_active
                             ? 'bg-green-100 text-green-700'
                             : 'bg-red-100 text-red-700'
                     ]"
                 >
-                    {{ currency.is_active ? '🟢 Active' : '🔴 Inactive' }}
+                    {{ productAttributeValue.is_active ? '🟢 Active' : '🔴 Inactive' }}
                 </span>
             </DetailRow>
         </Card>
@@ -151,22 +138,22 @@ function print()
             <!-- System Information -->
              <DetailRow
                 label="Created By"
-                :value="currency.creator?.name ?? '-'"
+                :value="productAttributeValue.creator?.name ?? '-'"
             />
 
             <DetailRow
                 label="Created At"
-                :value="formatDate(currency.created_at)"
+                :value="formatDate(productAttributeValue.created_at)"
             />
 
             <DetailRow
                 label="Updated By"
-                :value="currency.updater?.name ?? '-'"
+                :value="productAttributeValue.updater?.name ?? '-'"
             />
 
             <DetailRow
                 label="Updated At"
-                :value="formatDate(currency.updated_at)"
+                :value="formatDate(productAttributeValue.updated_at)"
             />
         </Card>
 
@@ -188,7 +175,7 @@ function print()
                     text-gray-700
                 "
             >
-                {{ currency.description || '-' }}
+                {{ productAttributeValue.description || '-' }}
             </div>
 
         </Card>

@@ -51,3 +51,19 @@ export function warning(message)
 
     })
 }
+export function handleFlash(page)
+{
+    const flash = page.props.flash
+
+    if (flash?.success) {
+        success(flash.success)
+    }
+
+    if (flash?.error) {
+        error(flash.error)
+    }
+
+    if (flash?.warning) {
+        warning(flash.warning)
+    }
+}

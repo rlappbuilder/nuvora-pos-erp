@@ -109,26 +109,47 @@ function print()
                     label="Input Type"
                     :value="productAttribute.input_type"
                 />
-                <DetailRow
-                    label="Required"
-                    :value="productAttribute.is_required ? 'Yes' : 'No'"
-                    :icon="productAttribute.is_required ? '✅' : '❌'"
-                />
-                <DetailRow
-                    label="Variant"
-                    :value="productAttribute.is_variant ? 'Yes' : 'No'"
-                    :icon="productAttribute.is_variant ? '✅' : '❌'"
-                />
+               <DetailRow label="Required">
+                    <span
+                        :class="[
+                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+                            productAttribute.is_required
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                        ]"
+                    >
+                        {{ productAttribute.is_required ? '✓ Yes' : '✕ No' }}
+                    </span>
+                </DetailRow>
+             <DetailRow label="Variant">
+                <span
+                    :class="[
+                        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+                        productAttribute.is_variant
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                    ]"
+                >
+                    {{ productAttribute.is_variant ? '✓ Yes' : '✕ No' }}
+                </span>
+            </DetailRow>
                 <DetailRow
                     label="Sort Order"
                     :value="productAttribute.sort_order"
                 />
            
-                <DetailRow
-                    label="Status"
-                    :value="productAttribute.is_active ? 'Active' : 'Inactive'"
-                    :icon="productAttribute.is_active ? '🟢' : '🔴'"
-                />
+              <DetailRow label="Status">
+                <span
+                    :class="[
+                        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+                        productAttribute.is_active
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                    ]"
+                >
+                    {{ productAttribute.is_active ? '🟢 Active' : '🔴 Inactive' }}
+                </span>
+            </DetailRow>
         </Card>
 
         <Card
@@ -139,7 +160,7 @@ function print()
             <!-- System Information -->
              <DetailRow
                 label="Created By"
-                :value="productAttribute.created_by?.name ?? '-'"
+                :value="productAttribute.creator?.name ?? '-'"
             />
 
             <DetailRow
@@ -149,7 +170,7 @@ function print()
 
             <DetailRow
                 label="Updated By"
-                :value="productAttribute.updated_by?.name ?? '-'"
+                :value="productAttribute.updater?.name ?? '-'"
             />
 
             <DetailRow
