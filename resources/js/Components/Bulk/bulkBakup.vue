@@ -1,23 +1,18 @@
 <script setup>
-defineOptions({
-    inheritAttrs: false,
-})
+
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
-import { CheckCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+
 const open = ref(false)
 const dropdown = ref(null)
-
 const props = defineProps({
 
     count: {
-        type: Number,
-        default: 0,
-    },
 
-    disabled: {
-        type: Boolean,
-        default: false,
+        type: Number,
+
+        default: 0,
+
     },
 
 })
@@ -29,8 +24,6 @@ const emit = defineEmits([
 
 function toggle()
 {
-    if (props.disabled) return
-
     open.value = !open.value
 }
 
@@ -71,25 +64,33 @@ onBeforeUnmount(() => {
 
 <template>
 
-<!--<div
-    ref="dropdown"
-    class="relative w-full lg:w-auto"
->
--->
 <div
     ref="dropdown"
-    class="relative w-full lg:w-auto"
-    :class="$attrs.class"
+    class="relative"
 >
 
         <BaseButton
-    variant="secondary"
-    class="w-full lg:w-36"
-    :disabled="props.disabled"
-    @click.stop="toggle"
->
-    Bulk ({{ props.count }})
-</BaseButton>
+            @click.stop="toggle"
+        >
+
+            Bulk Action
+
+            <span
+                v-if="props.count"
+                class="
+                    ml-1
+                    rounded-full
+                    bg-white/20
+                    px-2
+                    py-0.5
+                    text-xs
+                    font-semibold
+                "
+            >
+                {{ props.count }}
+            </span>
+
+        </BaseButton>
 
     <div
         v-if="open"

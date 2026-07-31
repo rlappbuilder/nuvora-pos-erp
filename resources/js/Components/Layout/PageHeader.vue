@@ -1,302 +1,291 @@
-
-<script setup>
+Nah ini ketua, <script setup>
 
 import { computed } from 'vue'
+import { ChevronRightIcon } from '@heroicons/vue/24/solid'
 
 const props = defineProps({
 
-    breadcrumb: {
+breadcrumb: {  
 
-        type: Array,
+    type: Array,  
 
-        default: () => []
+    default: () => []  
 
-    },
+},  
 
-    title: {
+title: {  
 
-        type: String,
+    type: String,  
 
-        required: true
-    },
+    required: true  
+},  
 
-    subtitle: {
+subtitle: {  
 
-        type: String,
+    type: String,  
 
-        default: ''
+    default: ''  
 
-    },
+},  
 
-    icon: {
+icon: {  
 
-    type: String,
+type: String,  
 
-    default: ''
+default: ''
 
 },
 
-    badge: {
+badge: {  
 
-        type: String,
+    type: String,  
 
-        default: ''
+    default: ''  
 
-    },
+},  
 
-    sticky: {
+sticky: {  
 
-        type: Boolean,
+    type: Boolean,  
 
-        default: false
+    default: false  
 
-    }
+}
 
 })
 
 const hasBreadcrumb = computed(
 
-    () => props.breadcrumb.length > 0
+() => props.breadcrumb.length > 0
 
 )
 
 const wrapperClass = computed(
 
-    () => [
+() => [  
 
-        'mb-6',
+    'mb-6',  
 
-        'border-b',
+    'border-b',  
 
-        'border-gray-200',
+    'border-gray-200',  
 
-        'bg-white',
+    'bg-white',  
 
-        'pb-6',
+    'pb-6',  
 
-       props.sticky
+   props.sticky  
 
-        ? 'sticky top-0 z-20 backdrop-blur bg-white/90'
+    ? 'sticky top-0 z-20 backdrop-blur bg-white/90'  
 
-        : ''
+    : ''  
 
-    ]
+]
 
 )
 
-</script>
+</script>  <template>  <div  :class="[  
 
-<template>
+    wrapperClass,  
 
-<div
+    'rounded-2xl',  
 
-      :class="[
+    'border',  
 
-        wrapperClass,
+    'border-gray-200',  
 
-        'rounded-2xl',
+    'bg-white',  
 
-        'border',
+    'shadow-sm',  
 
-        'border-gray-200',
+   'px-5',  
 
-        'bg-white',
+    'py-6',  
 
-        'shadow-sm',
+    'lg:px-8',  
 
-       'px-5',
+    'lg:py-7'  
 
-        'py-6',
+]"
 
-        'lg:px-8',
+> 
 
-        'lg:py-7'
+<div  
 
-    ]"
+    class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"  
 
->
+>  
 
-    <div
+    <!-- LEFT -->  
 
-        class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
+    <div class="min-w-0 flex-1">  
 
-    >
+        <!-- Breadcrumb -->  
 
-        <!-- LEFT -->
+        <nav  
 
-        <div class="min-w-0 flex-1">
+            v-if="hasBreadcrumb"  
 
-            <!-- Breadcrumb -->
+           class="  
+                    mb-5  
+                    flex  
+                    flex-wrap  
+                    items-center  
+                    gap-2  
+                    text-sm  
+                    font-medium  
+                    text-gray-500  
+                    "  
+                                >  
 
-            <nav
+            <template  
 
-                v-if="hasBreadcrumb"
+                v-for="(  
 
-               class="
-                        mb-5
-                        flex
-                        flex-wrap
-                        items-center
-                        gap-2
-                        text-sm
-                        font-medium
-                        text-gray-500
-                        "
-                                    >
+                    item,  
 
-                <template
+                    index  
 
-                    v-for="(
+                ) in breadcrumb"  
 
-                        item,
+                :key="index"  
 
-                        index
+            >  
 
-                    ) in breadcrumb"
+               <span  
+                    :class="[  
+                        index === breadcrumb.length - 1  
+                            ? 'font-semibold text-gray-900'  
+                            : 'text-gray-500'  
+                    ]"  
+                >  
+                    {{ item }}  
+                </span>  
 
-                    :key="index"
+                <ChevronRightIcon  
+                    v-if="index < breadcrumb.length - 1"  
+                    class="h-4 w-4 text-gray-400"  
+                />  
 
-                >
+            </template>  
 
-                    <span>
+        </nav>  
 
-                        {{ item }}
+        <!-- Title -->  
 
-                    </span>
+        <div  
 
-                    <span
+           class="  
+                    flex  
+                    flex-wrap  
+                    items-center  
+                    gap-4  
+                "  
 
-                        v-if="index < breadcrumb.length - 1"
+        >  
 
-                        class="text-gray-300"
+           <div  
+                    class="  
+                        flex  
+                        h-12  
+                        w-12  
+                        items-center  
+                        justify-center  
+                        rounded-xl  
+                        bg-primary-50  
+                        text-primary-600  
+                        shrink-0  
+                    "  
+                >  
 
-                    >
+                    <slot name="icon">  
 
-                        /
+                        <span  
+                            v-if="icon"  
+                            class="text-2xl"  
+                        >  
+                            {{ icon }}  
+                        </span>  
 
-                    </span>
+                    </slot>  
 
-                </template>
+                </div>  
 
-            </nav>
+            <div>  
 
-            <!-- Title -->
+                <div  
 
-            <div
+                    class="flex flex-wrap items-center gap-2"  
 
-               class="
-                        flex
-                        flex-wrap
-                        items-center
-                        gap-4
-                    "
+                >  
 
-            >
+                    <h1  
 
-               <div
-                        class="
-                            flex
-                            h-12
-                            w-12
-                            items-center
-                            justify-center
-                            rounded-xl
-                            bg-primary-50
-                            text-primary-600
-                            shrink-0
-                        "
-                    >
+                       class="  
+                                text-2xl  
+                                font-bold  
+                                tracking-tight  
+                                text-gray-900  
+                                sm:text-3xl  
+                            "  
+                    >  
 
-                        <slot name="icon">
+                        {{ title }}  
 
-                            <span
-                                v-if="icon"
-                                class="text-2xl"
-                            >
-                                {{ icon }}
-                            </span>
+                    </h1>  
 
-                        </slot>
+                    <span  
 
-                    </div>
+                        v-if="badge"  
 
-                <div>
+                        class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700"  
 
-                    <div
+                    >  
 
-                        class="flex flex-wrap items-center gap-2"
+                        {{ badge }}  
 
-                    >
+                    </span>  
 
-                        <h1
+                </div>  
 
-                           class="
-                                    text-2xl
-                                    font-bold
-                                    tracking-tight
-                                    text-gray-900
-                                    sm:text-3xl
-                                "
-                        >
+                <p  
 
-                            {{ title }}
+                    v-if="subtitle"  
 
-                        </h1>
+                    class="  
+                            mt-2  
+                            text-sm  
+                            leading-relaxed  
+                            text-gray-500  
+                        "  
+                >  
 
-                        <span
+                    {{ subtitle }}  
 
-                            v-if="badge"
+                </p>  
 
-                            class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700"
+            </div>  
 
-                        >
+        </div>  
 
-                            {{ badge }}
+    </div>  
 
-                        </span>
+    <!-- RIGHT -->  
 
-                    </div>
+    <div  
 
-                    <p
+        class="flex flex-wrap items-center justify-end gap-3"  
 
-                        v-if="subtitle"
+    >  
 
-                        class="
-                                mt-2
-                                text-sm
-                                leading-relaxed
-                                text-gray-500
-                            "
-                    >
+        <slot  
 
-                        {{ subtitle }}
+            name="actions"  
 
-                    </p>
+        />  
 
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- RIGHT -->
-
-        <div
-
-            class="flex flex-wrap items-center justify-end gap-3"
-
-        >
-
-            <slot
-
-                name="actions"
-
-            />
-
-        </div>
-
-    </div>
+    </div>  
 
 </div>
 
-</template>
+</div>  </template>

@@ -2,6 +2,12 @@
 
 import { computed } from 'vue'
 
+defineOptions({
+
+    inheritAttrs: false
+
+})
+
 const props = defineProps({
 
     variant: {
@@ -70,15 +76,19 @@ const variantClass = computed(() => {
 
         case 'danger':
 
-            return 'bg-red-600 text-white hover:bg-red-700'
+            return 'border border-red-600 bg-white text-red-600 hover:bg-red-50'
 
         case 'success':
 
-            return 'bg-green-600 text-white hover:bg-green-700'
+           return 'border border-emerald-600 bg-white text-emerald-600 hover:bg-emerald-50'
 
         case 'warning':
 
-            return 'bg-amber-500 text-white hover:bg-amber-600'
+          return 'border border-amber-500 bg-white text-amber-600 hover:bg-amber-50'
+
+        case 'info':
+
+        return 'border border-sky-600 bg-white text-sky-600 hover:bg-sky-50'
 
         default:
 
@@ -123,6 +133,12 @@ const buttonClass = computed(() => [
     'font-medium',
 
     'transition-all',
+
+    'shadow-sm',
+
+    'hover:shadow',
+
+    'active:scale-[0.98]',
 
     'duration-200',
 
@@ -171,7 +187,7 @@ function onClick(event) {
 </script>
 <template>
 
-<button
+<button v-bind="$attrs"
 
     :type="type"
 
@@ -183,7 +199,13 @@ function onClick(event) {
 
     "
 
-:class="buttonClass" 
+:class="[
+
+    buttonClass,
+
+    $attrs.class
+
+]" 
 
     @click="onClick"
 
@@ -201,6 +223,7 @@ function onClick(event) {
             h-4
             w-4
             animate-spin
+            shrink-0
         "
 
         viewBox="0 0 24 24"
@@ -245,9 +268,11 @@ function onClick(event) {
 
     <slot
 
-        name="icon"
+    v-if="!loading"
 
-    />
+    name="icon"
+
+/>
 
     <!-- ====================================== -->
     <!-- Text -->

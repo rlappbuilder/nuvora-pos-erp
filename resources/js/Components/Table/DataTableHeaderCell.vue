@@ -71,15 +71,17 @@ const cellClass = computed(() => [
 
     'py-4',
 
-    'text-sm',
+    'text-xs',
 
-    'font-semibold',
+    'font-bold',
 
     'tracking-wider',
 
-    'text-gray-600',
+    'uppercase',
 
-    'bg-white',
+    'text-slate-700',
+
+    'bg-slate-100',
 
     props.align === 'center'
         ? 'text-center'

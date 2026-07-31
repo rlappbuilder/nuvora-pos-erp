@@ -313,25 +313,17 @@ watch(
 
 function openDropdown()
 {
-
     if (
-
         props.disabled ||
-
         props.readonly
-
     ) {
-
         return
-
     }
 
     highlighted.value = 0
-
     open.value = true
-
+    search.value = ''
 }
-
 function closeDropdown()
 {
 
@@ -602,20 +594,17 @@ const showClearButton = computed(
 <template>
 
 <div
-
     ref="wrapper"
-
     class="relative w-full"
-
 >
 
     <!-- Input -->
-
+    
     <div
 
         class="relative"
 
-    >
+    > 
 
         <input
 
@@ -748,65 +737,65 @@ const showClearButton = computed(
                 >
                   <div
 
-    v-if="loading"
+                v-if="loading"
 
-    class="
-        flex
-        items-center
-        gap-3
-        px-4
-        py-3
-        text-sm
-        text-gray-500
-    "
+                class="
+                    flex
+                    items-center
+                    gap-3
+                    px-4
+                    py-3
+                    text-sm
+                    text-gray-500
+                "
 
->
+            >
 
-    <svg
+                <svg
 
-        class="
-            h-4
-            w-4
-            animate-spin
-        "
+                    class="
+                        h-4
+                        w-4
+                        animate-spin
+                    "
 
-        viewBox="0 0 24 24"
+                    viewBox="0 0 24 24"
 
-        fill="none"
+                    fill="none"
 
-    >
+                >
 
-        <circle
+                    <circle
 
-            cx="12"
+                        cx="12"
 
-            cy="12"
+                        cy="12"
 
-            r="10"
+                        r="10"
 
-            stroke="currentColor"
+                        stroke="currentColor"
 
-            stroke-width="4"
+                        stroke-width="4"
 
-            opacity=".2"
+                        opacity=".2"
 
-        />
+                    />
 
-        <path
+                    <path
 
-            d="M22 12a10 10 0 00-10-10"
+                        d="M22 12a10 10 0 00-10-10"
 
-            stroke="currentColor"
+                        stroke="currentColor"
 
-            stroke-width="4"
+                        stroke-width="4"
 
-        />
+                    />
 
-    </svg>
+                </svg>
 
-    Loading...
+                Loading...
 
-</div>
+            </div>
 
                        <div
 
@@ -868,105 +857,105 @@ const showClearButton = computed(
 
                         </div>
 
-                    </div>
+                 </div>
                 <button
 
-            v-for="(
+                    v-for="(
 
-                option,
+                        option,
 
-                index
+                        index
 
-            )
+                    )
 
-            in
+                    in
 
-            filteredOptions"
+                    filteredOptions"
 
-            :key="
+                    :key="
 
-                optionValue(
+                        optionValue(
 
-                    option
+                            option
 
-                )
+                        )
 
-            "
+                    "
 
-            type="button"
+                        type="button"
 
-            class="
-                flex
-                w-full
-                items-center
-                justify-between
-                px-4
-                py-2.5
-                text-left
-                text-sm
-                transition
-            "
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            justify-between
+                            px-4
+                            py-2.5
+                            text-left
+                            text-sm
+                            transition
+                        "
 
-            :class="[
+                        :class="[
 
-                highlighted === index
+                            highlighted === index
 
-                    ? 'bg-indigo-50'
+                                ? 'bg-indigo-50'
 
-                    : '',
+                                : '',
 
-                selected &&
+                            selected &&
 
-                optionValue(option)
+                            optionValue(option)
 
-                ===
+                            ===
 
-                optionValue(selected)
+                            optionValue(selected)
 
-                    ? 'font-semibold text-indigo-600'
+                                ? 'font-semibold text-indigo-600'
 
-                    : ''
+                                : ''
 
-            ]"
+                        ]"
 
-            @mouseenter="
+                        @mouseenter="
 
-                highlighted = index
+                            highlighted = index
 
-            "
+                        "
 
-            @click="
+                        @click="
 
-                selectOption(
+                            selectOption(
 
-                    option
+                                option
 
-                )
+                            )
 
-            "
+                        "
 
-        >
+                    >
 
-            <slot
+                    <slot
 
-                name="option"
+                        name="option"
 
-                :option="option"
+                        :option="option"
 
-            >
+                    >
 
-                {{ optionLabel(option) }}
+                        {{ optionLabel(option) }}
 
-            </slot>
+                    </slot>
 
-        </button>
-        </div>
-        <ValidationError
+                </button>
+            </div>
+                <ValidationError
 
-        :message="error"
+                :message="error"
 
-    />
+            />
 
-</div>
+         </div>
 
 </template>

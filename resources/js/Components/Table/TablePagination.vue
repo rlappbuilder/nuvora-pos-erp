@@ -126,7 +126,7 @@ function changePerPage(event)
 
         <span class="text-sm text-gray-600">
 
-            Rows per page
+            Rows
 
         </span>
 

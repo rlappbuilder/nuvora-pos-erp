@@ -1,36 +1,19 @@
 <script setup>
-defineOptions({
-    inheritAttrs: false,
-})
+
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
-import { CheckCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+
 const open = ref(false)
 const dropdown = ref(null)
 
-const props = defineProps({
-
-    count: {
-        type: Number,
-        default: 0,
-    },
-
-    disabled: {
-        type: Boolean,
-        default: false,
-    },
-
-})
 const emit = defineEmits([
-    'delete',
-    'activate',
-    'deactivate',
+    'excel',
+    'pdf',
+    'csv',
 ])
 
 function toggle()
 {
-    if (props.disabled) return
-
     open.value = !open.value
 }
 
@@ -71,25 +54,19 @@ onBeforeUnmount(() => {
 
 <template>
 
-<!--<div
-    ref="dropdown"
-    class="relative w-full lg:w-auto"
->
--->
 <div
+ 
     ref="dropdown"
     class="relative w-full lg:w-auto"
-    :class="$attrs.class"
 >
 
-        <BaseButton
-    variant="secondary"
-    class="w-full lg:w-36"
-    :disabled="props.disabled"
-    @click.stop="toggle"
->
-    Bulk ({{ props.count }})
-</BaseButton>
+    <BaseButton
+        variant="secondary"
+        class="w-full"
+        @click.stop="toggle"
+    >
+        Export
+    </BaseButton>
 
     <div
         v-if="open"
@@ -114,14 +91,14 @@ onBeforeUnmount(() => {
                 px-4
                 py-3
                 text-left
-                hover:bg-red-50
+                hover:bg-gray-50
             "
             @click="
-                emit('delete');
+                emit('excel');
                 close();
             "
         >
-            🗑 Delete
+            📗 Export Excel
         </button>
 
         <button
@@ -130,14 +107,14 @@ onBeforeUnmount(() => {
                 px-4
                 py-3
                 text-left
-                hover:bg-green-50
+                hover:bg-gray-50
             "
             @click="
-                emit('activate');
+                emit('pdf');
                 close();
             "
         >
-            ✅ Activate
+            📕 Export PDF
         </button>
 
         <button
@@ -146,14 +123,14 @@ onBeforeUnmount(() => {
                 px-4
                 py-3
                 text-left
-                hover:bg-yellow-50
+                hover:bg-gray-50
             "
             @click="
-                emit('deactivate');
+                emit('csv');
                 close();
             "
         >
-            🚫 Deactivate
+            📄 Export CSV
         </button>
 
     </div>

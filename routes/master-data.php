@@ -10,7 +10,7 @@ use App\Http\Controllers\MasterData\SizeController;
 use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\BranchController;
 use App\Http\Controllers\MasterData\WarehouseController;
-use App\Http\Controllers\MasterData\ProductController;
+use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\MasterData\SupplierController;
 use App\Http\Controllers\MasterData\CustomerController;
 use App\Http\Controllers\MasterData\TaxController;
@@ -179,17 +179,48 @@ Route::middleware(
    
         /*
         
+                /*
         |--------------------------------------------------------------------------
         | Products
         |--------------------------------------------------------------------------
         */
 
+        Route::prefix('products')
+            ->name('products.')
+                ->group(function () {
+                 Route::get(
+                    'preview-code',
+                    [ProductController::class, 'previewCode']
+                )->name('preview-code');
+                Route::get(
+                    'generate-sku',
+                    [ProductController::class, 'generateSku']
+                )->name('generate-sku');
+
+                Route::get(
+                    '{product}/duplicate',
+                    [ProductController::class, 'duplicate']
+                )->name('duplicate');
+
+                Route::delete(
+                    'bulk-delete',
+                    [ProductController::class, 'bulkDelete']
+                )->name('bulk-delete');
+
+                Route::patch(
+                    'bulk-activate',
+                    [ProductController::class, 'bulkActivate']
+                )->name('bulk-activate');
+
+                Route::patch(
+                    'bulk-deactivate',
+                    [ProductController::class, 'bulkDeactivate']
+                )->name('bulk-deactivate');
+            });
+
         Route::resource(
-
             'products',
-
             ProductController::class
-
         );
         /*
         |--------------------------------------------------------------------------
