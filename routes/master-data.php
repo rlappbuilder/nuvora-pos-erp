@@ -17,6 +17,8 @@ use App\Http\Controllers\MasterData\TaxController;
 use App\Http\Controllers\MasterData\CurrencyController;
 use App\Http\Controllers\Product\ProductAttributeController;
 use App\Http\Controllers\Product\ProductAttributeValueController;
+use App\Http\Controllers\Product\ProductVariantController;
+use App\Http\Controllers\Product\ProductVariantUnitController;
 Route::middleware(
 
     'auth'
@@ -222,7 +224,98 @@ Route::middleware(
             'products',
             ProductController::class
         );
+        
         /*
+        |--------------------------------------------------------------------------
+        | Product Variant
+        |--------------------------------------------------------------------------
+        */
+            Route::prefix('product-variants')
+                ->name('product-variants.')
+                ->group(function () {
+
+                Route::get(
+                    'preview/{product}',
+                    [ProductVariantController::class, 'preview']
+                )->name('preview');
+                    Route::delete(
+                        'bulk-delete',
+                        [ProductVariantController::class, 'bulkDelete']
+                    )->name('bulk-delete');
+
+                    Route::patch(
+                        'bulk-activate',
+                        [ProductVariantController::class, 'bulkActivate']
+                    )->name('bulk-activate');
+
+                    Route::patch(
+                        'bulk-deactivate',
+                        [ProductVariantController::class, 'bulkDeactivate']
+                    )->name('bulk-deactivate');
+
+                });
+
+            Route::resource(
+                'product-variants',
+                ProductVariantController::class
+            );
+
+        /*
+
+        /** end product Variant */
+          /*
+        
+        |--------------------------------------------------------------------------
+        | Product Attributes
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('product-variant-units')
+        ->name('product-variant-units.')
+        ->group(function () {
+
+            Route::get(
+                '/available-units/{productVariant}',
+                [ProductVariantUnitController::class, 'availableUnits']
+            )->name('available-units');
+
+            Route::get(
+                '/',
+                [ProductVariantUnitController::class, 'index']
+            )->name('index');
+
+            Route::post(
+                '/',
+                [ProductVariantUnitController::class, 'store']
+            )->name('store');
+
+            Route::put(
+                '/{productVariantUnit}',
+                [ProductVariantUnitController::class, 'update']
+            )->name('update');
+
+            Route::delete(
+                '/{productVariantUnit}',
+                [ProductVariantUnitController::class, 'destroy']
+            )->name('destroy');
+
+            Route::post(
+                '/bulk-delete',
+                [ProductVariantUnitController::class, 'bulkDelete']
+            )->name('bulk-delete');
+
+            Route::post(
+                '/bulk-activate',
+                [ProductVariantUnitController::class, 'bulkActivate']
+            )->name('bulk-activate');
+
+            Route::post(
+                '/bulk-deactivate',
+                [ProductVariantUnitController::class, 'bulkDeactivate']
+            )->name('bulk-deactivate');
+
+        });
+        /*
+        
         |--------------------------------------------------------------------------
         | Product Attributes
         |--------------------------------------------------------------------------

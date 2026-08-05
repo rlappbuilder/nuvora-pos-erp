@@ -7,6 +7,7 @@ import FormCheckbox from '@/Components/Form/FormCheckbox.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AutoGenerateInput from '@/Components/Form/AutoGenerateInput.vue'
+import CheckBoxGroup from '@/Components/Form/CheckBoxGroup.vue'
 const props = defineProps({
 
     form: {
@@ -30,6 +31,10 @@ const props = defineProps({
     },
 
     units: {
+        type: Array,
+        default: () => [],
+    },
+        attributes: {
         type: Array,
         default: () => [],
     },
@@ -171,6 +176,21 @@ const emit = defineEmits([
                         placeholder="0"
                     />
                     </FormField>
+        </FormSection>
+        <FormSection icon="📦"
+            title="variant Attributes"
+            description="Pilih attribute yang digunakan untuk membentuk Product Variant."
+            :columns="1" 
+        >                 
+
+                <CheckBoxGroup
+                    v-model="form.attribute_ids"
+                    :options="attributes"
+                    label-key="display_name"
+                    value-key="id"
+                    :error="form.errors.attribute_ids"
+                />
+
         </FormSection>
         <!-- inventory setting-->
          <FormSection

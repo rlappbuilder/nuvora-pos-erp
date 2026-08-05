@@ -5,40 +5,53 @@ namespace App\Models\Product;
 use App\Models\User;
 use App\Models\MasterData\Company;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Product\ProductAttribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-class ProductAttributeValue extends Model
+use App\Models\Product\ProductVariantUnit;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductVariant extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fillable
+    |--------------------------------------------------------------------------
+    */
+
     protected $fillable = [
-        'company_id',
-        'product_attribute_id',
+        
+        'product_id',
 
-        'code',
-        'value',
-        'display_value',
+        'sku',
+        'barcode',
 
-        'color_code',
+        'name',
+        'slug',
 
-        'sort_order',
-
-        'description',
-
+        'is_default',
         'is_active',
+        'sort_order',
 
         'created_by',
         'updated_by',
         'deleted_by',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Casts
+    |--------------------------------------------------------------------------
+    */
+
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_default' => 'boolean',
+        'is_active'  => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     /*
@@ -52,9 +65,14 @@ class ProductAttributeValue extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function productAttribute(): BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(ProductAttribute::class);
+        return $this->belongsTo(Product::class);
+    }
+
+    public function values(): HasMany
+    {
+        return $this->hasMany(ProductVariantValue::class);
     }
 
     public function creator(): BelongsTo
@@ -78,18 +96,21 @@ class ProductAttributeValue extends Model
     |--------------------------------------------------------------------------
     */
 
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
-        return $query->when($search, function (Builder $query) use ($search) {
+        if (blank($search)) {
+            return $query;
+        }
 
-            $query->where(function (Builder $query) use ($search) {
-
-                $query->where('code', 'like', "%{$search}%")
-                    ->orWhere('value', 'like', "%{$search}%")
-                    ->orWhere('display_value', 'like', "%{$search}%");
-
-            });
-
+        return $query->where(function (Builder $query) use ($search) {
+            $query->where('sku', 'like', "%{$search}%")
+                ->orWhere('barcode', 'like', "%{$search}%")
+                ->orWhere('name', 'like', "%{$search}%");
         });
     }
 
@@ -106,12 +127,12 @@ class ProductAttributeValue extends Model
 
     public function canDelete(): bool
     {
-        return !$this->isUsed();
+        return ! $this->isUsed();
     }
 
     public function canActivate(): bool
     {
-        return !$this->is_active;
+        return ! $this->is_active;
     }
 
     public function canDeactivate(): bool
@@ -132,31 +153,10 @@ class ProductAttributeValue extends Model
             'is_active' => false,
         ]);
     }
-
-    public function duplicateData(): self
-    {
-        $duplicate = $this->replicate();
-
-        $duplicate->code = null;
-
-        $duplicate->value = $this->value . ' Copy';
-
-        $duplicate->display_value = $this->display_value . ' Copy';
-
-        $duplicate->created_by = auth()->id();
-
-        $duplicate->updated_by = null;
-
-        $duplicate->save();
-
-        return $duplicate;
-    }
-    public function scopeActive(Builder $query): Builder
+    public function units(): HasMany
 {
-    return $query->where('is_active', true);
-}
-public function variants(): HasMany
-{
-    return $this->hasMany(ProductVariant::class);
+    return $this->hasMany(
+        ProductVariantUnit::class
+    );
 }
 }

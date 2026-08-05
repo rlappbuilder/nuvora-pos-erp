@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 use App\Models\MasterData\Category;
 use App\Models\MasterData\Brand;
 use App\Models\MasterData\Unit;
+use App\Models\Product\ProductAttribute;
+use App\Models\Product\ProductAttributeAssignment;
 class ProductController extends Controller
+
 {
     protected string $module = 'Product';
     protected CodeGeneratorService $codeGenerator;
@@ -162,30 +165,53 @@ $statistics = [
      */
   public function store(StoreProductRequest $request)
 {
-   $data = $request->validated();
+    $data = $request->validated();
 
     $data['code'] = $this->codeGenerator->next($this->module);
     $data['slug'] = Product::generateSlug($data['name']);
     $data['created_by'] = auth()->id();
 
     try {
+
         DB::beginTransaction();
 
-        $data['created_by'] = auth()->id();
+        $product = Product::create($data);
 
-        Product::create($data);
+        foreach ($data['attribute_ids'] ?? [] as $attributeId) {
+
+            ProductAttributeAssignment::create([
+
+                'company_id' => $product->company_id,
+
+                'product_id' => $product->id,
+
+                'product_attribute_id' => $attributeId,
+
+                'created_by' => auth()->id(),
+
+            ]);
+
+        }
 
         DB::commit();
 
         if ($request->boolean('create_another')) {
+
             return redirect()
                 ->route('products.create')
-                ->with('success', 'Product berhasil ditambahkan.');
+                ->with(
+                    'success',
+                    'Product berhasil ditambahkan.'
+                );
+
         }
 
         return redirect()
             ->route('products.index')
-            ->with('success', 'Product berhasil ditambahkan.');
+            ->with(
+                'success',
+                'Product berhasil ditambahkan.'
+            );
 
     } catch (\Throwable $e) {
 
@@ -195,7 +221,11 @@ $statistics = [
 
         return back()
             ->withInput()
-            ->with('error', 'Failed to Save Product.');
+            ->with(
+                'error',
+                'Failed to Save Product.'
+            );
+
     }
 }
     /**
@@ -243,7 +273,7 @@ $statistics = [
     /**
      * Update the specified resource.
      */
-      public function update(
+public function update(
     UpdateProductRequest $request,
     Product $product
 ) {
@@ -257,23 +287,58 @@ $statistics = [
     }
 
     try {
+
         DB::beginTransaction();
 
         $data['updated_by'] = auth()->id();
 
         $product->update($data);
 
+        ProductAttributeAssignment::where(
+            'product_id',
+            $product->id
+        )->update([
+            'deleted_by' => auth()->id(),
+        ]);
+
+        ProductAttributeAssignment::where(
+            'product_id',
+            $product->id
+        )->delete();
+
+        foreach ($data['attribute_ids'] ?? [] as $attributeId) {
+
+            ProductAttributeAssignment::create([
+
+                'company_id' => $product->company_id,
+
+                'product_id' => $product->id,
+
+                'product_attribute_id' => $attributeId,
+
+                'created_by' => auth()->id(),
+
+            ]);
+
+        }
+
         DB::commit();
 
         return redirect()
             ->route('products.index')
-            ->with('success', 'Product berhasil diperbarui.');
+            ->with(
+                'success',
+                'Product berhasil diperbarui.'
+            );
+
     } catch (\Throwable $e) {
+
         DB::rollBack();
 
         report($e);
 
-        throw $e; // sementara untuk melihat error asli
+        throw $e;
+
     }
 }
     /**
@@ -483,6 +548,15 @@ $statistics = [
         'categories' => Category::orderBy('name')->get(),
         'brands' => Brand::orderBy('name')->get(),
         'units' => Unit::orderBy('name')->get(),
+
+    'attributes' => ProductAttribute::query()
+        ->variant()
+        ->active()
+        ->orderBy('sort_order')
+        ->orderBy('name')
+        ->get(),
+
+
     ];
 }
 public function generateSku()

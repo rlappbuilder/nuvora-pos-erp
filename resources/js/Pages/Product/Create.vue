@@ -27,6 +27,8 @@ const props = defineProps({
 
     units: Array,
 
+    attributes: Array,
+
     previewCode: String,
 
     duplicate: {
@@ -184,6 +186,7 @@ onBeforeUnmount(() => {
     :categories="categories"
     :brands="brands"
     :units="units"
+    :attributes="attributes"
     :preview-code="previewCode"
     :mode="props.duplicate ? 'duplicate' : 'create'"
     @submit="save"

@@ -93,7 +93,10 @@ class StoreProductRequest extends FormRequest
                 'required',
                 'boolean',
             ],
-
+            'attribute_ids.*' => [
+                'distinct',
+                'exists:product_attributes,id',
+            ],
         ];
     }
     public function attributes(): array

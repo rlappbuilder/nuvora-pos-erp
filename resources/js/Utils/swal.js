@@ -1,53 +1,112 @@
 
 import Swal from 'sweetalert2'
+const Toast = Swal.mixin({
 
+    toast: true,
+
+    position: 'top-end',
+
+    showConfirmButton: false,
+
+    timer: 3000,
+
+    timerProgressBar: true,
+
+    didOpen: (toast) => {
+
+        toast.onmouseenter = Swal.stopTimer
+
+        toast.onmouseleave = Swal.resumeTimer
+
+    },
+
+})
 export function success(message)
 {
-    Swal.fire({
+    Toast.fire({
 
         icon: 'success',
 
-        title: 'Success',
-
-        text: message,
-
-        confirmButtonText: 'OK',
-
-        confirmButtonColor: '#2563eb',
+        title: message,
 
     })
 }
-
-export function error(message)
+export function loading(
+    title = 'Loading...',
+    text = ''
+)
 {
     Swal.fire({
 
+        title,
+
+        text,
+
+        allowOutsideClick: false,
+
+        allowEscapeKey: false,
+
+        showConfirmButton: false,
+
+        didOpen: () => {
+
+            Swal.showLoading()
+
+        },
+
+    })
+}
+export function closeLoading()
+{
+    Swal.close()
+}
+export function error(message)
+{
+    Toast.fire({
+
         icon: 'error',
 
-        title: 'Error',
-
-        text: message,
-
-        confirmButtonText: 'OK',
-
-        confirmButtonColor: '#dc2626',
+        title: message,
 
     })
 }
 
 export function warning(message)
 {
-    Swal.fire({
+    Toast.fire({
 
         icon: 'warning',
 
-        title: 'Warning',
+        title: message,
 
-        text: message,
+    })
+}
+export async function confirmRegenerate(
+    variantsCount
+)
+{
+    return Swal.fire({
 
-        confirmButtonText: 'OK',
+        icon: 'warning',
 
-        confirmButtonColor: '#d97706',
+        title: 'Regenerate Variants?',
+
+        html: `
+            This product already has
+            <b>${variantsCount}</b> variant(s).<br><br>
+
+            Regenerating will replace all existing variants.
+        `,
+
+        showCancelButton: true,
+
+        confirmButtonText: 'Regenerate',
+
+        cancelButtonText: 'Cancel',
+
+        confirmButtonColor: '#2563eb',
+
+        cancelButtonColor: '#6b7280',
 
     })
 }

@@ -17,7 +17,11 @@ use App\Models\Inventory\InventoryMovement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasSlug;
+use App\Models\Product\ProductAttribute;
+use App\Models\Product\ProductAttributeAssignment;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Product extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity,HasSlug;
@@ -198,5 +202,22 @@ public static function generateSlug(
     }
 
     return $slug;
+}
+public function variants(): HasMany
+{
+    return $this->hasMany(ProductVariant::class);
+}
+public function attributeAssignments(): HasMany
+{
+    return $this->hasMany(
+        ProductAttributeAssignment::class
+    );
+}
+public function attributes(): BelongsToMany
+{
+    return $this->belongsToMany(
+        ProductAttribute::class,
+        'product_attribute_assignments'
+    );
 }
 }

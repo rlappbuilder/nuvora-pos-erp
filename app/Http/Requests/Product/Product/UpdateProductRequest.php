@@ -93,6 +93,16 @@ class UpdateProductRequest extends FormRequest
                 'boolean',
             ],
 
+            'attribute_ids' => [
+                'nullable',
+                'array',
+            ],
+
+            'attribute_ids.*' => [
+                'distinct',
+                'exists:product_attributes,id',
+            ],
+
         ];
     }
 }

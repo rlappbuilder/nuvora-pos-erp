@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class ProductAttribute extends Model
 {
     use HasFactory;
@@ -150,4 +150,15 @@ class ProductAttribute extends Model
             'is_active' => $this->is_active,
         ];
     }
+public function variants(): HasMany
+{
+    return $this->hasMany(ProductVariant::class);
+}
+public function products(): BelongsToMany
+{
+    return $this->belongsToMany(
+        Product::class,
+        'product_attribute_assignments'
+    );
+}
 }

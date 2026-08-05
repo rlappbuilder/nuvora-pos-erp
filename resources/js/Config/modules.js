@@ -105,6 +105,20 @@ const modules = {
           route: 'product-attribute-values.index',
         permission: 'product-attribute-values.view',
      },
+      productsVariants: {
+       key: 'productsVariants',
+       title: 'Product Variant',
+          icon: CubeIcon,
+          route: 'product-variants.index',
+        permission: 'product-variants.view',
+     },
+     productsVariantUnits: {
+       key: 'productsVariantUnits',
+       title: 'Variant Units',
+          icon: CubeIcon,
+          route: 'product-variant-units.index',
+        permission: 'product-variant-units.view',
+     },
      tax: {
         key: 'tax',
         title: 'Tax',
