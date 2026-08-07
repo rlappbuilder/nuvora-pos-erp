@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-use App\Models\MasterData\Product;
+use App\Models\Product\Product;
 use App\Models\MasterData\Warehouse;
 
 use App\Models\Inventory\ProductStock;

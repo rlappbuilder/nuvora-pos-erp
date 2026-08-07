@@ -7,6 +7,7 @@ import {
     flip,
     shift,
     autoUpdate,
+    
 } from '@floating-ui/vue'
 
 import {
@@ -16,6 +17,7 @@ import {
     EyeIcon,
     DocumentDuplicateIcon,
     ArrowDownTrayIcon,
+    ClockIcon,
 } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits([
@@ -24,6 +26,7 @@ const emit = defineEmits([
     'duplicate',
     'export',
     'delete',
+    'history',
 ])
 const EVENT_NAME = 'nuvora-action-dropdown-close'
 const open = ref(false)
@@ -189,7 +192,26 @@ onBeforeUnmount(() => {
                     <EyeIcon class="h-5 w-5" />
                     View
                 </button>
-
+                <button
+                    class="
+                        flex
+                        w-full
+                        items-center
+                        gap-3
+                        px-4
+                        py-2.5
+                        text-sm
+                        text-gray-700
+                        transition-colors
+                        duration-150
+                        hover:bg-indigo-50
+                        hover:text-indigo-600
+                    "
+                    @click="$emit('history'); close()"
+                >
+                    <ClockIcon class="h-5 w-5" />
+                    Price History
+                </button>
                 <button
                     class="
                         flex

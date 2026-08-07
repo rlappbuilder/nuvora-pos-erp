@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Inventory;
 
 use Inertia\Inertia;
 
-use App\Models\MasterData\Product;
+use App\Models\Product\Product;
 use App\Models\MasterData\Warehouse;
 use App\Models\Inventory\InventoryMovement;
 use App\Models\Inventory\ProductStock;

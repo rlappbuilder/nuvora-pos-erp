@@ -4,7 +4,7 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\MasterData\Product;
+use App\Models\Product\Product;
 use App\Models\MasterData\Warehouse;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;

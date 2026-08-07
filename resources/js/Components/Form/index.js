@@ -63,16 +63,17 @@ from './FormSection.vue'
 
 export {
 
-    default as PageHeader
+    default as PageHeader1
 
 }
 
-from './PageHeader.1vue/index.js'
+from './PageHeader1.vue'
+
 
 export {
 
-    default as StatusBadge
+    default as DatePicker
 
 }
 
-from './StatusBadge.vue'
+from './DatePicker.vue'

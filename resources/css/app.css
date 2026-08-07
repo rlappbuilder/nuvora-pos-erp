@@ -4,3 +4,37 @@ html {
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.flatpickr-calendar {
+
+    z-index: 99999 !important;
+
+    border-radius: 14px;
+
+    border: 1px solid #e5e7eb;
+
+    box-shadow:
+        0 20px 25px -5px rgb(0 0 0 / 10%),
+        0 10px 10px -5px rgb(0 0 0 / 4%);
+}
+
+.flatpickr-day.selected {
+
+    background: #4f46e5;
+
+    border-color: #4f46e5;
+
+}
+
+.flatpickr-day.today {
+
+    border-color: #4f46e5;
+
+}
+
+.flatpickr-months {
+
+    border-bottom: 1px solid #f3f4f6;
+
+}

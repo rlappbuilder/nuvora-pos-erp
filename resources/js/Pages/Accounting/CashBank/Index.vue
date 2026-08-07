@@ -9,20 +9,7 @@ import {
     LoadingOverlay,
 
 } from '@/Components/Feedback'
-/*
 
-|--------------------------------------------------------------------------
-| Layout
-|--------------------------------------------------------------------------
-*/
-
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
-/*
-|--------------------------------------------------------------------------
-| Components
-|--------------------------------------------------------------------------
-*/
 
 import PageHeader from '@/Components/Layout/PageHeader.vue'
 
@@ -48,7 +35,7 @@ import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import {   TablePagination, } from '@/Components/Table'
-import {   ActionBar,} from '@/Components/Layout'
+
 /*
 |--------------------------------------------------------------------------
 | Utils

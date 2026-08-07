@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models\Inventory;
-use App\Models\MasterData\Product;
+use App\Models\Product\Product;
 use App\Models\MasterData\Warehouse;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;

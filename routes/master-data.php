@@ -19,6 +19,7 @@ use App\Http\Controllers\Product\ProductAttributeController;
 use App\Http\Controllers\Product\ProductAttributeValueController;
 use App\Http\Controllers\Product\ProductVariantController;
 use App\Http\Controllers\Product\ProductVariantUnitController;
+use App\Http\Controllers\MasterData\ProductVariantPriceController;
 Route::middleware(
 
     'auth'
@@ -224,7 +225,63 @@ Route::middleware(
             'products',
             ProductController::class
         );
-        
+        /*
+        /*
+            |--------------------------------------------------------------------------
+            | Product Variant Prices
+            |--------------------------------------------------------------------------
+            */
+            Route::get(
+                    'product-variant-prices/check',[
+                        ProductVariantPriceController::class,'checkPrice',
+                    ]
+                )->name('product-variant-prices.check');
+
+            Route::get(
+                'product-variant-prices/latest',
+                [ProductVariantPriceController::class,'latestPrice', ]
+
+              )->name('product-variant-prices.latest');
+                Route::get('product-variant-prices/{productVariantPrice}/history',
+                [ProductVariantPriceController::class,'history',]
+                )->name('product-variant-prices.history'
+                );
+
+            Route::resource(
+                'product-variant-prices',
+                ProductVariantPriceController::class
+            );
+           
+
+            Route::post(
+                'product-variant-prices/bulk-delete',
+                [
+                    ProductVariantPriceController::class,
+                    'bulkDelete',
+                ]
+            )->name(
+                'product-variant-prices.bulk-delete'
+            );
+
+            Route::post(
+                'product-variant-prices/bulk-activate',
+                [
+                    ProductVariantPriceController::class,
+                    'bulkActivate',
+                ]
+            )->name(
+                'product-variant-prices.bulk-activate'
+            );
+
+            Route::post(
+                'product-variant-prices/bulk-deactivate',
+                [
+                    ProductVariantPriceController::class,
+                    'bulkDeactivate',
+                ]
+            )->name(
+                'product-variant-prices.bulk-deactivate'
+            );
         /*
         |--------------------------------------------------------------------------
         | Product Variant

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\MasterData\Product;
+use App\Models\Product\Product;
 use App\Models\Inventory\ProductStock;
 use App\Models\Inventory\StockIssue;
 use App\Models\Inventory\StockIssueDetail;

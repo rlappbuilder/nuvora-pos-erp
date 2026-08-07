@@ -321,6 +321,7 @@ function openDropdown()
     }
 
     highlighted.value = 0
+    console.log('OPEN SEARCHABLE')
     open.value = true
     search.value = ''
 }
@@ -522,44 +523,26 @@ function handleClickOutside(event)
         )
 
     ) {
-
+console.log('CLICK OUTSIDE', event.target)
         closeDropdown()
 
     }
 
 }
 
-onMounted(
+onMounted(() => {
+    document.addEventListener(
+        'mousedown',
+        handleClickOutside
+    )
+})
 
-    () => {
-
-        document.addEventListener(
-
-            'click',
-
-            handleClickOutside
-
-        )
-
-    }
-
-)
-
-onBeforeUnmount(
-
-    () => {
-
-        document.removeEventListener(
-
-            'click',
-
-            handleClickOutside
-
-        )
-
-    }
-
-)
+onBeforeUnmount(() => {
+    document.removeEventListener(
+        'mousedown',
+        handleClickOutside
+    )
+})
 defineExpose({
 
     focus,

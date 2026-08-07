@@ -119,6 +119,13 @@ const modules = {
           route: 'product-variant-units.index',
         permission: 'product-variant-units.view',
      },
+     productsPrice: {
+       key: 'productsPrice',
+       title: 'Product Price',
+          icon: CubeIcon,
+          route: 'product-variant-prices.index',
+        permission: 'product-variant-prices.view',
+     },
      tax: {
         key: 'tax',
         title: 'Tax',

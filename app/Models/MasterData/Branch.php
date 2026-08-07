@@ -33,7 +33,7 @@ class Branch extends Model
 
         'is_head_office',
 
-        'status',
+        'is_active',
 
         'created_by',
 
@@ -54,4 +54,8 @@ class Branch extends Model
             Warehouse::class
         );
     }
+    public function scopeActive($query)
+{
+    return $query->where('is_active', true);
+}
 }
