@@ -160,8 +160,8 @@ const modules = {
                 key: 'openingStock',
                 title: 'Opening Stock',
                 icon: UsersIcon,
-                route: 'opening-stock.create',
-                permission: 'opening-stock.view',
+                route: 'opening-stocks.index',
+                permission: 'opening-stocks.view',
                   },
 
                stockAdjustments: {

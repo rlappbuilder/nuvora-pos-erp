@@ -4,14 +4,11 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Company\Company;
-use App\Models\MasterData\Branch;
-use App\Models\MasterData\Warehouse;
-use App\Models\MasterData\Unit;
 use App\Models\Product\ProductVariant;
+use App\Models\MasterData\Unit;
 use App\Models\User;
 
-class ProductStock extends Model
+class StockOpnameDetail extends Model
 {
     use HasFactory;
 
@@ -19,15 +16,11 @@ class ProductStock extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | Identity
+        | Header
         |--------------------------------------------------------------------------
         */
 
-        'company_id',
-
-        'branch_id',
-
-        'warehouse_id',
+        'stock_opname_header_id',
 
         /*
         |--------------------------------------------------------------------------
@@ -45,11 +38,11 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'on_hand_qty',
+        'system_qty',
 
-        'reserved_qty',
+        'actual_qty',
 
-        'available_qty',
+        'difference_qty',
 
         /*
         |--------------------------------------------------------------------------
@@ -57,7 +50,9 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'average_cost',
+        'unit_cost',
+
+        'difference_cost',
 
         /*
         |--------------------------------------------------------------------------
@@ -65,7 +60,7 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'last_transaction_at',
+        'description',
 
         /*
         |--------------------------------------------------------------------------
@@ -81,15 +76,15 @@ class ProductStock extends Model
 
     protected $casts = [
 
-        'on_hand_qty' => 'decimal:2',
+        'system_qty' => 'decimal:2',
 
-        'reserved_qty' => 'decimal:2',
+        'actual_qty' => 'decimal:2',
 
-        'available_qty' => 'decimal:2',
+        'difference_qty' => 'decimal:2',
 
-        'average_cost' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
 
-        'last_transaction_at' => 'datetime',
+        'difference_cost' => 'decimal:2',
 
     ];
 
@@ -99,24 +94,11 @@ class ProductStock extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function company()
+    public function header()
     {
         return $this->belongsTo(
-            Company::class
-        );
-    }
-
-    public function branch()
-    {
-        return $this->belongsTo(
-            Branch::class
-        );
-    }
-
-    public function warehouse()
-    {
-        return $this->belongsTo(
-            Warehouse::class
+            StockOpnameHeader::class,
+            'stock_opname_header_id'
         );
     }
 

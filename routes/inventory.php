@@ -32,41 +32,63 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
+                    Route::prefix('opening-stocks')
+                ->name('opening-stocks.')
+                ->controller(OpeningStockController::class)
+                ->group(function () {
 
-            '/opening-stock',
+                    Route::get(
+                        '/',
+                        'index'
+                    )->name('index');
 
-            [
+                    Route::post(
+                        '/',
+                        'store'
+                    )->name('store');
 
-                OpeningStockController::class,
+                    Route::get(
+                        '/{openingStock}',
+                        'show'
+                    )->name('show');
 
-                'create'
+                    Route::put(
+                        '/{openingStock}',
+                        'update'
+                    )->name('update');
 
-            ]
+                    Route::get(
+                        '/{openingStock}/data',
+                        [OpeningStockController::class, 'showData']
+                    )->name('data');
+                    Route::post(
+                        '/{openingStock}/reject',
+                        [OpeningStockController::class, 'reject']
+                    )->name('reject');
+                    Route::post(
+                        '{openingStock}/post',
+                        [OpeningStockController::class, 'post']
+                    )->name('post');
+                    Route::post(
+                        'opening-stocks/{openingStock}/reject',
+                        [OpeningStockController::class, 'reject']
+                    )->name('opening-stocks.reject');
+                    Route::delete(
+                        '/{openingStock}',
+                        'destroy'
+                    )->name('destroy');
 
-        )->name(
+                    Route::post(
+                        '/{openingStock}/duplicate',
+                        'duplicate'
+                    )->name('duplicate');
 
-            'opening-stock.create'
+                    Route::delete(
+                        '/bulk-delete',
+                        'bulkDelete'
+                    )->name('bulk-delete');
 
-        );
-
-        Route::post(
-
-            '/opening-stock',
-
-            [
-
-                OpeningStockController::class,
-
-                'store'
-
-            ]
-
-        )->name(
-
-            'opening-stock.store'
-
-        );
+                });
 
         /*
         |--------------------------------------------------------------------------

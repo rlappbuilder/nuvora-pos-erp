@@ -212,6 +212,23 @@ function optionValue(item)
     return item[props.valueKey]
 
 }
+
+function isSameValue(
+    first,
+    second
+) {
+    if (
+        first === null ||
+        first === undefined ||
+        second === null ||
+        second === undefined
+    ) {
+        return first === second
+    }
+
+    return String(first) === String(second)
+}
+
 /*
 |--------------------------------------------------------------------------
 | Selected
@@ -220,13 +237,17 @@ function optionValue(item)
 
 const selected = computed(() => {
 
-    return props.options.find(
+    const result = props.options.find(
 
         item =>
-
-            optionValue(item) === props.modelValue
+            isSameValue(
+                optionValue(item),
+                props.modelValue
+            )
 
     ) || null
+
+    return result
 
 })
 
@@ -275,27 +296,19 @@ const filteredOptions = computed(() => {
 
 
 watch(
-
     selected,
 
     value => {
-
         search.value =
-
             value
-
                 ? optionLabel(value)
-
                 : ''
 
     },
 
     {
-
         immediate: true
-
     }
-
 )
 
 /*
@@ -321,7 +334,6 @@ function openDropdown()
     }
 
     highlighted.value = 0
-    console.log('OPEN SEARCHABLE')
     open.value = true
     search.value = ''
 }
@@ -523,7 +535,7 @@ function handleClickOutside(event)
         )
 
     ) {
-console.log('CLICK OUTSIDE', event.target)
+//console.log('CLICK OUTSIDE', event.target)
         closeDropdown()
 
     }
@@ -889,11 +901,10 @@ const showClearButton = computed(
 
                             selected &&
 
-                            optionValue(option)
-
-                            ===
-
-                            optionValue(selected)
+                            isSameValue(
+                                optionValue(option),
+                                optionValue(selected)
+                            )
 
                                 ? 'font-semibold text-indigo-600'
 

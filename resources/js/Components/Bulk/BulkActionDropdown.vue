@@ -20,11 +20,21 @@ const props = defineProps({
         default: false,
     },
 
+    actions: {
+        type: Array,
+        default: () => [
+            'delete',
+            'activate',
+            'deactivate',
+        ],
+    },
+
 })
 const emit = defineEmits([
     'delete',
     'activate',
     'deactivate',
+    'export',
 ])
 
 function toggle()
@@ -66,7 +76,33 @@ onBeforeUnmount(() => {
     )
 
 })
+function handleExport()
+{
+    emit('export')
 
+    close()
+}
+
+function handleDelete()
+{
+    emit('delete')
+
+    close()
+}
+
+function handleActivate()
+{
+    emit('activate')
+
+    close()
+}
+
+function handleDeactivate()
+{
+    emit('deactivate')
+
+    close()
+}
 </script>
 
 <template>
@@ -91,72 +127,100 @@ onBeforeUnmount(() => {
     Bulk ({{ props.count }})
 </BaseButton>
 
-    <div
-        v-if="open"
+ <div
+    v-if="open"
+    class="
+        absolute
+        right-0
+        z-50
+        mt-2
+        w-56
+        overflow-hidden
+        rounded-xl
+        border
+        border-gray-200
+        bg-white
+        shadow-xl
+    "
+>
+
+    <!-- Export -->
+
+    <button
+        v-if="actions.includes('export')"
+        type="button"
         class="
-            absolute
-            right-0
-            z-50
-            mt-2
-            w-56
-            overflow-hidden
-            rounded-xl
-            border
-            border-gray-200
-            bg-white
-            shadow-xl
+            w-full
+            px-4
+            py-3
+            text-left
+            transition
+            hover:bg-gray-50
         "
+        @click="handleExport"
     >
+        📤 Export Selected
+    </button>
 
-        <button
-            class="
-                w-full
-                px-4
-                py-3
-                text-left
-                hover:bg-red-50
-            "
-            @click="
-                emit('delete');
-                close();
-            "
-        >
-            🗑 Delete
-        </button>
 
-        <button
-            class="
-                w-full
-                px-4
-                py-3
-                text-left
-                hover:bg-green-50
-            "
-            @click="
-                emit('activate');
-                close();
-            "
-        >
-            ✅ Activate
-        </button>
+    <!-- Delete -->
 
-        <button
-            class="
-                w-full
-                px-4
-                py-3
-                text-left
-                hover:bg-yellow-50
-            "
-            @click="
-                emit('deactivate');
-                close();
-            "
-        >
-            🚫 Deactivate
-        </button>
+    <button
+        v-if="actions.includes('delete')"
+        type="button"
+        class="
+            w-full
+            px-4
+            py-3
+            text-left
+            text-red-600
+            transition
+            hover:bg-red-50
+        "
+        @click="handleDelete"
+    >
+        🗑 Delete Selected
+    </button>
 
-    </div>
+
+    <!-- Activate -->
+
+    <button
+        v-if="actions.includes('activate')"
+        type="button"
+        class="
+            w-full
+            px-4
+            py-3
+            text-left
+            transition
+            hover:bg-green-50
+        "
+        @click="handleActivate"
+    >
+        ✅ Activate
+    </button>
+
+
+    <!-- Deactivate -->
+
+    <button
+        v-if="actions.includes('deactivate')"
+        type="button"
+        class="
+            w-full
+            px-4
+            py-3
+            text-left
+            transition
+            hover:bg-yellow-50
+        "
+        @click="handleDeactivate"
+    >
+        🚫 Deactivate
+    </button>
+
+</div>
 
 </div>
 

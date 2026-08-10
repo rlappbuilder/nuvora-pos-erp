@@ -4,16 +4,18 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Core\DocumentActivity;
 use App\Models\Company\Company;
 use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
-use App\Models\MasterData\Unit;
-use App\Models\Product\ProductVariant;
+use App\Models\Inventory\InventoryMovement;
 use App\Models\User;
 
-class ProductStock extends Model
+class OpeningStockHeader extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
 
@@ -31,33 +33,15 @@ class ProductStock extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | Inventory
+        | Document
         |--------------------------------------------------------------------------
         */
 
-        'product_variant_id',
+        'number',
 
-        'unit_id',
+        'transaction_date',
 
-        /*
-        |--------------------------------------------------------------------------
-        | Stock
-        |--------------------------------------------------------------------------
-        */
-
-        'on_hand_qty',
-
-        'reserved_qty',
-
-        'available_qty',
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cost
-        |--------------------------------------------------------------------------
-        */
-
-        'average_cost',
+        'status',
 
         /*
         |--------------------------------------------------------------------------
@@ -65,7 +49,29 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'last_transaction_at',
+        'description',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Posting
+        |--------------------------------------------------------------------------
+        */
+
+        'posted_at',
+
+        'posted_by',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rejection
+        |--------------------------------------------------------------------------
+        */
+
+        'rejected_at',
+
+        'rejected_by',
+
+        'rejected_reason',
 
         /*
         |--------------------------------------------------------------------------
@@ -77,19 +83,19 @@ class ProductStock extends Model
 
         'updated_by',
 
+        'deleted_by',
+
+        'deleted_reason',
+
     ];
 
     protected $casts = [
 
-        'on_hand_qty' => 'decimal:2',
+        'transaction_date' => 'date',
 
-        'reserved_qty' => 'decimal:2',
+        'posted_at' => 'datetime',
 
-        'available_qty' => 'decimal:2',
-
-        'average_cost' => 'decimal:2',
-
-        'last_transaction_at' => 'datetime',
+        'rejected_at' => 'datetime',
 
     ];
 
@@ -120,20 +126,18 @@ class ProductStock extends Model
         );
     }
 
-    public function variant()
+    public function details()
     {
-        return $this->belongsTo(
-            ProductVariant::class,
-            'product_variant_id'
+        return $this->hasMany(
+            OpeningStockDetail::class
         );
     }
 
-    public function unit()
-    {
-        return $this->belongsTo(
-            Unit::class
-        );
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Created / Updated By
+    |--------------------------------------------------------------------------
+    */
 
     public function creator()
     {
@@ -150,4 +154,71 @@ class ProductStock extends Model
             'updated_by'
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Posted By
+    |--------------------------------------------------------------------------
+    */
+
+    public function poster()
+    {
+        return $this->belongsTo(
+            User::class,
+            'posted_by'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rejected By
+    |--------------------------------------------------------------------------
+    */
+
+    public function rejector()
+    {
+        return $this->belongsTo(
+            User::class,
+            'rejected_by'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deleted By
+    |--------------------------------------------------------------------------
+    */
+
+    public function deleter()
+    {
+        return $this->belongsTo(
+            User::class,
+            'deleted_by'
+        );
+    }
+    public function activities()
+{
+    return $this->hasMany(
+        DocumentActivity::class,
+        'document_id'
+    )
+    ->where(
+        'document_type',
+        class_basename($this)
+    )
+    ->orderBy(
+        'performed_at',
+        'asc'
+    );
+}
+public function movements()
+{
+    return $this->hasMany(
+        InventoryMovement::class,
+        'reference_id'
+    )->where(
+        'reference_type',
+        'OPENING_STOCK'
+    );
+}
 }

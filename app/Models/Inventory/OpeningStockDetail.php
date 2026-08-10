@@ -4,14 +4,11 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Company\Company;
-use App\Models\MasterData\Branch;
-use App\Models\MasterData\Warehouse;
-use App\Models\MasterData\Unit;
 use App\Models\Product\ProductVariant;
+use App\Models\MasterData\Unit;
 use App\Models\User;
 
-class ProductStock extends Model
+class OpeningStockDetail extends Model
 {
     use HasFactory;
 
@@ -19,15 +16,11 @@ class ProductStock extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | Identity
+        | Header
         |--------------------------------------------------------------------------
         */
 
-        'company_id',
-
-        'branch_id',
-
-        'warehouse_id',
+        'opening_stock_header_id',
 
         /*
         |--------------------------------------------------------------------------
@@ -45,11 +38,7 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'on_hand_qty',
-
-        'reserved_qty',
-
-        'available_qty',
+        'qty',
 
         /*
         |--------------------------------------------------------------------------
@@ -57,7 +46,9 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'average_cost',
+        'unit_cost',
+
+        'total_cost',
 
         /*
         |--------------------------------------------------------------------------
@@ -65,7 +56,7 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'last_transaction_at',
+        'description',
 
         /*
         |--------------------------------------------------------------------------
@@ -81,15 +72,11 @@ class ProductStock extends Model
 
     protected $casts = [
 
-        'on_hand_qty' => 'decimal:2',
+        'qty' => 'decimal:2',
 
-        'reserved_qty' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
 
-        'available_qty' => 'decimal:2',
-
-        'average_cost' => 'decimal:2',
-
-        'last_transaction_at' => 'datetime',
+        'total_cost' => 'decimal:2',
 
     ];
 
@@ -99,24 +86,11 @@ class ProductStock extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function company()
+    public function header()
     {
         return $this->belongsTo(
-            Company::class
-        );
-    }
-
-    public function branch()
-    {
-        return $this->belongsTo(
-            Branch::class
-        );
-    }
-
-    public function warehouse()
-    {
-        return $this->belongsTo(
-            Warehouse::class
+            OpeningStockHeader::class,
+            'opening_stock_header_id'
         );
     }
 
@@ -130,9 +104,7 @@ class ProductStock extends Model
 
     public function unit()
     {
-        return $this->belongsTo(
-            Unit::class
-        );
+        return $this->belongsTo(Unit::class);
     }
 
     public function creator()

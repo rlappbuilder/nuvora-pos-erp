@@ -18,6 +18,8 @@ import {
     DocumentDuplicateIcon,
     ArrowDownTrayIcon,
     ClockIcon,
+    CheckCircleIcon,
+    XCircleIcon,
 } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits([
@@ -27,7 +29,47 @@ const emit = defineEmits([
     'export',
     'delete',
     'history',
+    'post',
+    'reject',
 ])
+const props = defineProps({
+
+    showPost: {
+        type: Boolean,
+        default: false,
+    },
+
+    showReject: {
+        type: Boolean,
+        default: false,
+    },
+
+    showEdit: {
+        type: Boolean,
+        default: true,
+    },
+
+    showDuplicate: {
+        type: Boolean,
+        default: true,
+    },
+
+    showExport: {
+        type: Boolean,
+        default: true,
+    },
+
+    showDelete: {
+        type: Boolean,
+        default: true,
+    },
+
+    showHistory: {
+        type: Boolean,
+        default: true,
+    },
+
+})
 const EVENT_NAME = 'nuvora-action-dropdown-close'
 const open = ref(false)
 
@@ -130,186 +172,336 @@ onBeforeUnmount(() => {
     )
 })
 </script>
-<<template>
+<template>
 
-<div class="inline-block">
+    <div class="inline-block">
 
-    <button
-        ref="reference"
-        @click.stop="toggle"
-        class="
-            rounded-lg
-            p-2
-            transition
-            hover:bg-gray-100
-        "
-    >
-        <EllipsisVerticalIcon
-            class="h-5 w-5 text-gray-600"
-        />
-    </button>
+        <!-- ========================================================= -->
+        <!-- Trigger -->
+        <!-- ========================================================= -->
 
-    <Teleport to="body">
-
-        <Transition
-            enter-active-class="duration-150"
-            leave-active-class="duration-100"
+        <button
+            ref="reference"
+            type="button"
+            @click.stop="toggle"
+            class="
+                rounded-lg
+                p-2
+                transition
+                hover:bg-gray-100
+            "
         >
 
-            <div
-                v-if="open"
-                ref="floating"
-                :style="floatingStyles"
-                class="
-                    z-50
-                    w-52
-                    overflow-hidden
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    shadow-lg
-                "
+            <EllipsisVerticalIcon
+                class="h-5 w-5 text-gray-600"
+            />
+
+        </button>
+
+
+        <!-- ========================================================= -->
+        <!-- Dropdown -->
+        <!-- ========================================================= -->
+
+        <Teleport to="body">
+
+            <Transition
+                enter-active-class="duration-150"
+                leave-active-class="duration-100"
             >
 
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-gray-700
-                        transition-colors
-                        duration-150
-                        hover:bg-indigo-50
-                        hover:text-indigo-600
-                    "
-                    @click="$emit('view'); close()"
-                >
-                    <EyeIcon class="h-5 w-5" />
-                    View
-                </button>
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-gray-700
-                        transition-colors
-                        duration-150
-                        hover:bg-indigo-50
-                        hover:text-indigo-600
-                    "
-                    @click="$emit('history'); close()"
-                >
-                    <ClockIcon class="h-5 w-5" />
-                    Price History
-                </button>
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-gray-700
-                        transition-colors
-                        duration-150
-                        hover:bg-indigo-50
-                        hover:text-indigo-600
-                    "
-                    @click="$emit('edit'); close()"
-                >
-                    <PencilSquareIcon class="h-5 w-5" />
-                    Edit
-                </button>
-
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-gray-700
-                        transition-colors
-                        duration-150
-                        hover:bg-indigo-50
-                        hover:text-indigo-600
-                    "
-                    @click="$emit('duplicate'); close()"
-                >
-                    <DocumentDuplicateIcon class="h-5 w-5" />
-                    Duplicate
-                </button>
-
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-gray-700
-                        transition-colors
-                        duration-150
-                        hover:bg-indigo-50
-                        hover:text-indigo-600
-                    "
-                    @click="$emit('export'); close()"
-                >
-                    <ArrowDownTrayIcon class="h-5 w-5" />
-                    Export
-                </button>
-
                 <div
+                    v-if="open"
+                    ref="floating"
+                    :style="floatingStyles"
                     class="
-                        mx-2
-                        my-1
-                        border-t
-                        border-gray-100
+                        z-50
+                        w-52
+                        overflow-hidden
+                        rounded-xl
+                        border
+                        border-gray-200
+                        bg-white
+                        shadow-lg
                     "
-                ></div>
-
-                <button
-                    class="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        px-4
-                        py-2.5
-                        text-sm
-                        text-red-600
-                        transition-colors
-                        duration-150
-                        hover:bg-red-50
-                    "
-                    @click="$emit('delete'); close()"
                 >
-                    <TrashIcon class="h-5 w-5" />
-                    Delete
-                </button>
 
-            </div>
+                    <!-- ================================================= -->
+                    <!-- View -->
+                    <!-- ================================================= -->
 
-        </Transition>
+                    <button
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-indigo-50
+                            hover:text-indigo-600
+                        "
+                        @click="$emit('view'); close()"
+                    >
 
-    </Teleport>
+                        <EyeIcon class="h-5 w-5" />
 
-</div>
+                        View
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- History -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showHistory"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-indigo-50
+                            hover:text-indigo-600
+                        "
+                        @click="$emit('history'); close()"
+                    >
+
+                        <ClockIcon class="h-5 w-5" />
+
+                        Price History
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Edit -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showEdit"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-indigo-50
+                            hover:text-indigo-600
+                        "
+                        @click="$emit('edit'); close()"
+                    >
+
+                        <PencilSquareIcon
+                            class="h-5 w-5"
+                        />
+
+                        Edit
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Duplicate -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showDuplicate"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-indigo-50
+                            hover:text-indigo-600
+                        "
+                        @click="$emit('duplicate'); close()"
+                    >
+
+                        <DocumentDuplicateIcon
+                            class="h-5 w-5"
+                        />
+
+                        Duplicate
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Post -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showPost"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-emerald-600
+                            transition-colors
+                            duration-150
+                            hover:bg-emerald-50
+                        "
+                        @click="$emit('post'); close()"
+                    >
+
+                        <CheckCircleIcon
+                            class="h-5 w-5"
+                        />
+
+                        Post
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Reject -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showReject"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-red-600
+                            transition-colors
+                            duration-150
+                            hover:bg-red-50
+                        "
+                        @click="$emit('reject'); close()"
+                    >
+
+                        <XCircleIcon
+                            class="h-5 w-5"
+                        />
+
+                        Reject
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Export -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showExport"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-indigo-50
+                            hover:text-indigo-600
+                        "
+                        @click="$emit('export'); close()"
+                    >
+
+                        <ArrowDownTrayIcon
+                            class="h-5 w-5"
+                        />
+
+                        Export
+
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Divider -->
+                    <!-- ================================================= -->
+
+                    <div
+                        v-if="showDelete"
+                        class="
+                            mx-2
+                            my-1
+                            border-t
+                            border-gray-100
+                        "
+                    ></div>
+
+
+                    <!-- ================================================= -->
+                    <!-- Delete -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showDelete"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-red-600
+                            transition-colors
+                            duration-150
+                            hover:bg-red-50
+                        "
+                        @click="$emit('delete'); close()"
+                    >
+
+                        <TrashIcon
+                            class="h-5 w-5"
+                        />
+
+                        Delete
+
+                    </button>
+
+                </div>
+
+            </Transition>
+
+        </Teleport>
+
+    </div>
 
 </template>

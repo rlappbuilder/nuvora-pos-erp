@@ -1,52 +1,162 @@
 <?php
 
 namespace App\Models\Inventory;
-use App\Models\Product\Product;
-use App\Models\MasterData\Warehouse;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Company\Company;
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Warehouse;
+use App\Models\MasterData\Unit;
+use App\Models\Product\ProductVariant;
+use App\Models\User;
 
 class InventoryMovement extends Model
 {
- protected $fillable = [
+    use HasFactory;
 
-    'product_id',
+    protected $fillable = [
 
-    'warehouse_id',
+        /*
+        |--------------------------------------------------------------------------
+        | Identity
+        |--------------------------------------------------------------------------
+        */
 
-    'reference_type',
+        'company_id',
 
-    'reference_id',
+        'branch_id',
 
-    'reference_number',
+        'warehouse_id',
 
-    'qty_in',
+        /*
+        |--------------------------------------------------------------------------
+        | Inventory
+        |--------------------------------------------------------------------------
+        */
 
-    'qty_out',
+        'product_variant_id',
 
-    'balance_qty',
+        'unit_id',
 
-    'unit_cost',
+        /*
+        |--------------------------------------------------------------------------
+        | Reference
+        |--------------------------------------------------------------------------
+        */
 
-    'total_cost',
+        'reference_type',
 
-    'transaction_date',
+        'reference_id',
 
-    'created_by',
+        'reference_number',
 
-];
+        /*
+        |--------------------------------------------------------------------------
+        | Movement
+        |--------------------------------------------------------------------------
+        */
 
-    public function product()
+        'qty_in',
+
+        'qty_out',
+
+        'balance_qty',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cost
+        |--------------------------------------------------------------------------
+        */
+
+        'unit_cost',
+
+        'total_cost',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Information
+        |--------------------------------------------------------------------------
+        */
+
+        'transaction_date',
+
+        'description',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Audit
+        |--------------------------------------------------------------------------
+        */
+
+        'created_by',
+
+    ];
+
+    protected $casts = [
+
+        'qty_in' => 'decimal:2',
+
+        'qty_out' => 'decimal:2',
+
+        'balance_qty' => 'decimal:2',
+
+        'unit_cost' => 'decimal:2',
+
+        'total_cost' => 'decimal:2',
+
+        'transaction_date' => 'datetime',
+
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    public function company()
     {
-        return $this->belongsTo(
-            Product::class
-        );
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function warehouse()
     {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function variant()
+    {
         return $this->belongsTo(
-            Warehouse::class
+            ProductVariant::class,
+            'product_variant_id'
         );
     }
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(
+            User::class,
+            'created_by'
+        );
+    }
+
+public function productVariant()
+{
+    return $this->belongsTo(
+        ProductVariant::class,
+        'product_variant_id'
+    );
+}
+
+
 }

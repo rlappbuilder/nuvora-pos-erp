@@ -242,6 +242,7 @@ Route::middleware(
                 [ProductVariantPriceController::class,'latestPrice', ]
 
               )->name('product-variant-prices.latest');
+              
                 Route::get('product-variant-prices/{productVariantPrice}/history',
                 [ProductVariantPriceController::class,'history',]
                 )->name('product-variant-prices.history'

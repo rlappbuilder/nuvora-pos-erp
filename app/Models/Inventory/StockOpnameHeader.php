@@ -4,14 +4,12 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Company\Company;
+use App\Models\MasterData\Company;
 use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
-use App\Models\MasterData\Unit;
-use App\Models\Product\ProductVariant;
 use App\Models\User;
 
-class ProductStock extends Model
+class StockOpnameHeader extends Model
 {
     use HasFactory;
 
@@ -31,33 +29,15 @@ class ProductStock extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | Inventory
+        | Document
         |--------------------------------------------------------------------------
         */
 
-        'product_variant_id',
+        'number',
 
-        'unit_id',
+        'transaction_date',
 
-        /*
-        |--------------------------------------------------------------------------
-        | Stock
-        |--------------------------------------------------------------------------
-        */
-
-        'on_hand_qty',
-
-        'reserved_qty',
-
-        'available_qty',
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cost
-        |--------------------------------------------------------------------------
-        */
-
-        'average_cost',
+        'status',
 
         /*
         |--------------------------------------------------------------------------
@@ -65,7 +45,7 @@ class ProductStock extends Model
         |--------------------------------------------------------------------------
         */
 
-        'last_transaction_at',
+        'description',
 
         /*
         |--------------------------------------------------------------------------
@@ -81,15 +61,7 @@ class ProductStock extends Model
 
     protected $casts = [
 
-        'on_hand_qty' => 'decimal:2',
-
-        'reserved_qty' => 'decimal:2',
-
-        'available_qty' => 'decimal:2',
-
-        'average_cost' => 'decimal:2',
-
-        'last_transaction_at' => 'datetime',
+        'transaction_date' => 'date',
 
     ];
 
@@ -120,18 +92,11 @@ class ProductStock extends Model
         );
     }
 
-    public function variant()
+    public function details()
     {
-        return $this->belongsTo(
-            ProductVariant::class,
-            'product_variant_id'
-        );
-    }
-
-    public function unit()
-    {
-        return $this->belongsTo(
-            Unit::class
+        return $this->hasMany(
+            StockOpnameDetail::class,
+            'stock_opname_header_id'
         );
     }
 
