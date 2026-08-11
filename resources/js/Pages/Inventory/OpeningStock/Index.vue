@@ -1180,16 +1180,10 @@ function canDelete(item)
     return item.status === 'Draft'
 }
 /** view modal */
+const viewLoading = ref(false)
+const showView = ref(false)
 const viewItem = ref(null)
 
-const showView = ref(false)
-const viewLoading = ref(false)
-//function openView(item)
-//{
-  //  viewItem.value = item
-
-    //showView.value = true
-//}
 async function openView(item)
 {
     viewLoading.value = true
@@ -1852,7 +1846,7 @@ function exportSelected()
     :show="showView"
     :opening-stock="viewItem"
     :loading="viewLoading"
-    @close="closeView"
+    @close="showView = false"
 />
 <!-- ========================================================= -->
 <!-- Post Opening Stock Review -->

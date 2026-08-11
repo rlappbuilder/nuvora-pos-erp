@@ -154,10 +154,66 @@ function formatDateTime(value)
 >
 
     <div
-        v-if="openingStock"
+        
         class="space-y-6"
     >
+        <!-- loading -->
+        <div
+            v-if="loading"
+            class="
+                flex
+                min-h-[300px]
+                items-center
+                justify-center
+            "
+        >
 
+            <div
+                class="
+                    flex
+                    flex-col
+                    items-center
+                    gap-3
+                    text-gray-500
+                "
+            >
+
+                <svg
+                    class="
+                        h-8
+                        w-8
+                        animate-spin
+                    "
+                    viewBox="0 0 24 24"
+                    fill="none"
+                >
+
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        opacity=".2"
+                    />
+
+                    <path
+                        d="M22 12a10 10 0 0 0-10-10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    />
+
+                </svg>
+
+                <span class="text-sm">
+                    Loading opening stock...
+                </span>
+
+            </div>
+
+        </div>
+        <!-- loading end-->
+        <div v-else class="space-y-6">
         <!-- ========================================================= -->
         <!-- Document Information -->
         <!-- ========================================================= -->
@@ -857,15 +913,8 @@ function formatDateTime(value)
         />
 
     </section>
-        <!-- ========================================================= -->
-        <!-- Audit Trail -->
-        <!-- ========================================================= -->
-
-        
-
-    </div>
-
-
+</div>
+</div>
     <template #footer>
 
         <BaseButton
@@ -874,9 +923,6 @@ function formatDateTime(value)
         >
             Close
         </BaseButton>
-
     </template>
-
 </BaseModal>
-
 </template>
