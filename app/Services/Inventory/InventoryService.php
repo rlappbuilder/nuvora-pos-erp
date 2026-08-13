@@ -1,7 +1,8 @@
 <?php
 
 namespace App\Services\Inventory;
-
+use App\Models\Inventory\InventoryAdjustmentHeader;
+use App\Models\Inventory\InventoryAdjustmentDetail;
 use App\Models\Inventory\ProductStock;
 use App\Models\Inventory\InventoryMovement;
 use Illuminate\Support\Facades\DB;
@@ -383,6 +384,7 @@ public function rejectOpeningStock(
 
     });
 }
+
 public function duplicateOpeningStock(OpeningStockHeader $openingStock): OpeningStockHeader {
     return DB::transaction(function () use ($openingStock) {
 
@@ -449,6 +451,92 @@ public function duplicateOpeningStock(OpeningStockHeader $openingStock): Opening
             ]);
 
         }
+
+        return $duplicate;
+    });
+}
+public function duplicateInventoryAdjustment(
+    InventoryAdjustmentHeader $inventoryAdjustment
+): InventoryAdjustmentHeader {
+    return DB::transaction(function () use (
+        $inventoryAdjustment
+    ) {
+
+        $inventoryAdjustment->load('details');
+
+        $duplicate = InventoryAdjustmentHeader::create([
+
+            'company_id' =>
+                $inventoryAdjustment->company_id,
+
+            'branch_id' =>
+                $inventoryAdjustment->branch_id,
+
+            'warehouse_id' =>
+                $inventoryAdjustment->warehouse_id,
+
+            'number' =>
+                $this->codeGeneratorService
+                    ->next('stock_adjustment'),
+
+            'transaction_date' =>
+                $inventoryAdjustment->transaction_date,
+
+            'status' => 'Draft',
+
+            'description' =>
+                $inventoryAdjustment->description
+                ? 'Copy - ' .
+                    $inventoryAdjustment->description
+                : 'Copy Inventory Adjustment',
+
+            'created_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        foreach (
+            $inventoryAdjustment->details
+            as $detail
+        ) {
+
+            InventoryAdjustmentDetail::create([
+
+                'inventory_adjustment_header_id' =>
+                    $duplicate->id,
+
+                'product_variant_id' =>
+                    $detail->product_variant_id,
+
+                'unit_id' =>
+                    $detail->unit_id,
+
+                'system_qty' =>
+                    $detail->system_qty,
+
+                'actual_qty' =>
+                    $detail->actual_qty,
+
+                'difference_qty' =>
+                    $detail->difference_qty,
+
+                'unit_cost' =>
+                    $detail->unit_cost,
+
+                'total_cost' =>
+                    $detail->total_cost,
+
+                'description' =>
+                    $detail->description,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
 
         return $duplicate;
     });
@@ -668,6 +756,41 @@ public function deleteOpeningStocks(array $ids): void
             $openingStock->details()->delete();
 
             $openingStock->delete();
+        }
+
+    });
+}
+public function deleteInventoryAdjustments(
+    array $ids
+): void {
+    DB::transaction(function () use ($ids) {
+
+        $inventoryAdjustments =
+            InventoryAdjustmentHeader::whereIn(
+                'id',
+                $ids
+            )->get();
+
+        foreach (
+            $inventoryAdjustments
+            as $inventoryAdjustment
+        ) {
+
+            if (
+                $inventoryAdjustment->status === 'Posted'
+            ) {
+
+                throw new \RuntimeException(
+                    'Posted inventory adjustment cannot be deleted.'
+                );
+
+            }
+
+            $inventoryAdjustment
+                ->details()
+                ->delete();
+
+            $inventoryAdjustment->delete();
         }
 
     });
@@ -1415,4 +1538,862 @@ public function transfer(array $data): void
     {
         return 0;
     }
+
+public function inventoryAdjustment(
+    array $data
+): InventoryAdjustmentHeader {
+
+    return DB::transaction(function () use ($data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header - DRAFT
+        |--------------------------------------------------------------------------
+        */
+
+            $header = InventoryAdjustmentHeader::create([
+
+                'company_id' =>
+                    $data['company_id'],
+
+                'branch_id' =>
+                    $data['branch_id'],
+
+                'warehouse_id' =>
+                    $data['warehouse_id'],
+
+                'number' =>
+                    $this->codeGeneratorService
+                        ->next('stock_adjustment'),
+
+                'transaction_date' =>
+                    $data['transaction_date'],
+
+                'status' =>
+                    'Draft',
+
+                'description' =>
+                    $data['description'] ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+//dd('AFTER HEADER CREATE', $header);
+                /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($data['details'] as $detail) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Get Current Product Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $stock = ProductStock::query()
+                ->where(
+                    'company_id',
+                    $header->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $header->branch_id
+                )
+                ->where(
+                    'warehouse_id',
+                    $header->warehouse_id
+                )
+                ->where(
+                    'product_variant_id',
+                    $detail['product_variant_id']
+                )
+                ->where(
+                    'unit_id',
+                    $detail['unit_id']
+                )
+                ->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | System Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $systemQty = $stock
+                ? (float) $stock->on_hand_qty
+                : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Actual Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $actualQty =
+                (float) $detail['actual_qty'];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Difference Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $differenceQty =
+                $actualQty
+                -
+                $systemQty;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Unit Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost = $stock
+                ? (float) $stock->average_cost
+                : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Total Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost =
+                abs($differenceQty)
+                *
+                $unitCost;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Detail
+            |--------------------------------------------------------------------------
+            */
+           
+            InventoryAdjustmentDetail::create([
+
+                'inventory_adjustment_header_id' =>
+                    $header->id,
+
+                'product_variant_id' =>
+                    $detail['product_variant_id'],
+
+                'unit_id' =>
+                    $detail['unit_id'],
+
+                'system_qty' =>
+                    $systemQty,
+
+                'actual_qty' =>
+                    $actualQty,
+
+                'difference_qty' =>
+                    $differenceQty,
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'description' =>
+                    $detail['description'] ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService->record(
+            $header,
+            'CREATED',
+            null,
+            'Draft',
+            'Inventory adjustment created.'
+        );
+
+
+        return $header;
+
+    });
+
+}
+public function updateInventoryAdjustment(
+    InventoryAdjustmentHeader $header,
+    array $data
+): InventoryAdjustmentHeader {
+
+    return DB::transaction(function () use ($header, $data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $header = InventoryAdjustmentHeader::query()
+            ->lockForUpdate()
+            ->findOrFail($header->id);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (! in_array(
+            $header->status,
+            ['Draft', 'Rejected']
+        )) {
+
+            throw new \RuntimeException(
+                'Only Draft or Rejected inventory adjustment can be updated.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Header
+        |--------------------------------------------------------------------------
+        */
+
+        $header->update([
+
+            'company_id' =>
+                $data['company_id'],
+
+            'branch_id' =>
+                $data['branch_id'],
+
+            'warehouse_id' =>
+                $data['warehouse_id'],
+
+            'transaction_date' =>
+                $data['transaction_date'],
+
+            'description' =>
+                $data['description'] ?? null,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete Existing Details
+        |--------------------------------------------------------------------------
+        */
+
+        $header->details()->delete();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create New Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($data['details'] as $detail) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Get Latest Product Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $stock = ProductStock::query()
+                ->where(
+                    'company_id',
+                    $header->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $header->branch_id
+                )
+                ->where(
+                    'warehouse_id',
+                    $header->warehouse_id
+                )
+                ->where(
+                    'product_variant_id',
+                    $detail['product_variant_id']
+                )
+                ->where(
+                    'unit_id',
+                    $detail['unit_id']
+                )
+                ->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | System Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $systemQty = $stock
+                ? (float) $stock->on_hand_qty
+                : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Actual Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $actualQty =
+                (float) $detail['actual_qty'];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Difference
+            |--------------------------------------------------------------------------
+            */
+
+            $differenceQty =
+                $actualQty
+                -
+                $systemQty;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Unit Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost = $stock
+                ? (float) $stock->average_cost
+                : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Total Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost =
+                abs($differenceQty)
+                *
+                $unitCost;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Detail
+            |--------------------------------------------------------------------------
+            */
+
+            InventoryAdjustmentDetail::create([
+
+                'inventory_adjustment_header_id' =>
+                    $header->id,
+
+                'product_variant_id' =>
+                    $detail['product_variant_id'],
+
+                'unit_id' =>
+                    $detail['unit_id'],
+
+                'system_qty' =>
+                    $systemQty,
+
+                'actual_qty' =>
+                    $actualQty,
+
+                'difference_qty' =>
+                    $differenceQty,
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'description' =>
+                    $detail['description'] ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Workflow State
+        |--------------------------------------------------------------------------
+        */
+
+        if ($header->status === 'Rejected') {
+
+            $header->update([
+
+                'status' =>
+                    'Draft',
+
+                'rejected_at' =>
+                    null,
+
+                'rejected_by' =>
+                    null,
+
+                'rejected_reason' =>
+                    null,
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService->record(
+            $header,
+            'UPDATED'
+        );
+
+
+        return $header->fresh([
+            'details',
+        ]);
+
+    });
+
+}
+public function postInventoryAdjustment(
+    InventoryAdjustmentHeader $inventoryAdjustment
+): void {
+
+    DB::transaction(function () use ($inventoryAdjustment) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment =
+            InventoryAdjustmentHeader::query()
+                ->with('details')
+                ->lockForUpdate()
+                ->findOrFail(
+                    $inventoryAdjustment->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $inventoryAdjustment->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft inventory adjustment can be posted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $inventoryAdjustment->details
+            as $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Difference
+            |--------------------------------------------------------------------------
+            */
+
+            $differenceQty =
+                (float) $detail->difference_qty;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | No Stock Impact
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $differenceQty == 0
+            ) {
+
+                continue;
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Determine Stock Direction
+            |--------------------------------------------------------------------------
+            */
+
+            $qtyIn =
+                $differenceQty > 0
+                    ? $differenceQty
+                    : 0;
+
+
+            $qtyOut =
+                $differenceQty < 0
+                    ? abs($differenceQty)
+                    : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Product Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $stock =
+                $this->updateCurrentStock([
+
+                    'company_id' =>
+                        $inventoryAdjustment
+                            ->company_id,
+
+                    'branch_id' =>
+                        $inventoryAdjustment
+                            ->branch_id,
+
+                    'warehouse_id' =>
+                        $inventoryAdjustment
+                            ->warehouse_id,
+
+                    'product_variant_id' =>
+                        $detail
+                            ->product_variant_id,
+
+                    'unit_id' =>
+                        $detail
+                            ->unit_id,
+
+                    'qty' =>
+                        $differenceQty,
+
+                    'average_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'transaction_date' =>
+                        $inventoryAdjustment
+                            ->transaction_date,
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory Movement
+            |--------------------------------------------------------------------------
+            */
+
+            $this->createMovement(
+
+                $stock,
+
+                [
+
+                    'reference_type' =>
+                        'INVENTORY_ADJUSTMENT',
+
+                    'reference_id' =>
+                        $inventoryAdjustment
+                            ->id,
+
+                    'reference_number' =>
+                        $inventoryAdjustment
+                            ->number,
+
+                    'qty_in' =>
+                        $qtyIn,
+
+                    'qty_out' =>
+                        $qtyOut,
+
+                    'unit_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'total_cost' =>
+                        $detail
+                            ->total_cost,
+
+                    'transaction_date' =>
+                        $inventoryAdjustment
+                            ->transaction_date,
+
+                    'description' =>
+                        $detail
+                            ->description
+                        ??
+                        $inventoryAdjustment
+                            ->description
+                        ??
+                        null,
+
+                ]
+
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Mark Posted
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment->update([
+
+            'status' =>
+                'Posted',
+
+            'posted_at' =>
+                now(),
+
+            'posted_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+        ->record(
+            $inventoryAdjustment,
+            'POSTED',
+            'Draft',
+            'Posted',
+            'Inventory adjustment posted.'
+        );
+
+    });
+
+}
+public function cancelInventoryAdjustment(
+    InventoryAdjustmentHeader $inventoryAdjustment,
+    string $reason
+): void {
+
+    DB::transaction(function () use (
+        $inventoryAdjustment,
+        $reason
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment =
+            InventoryAdjustmentHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $inventoryAdjustment->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $inventoryAdjustment->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft inventory adjustment can be rejected.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Mark Rejected
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment->update([
+
+            'status' =>
+                'Rejected',
+
+            'rejected_at' =>
+                now(),
+
+            'rejected_by' =>
+                auth()->id(),
+
+            'rejected_reason' =>
+                $reason,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $inventoryAdjustment,
+                'REJECTED'
+            );
+
+    });
+
+}
+public function resubmitInventoryAdjustment(
+    InventoryAdjustmentHeader $inventoryAdjustment
+): void {
+
+    DB::transaction(function () use (
+        $inventoryAdjustment
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment =
+            InventoryAdjustmentHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $inventoryAdjustment->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $inventoryAdjustment->status
+            !== 'Rejected'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Rejected inventory adjustment can be resubmitted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Back To Draft
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAdjustment->update([
+
+            'status' =>
+                'Draft',
+
+            'rejected_at' =>
+                null,
+
+            'rejected_by' =>
+                null,
+
+            'rejected_reason' =>
+                null,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $inventoryAdjustment,
+                'RESUBMITTED'
+            );
+
+    });
+
+}
 }

@@ -1,5 +1,4 @@
 <script setup>
-
 import FormSection from '@/Components/Form/FormSection.vue'
 import FormField from '@/Components/Form/FormField.vue'
 import FormInput from '@/Components/Form/FormInput.vue'
@@ -15,9 +14,7 @@ import {
 import { formatCurrency } from '@/Utils/currency'
 import { computed } from 'vue'
 
-
 const props = defineProps({
-
     form: {
         type: Object,
         required: true,
@@ -28,27 +25,26 @@ const props = defineProps({
         default: () => [],
     },
 
+    warehouses: {
+        type: Array,
+        default: () => [],
+    },
+
     filteredVariants: {
         type: Array,
         default: () => [],
     },
 
-    
-
-    filteredWarehouses: {
-    type: Array,
-    default: () => [],
+    filteredUnits: {
+        type: Array,
+        default: () => [],
     },
 
     mode: {
         type: String,
         default: 'create',
     },
-
 })
-
-
-const form = props.form
 
 const emit = defineEmits([
     'submit',
@@ -67,8 +63,14 @@ const addDetail = () => {
     form.details.push({
         product_variant_id: null,
         unit_id: null,
-        qty: 1,
+
+        system_qty: 0,
+        actual_qty: 0,
+        difference_qty: 0,
+
         unit_cost: 0,
+        total_cost: 0,
+
         description: null,
     })
 }
@@ -88,12 +90,33 @@ const removeDetail = (index) => {
 |--------------------------------------------------------------------------
 */
 
+const calculateDifference = (detail) => {
+
+    return (
+        Number(detail.actual_qty || 0) -
+        Number(detail.system_qty || 0)
+    )
+}
+
+
 const detailTotal = (detail) => {
 
     return (
-        Number(detail.qty || 0) *
+        calculateDifference(detail) *
         Number(detail.unit_cost || 0)
     )
+}
+const syncDetails = () => {
+
+    form.details.forEach((detail) => {
+
+        detail.difference_qty =
+            calculateDifference(detail)
+
+        detail.total_cost =
+            detailTotal(detail)
+
+    })
 }
 
 const totalItems = computed(() => {
@@ -101,14 +124,19 @@ const totalItems = computed(() => {
     return form.details.length
 })
 
+
 const totalQuantity = computed(() => {
 
     return form.details.reduce(
         (total, detail) =>
-            total + Number(detail.qty || 0),
+            total +
+            Math.abs(
+                calculateDifference(detail)
+            ),
         0
     )
 })
+
 
 const totalCost = computed(() => {
 
@@ -118,83 +146,6 @@ const totalCost = computed(() => {
         0
     )
 })
-const getUnitsForVariant = (variantId) => {
-
-    if (!variantId) {
-        return []
-    }
-
-    const variant = props.filteredVariants.find(
-        item => Number(item.id) === Number(variantId)
-    )
-
-    return variant?.units ?? []
-}
-const changeVariant = (detail) => {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Variant Cleared
-    |--------------------------------------------------------------------------
-    */
-
-    if (!detail.product_variant_id) {
-
-        detail.unit_id = null
-
-        detail.qty = 0
-
-        detail.unit_cost = 0
-
-        detail.description = null
-
-        return
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Variant Changed
-    |--------------------------------------------------------------------------
-    */
-
-    detail.unit_id = null
-
-    detail.qty = 0
-
-    detail.unit_cost = 0
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Get Variant Units
-    |--------------------------------------------------------------------------
-    */
-
-    const units = getUnitsForVariant(
-        detail.product_variant_id
-    )
-
-
-    const defaultUnit = units.find(
-        unit => unit.is_default
-    )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Set Default Unit
-    |--------------------------------------------------------------------------
-    */
-
-    if (defaultUnit) {
-
-        detail.unit_id =
-            defaultUnit.id
-
-    }
-
-}
 </script>
 
 <template>
@@ -202,13 +153,13 @@ const changeVariant = (detail) => {
     <form @submit.prevent="emit('submit')">
 
         <!-- ========================================================= -->
-        <!-- Opening Stock Information -->
+        <!-- Invnetory Adjustment Information -->
         <!-- ========================================================= -->
 
         <FormSection
             icon="📦"
-            title="Opening Stock Information"
-            description="Basic information about this opening stock transaction."
+            title="Inventory Adjustment Information"
+            description="Basic information about this Inventory Adjustment transaction."
             :columns="2"
         >
 
@@ -269,13 +220,14 @@ const changeVariant = (detail) => {
                 required
                 :error="form.errors.warehouse_id"
             >
-            <SearchableSelect
-                v-model="form.warehouse_id"
-                :options="filteredWarehouses"
-                label="label"
-                value-key="id"
-                placeholder="Select Warehouse"
-            />
+
+                <SearchableSelect
+                    v-model="form.warehouse_id"
+                    :options="warehouses"
+                    label="label"
+                    value-key="id"
+                    placeholder="Select Warehouse"
+                />
 
             </FormField>
 
@@ -301,7 +253,7 @@ const changeVariant = (detail) => {
                     class="
                         hidden
                         lg:grid
-                        lg:grid-cols-[2fr_1fr_1fr_1.5fr_1.5fr_auto]
+                        lg:grid-cols-[2fr_1fr_1.2fr_1.2fr_1.2fr_1.5fr_1.5fr_auto]
                         gap-3
                         px-3
                         text-sm
@@ -319,19 +271,25 @@ const changeVariant = (detail) => {
                     </div>
 
                     <div>
-                        Quantity
+                        System Quantity
+                    </div>
+
+                    <div>
+                        Actual Quantity
+                    </div>
+
+                    <div>
+                        Difference
                     </div>
 
                     <div>
                         Unit Cost
                     </div>
-
+                    
                     <div>
                         Total Cost
                     </div>
-
                     <div></div>
-
                 </div>
 
 
@@ -347,7 +305,7 @@ const changeVariant = (detail) => {
                         p-4
                         space-y-4
                         lg:grid
-                        lg:grid-cols-[2fr_1fr_1fr_1.5fr_1.5fr_auto]
+                        lg:grid-cols-[2fr_1fr_1.2fr_1.2fr_1.2fr_1.5fr_1.5fr_auto]
                         lg:gap-3
                         lg:items-start
                         lg:space-y-0
@@ -372,7 +330,6 @@ const changeVariant = (detail) => {
                             label="label"
                             value-key="id"
                             placeholder="Select Variant"
-                            @update:modelValue="changeVariant(detail)"
                         />
 
                     </FormField>
@@ -392,7 +349,7 @@ const changeVariant = (detail) => {
 
                         <SearchableSelect
                             v-model="detail.unit_id"
-                            :options="getUnitsForVariant(detail.product_variant_id)"
+                            :options="filteredUnits"
                             label="label"
                             value-key="id"
                             placeholder="Select Unit"
@@ -404,23 +361,45 @@ const changeVariant = (detail) => {
                     <!-- Quantity -->
 
                     <FormField
-                        label="Quantity"
-                        required
+                        label="System Qty"
                         :error="
                             form.errors[
-                                `details.${index}.qty`
+                                `details.${index}.system_qty`
                             ]
                         "
                     >
-
                         <FormInput
-                            v-model="detail.qty"
+                            :model-value="detail.system_qty"
+                            type="number"
+                            readonly
+                        />
+                    </FormField>
+                    <FormField
+                        label="Actual Qty"
+                        required
+                        :error="
+                            form.errors[
+                                `details.${index}.actual_qty`
+                            ]
+                        "
+                    >
+                        <FormInput
+                            v-model="detail.actual_qty"
                             type="number"
                             min="0"
                             step="0.01"
                             placeholder="0"
                         />
-
+                    </FormField>
+                    <FormField
+                        label="Difference"
+                    >
+                        <FormInput
+                            :model-value="
+                                calculateDifference(detail)
+                            "
+                            readonly
+                        />
                     </FormField>
 
 
@@ -448,7 +427,6 @@ const changeVariant = (detail) => {
                     <FormField
                         label="Total Cost"
                     >
-
                         <FormInput
                             :model-value="
                                 formatCurrency(
@@ -457,7 +435,6 @@ const changeVariant = (detail) => {
                             "
                             readonly
                         />
-
                     </FormField>
 
 
@@ -512,7 +489,7 @@ const changeVariant = (detail) => {
         <FormSection
             icon="📝"
             title="Description"
-            description="Additional information about this opening stock transaction."
+            description="Additional information about this Inventory Adjustment transaction."
             :columns="1"
         >
 

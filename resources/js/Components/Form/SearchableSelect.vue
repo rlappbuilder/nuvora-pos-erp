@@ -1,36 +1,8 @@
 <script setup>
 
-import {
-
-    ref,
-
-    computed,
-
-    watch,
-
-    onMounted,
-
-    onBeforeUnmount
-
-}
-
-from 'vue'
-
-import ValidationError
-
-from './ValidationError.vue'
-
-import {
-
-    inputClass,
-
-    errorClass,
-
-    labelClass
-
-}
-
-from './DesignSystem'
+import { ref,computed, watch,onMounted,onBeforeUnmount, nextTick}from 'vue'
+import ValidationError from './ValidationError.vue'
+import {inputClass,errorClass,labelClass}from './DesignSystem'
 
 /*
 |--------------------------------------------------------------------------
@@ -147,12 +119,17 @@ const emit = defineEmits([
 const wrapper = ref(null)
 
 const inputRef = ref(null)
-
+const dropdownRef = ref(null)
 const open = ref(false)
 
 const search = ref('')
 
 const highlighted = ref(0)
+const dropdownStyle = ref({
+    top: '0px',
+    left: '0px',
+    width: '0px',
+})
 /*
 |--------------------------------------------------------------------------
 | Helper
@@ -324,7 +301,7 @@ watch(
 |--------------------------------------------------------------------------
 */
 
-function openDropdown()
+async function openDropdown()
 {
     if (
         props.disabled ||
@@ -335,7 +312,31 @@ function openDropdown()
 
     highlighted.value = 0
     open.value = true
-    search.value = ''
+
+    if (!selected.value) {
+        search.value = ''
+    }
+
+    await nextTick()
+
+    updateDropdownPosition()
+}
+function updateDropdownPosition()
+{
+    if (!inputRef.value) {
+        return
+    }
+
+    const rect =
+        inputRef.value.getBoundingClientRect()
+
+    dropdownStyle.value = {
+        position: 'fixed',
+        top: `${rect.bottom + 8}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: 9999,
+    }
 }
 function closeDropdown()
 {
@@ -523,23 +524,20 @@ function focus()
 
 function handleClickOutside(event)
 {
+    const clickedInsideWrapper =
+        wrapper.value &&
+        wrapper.value.contains(event.target)
+
+    const clickedInsideDropdown =
+        dropdownRef.value &&
+        dropdownRef.value.contains(event.target)
 
     if (
-
-        wrapper.value &&
-
-        !wrapper.value.contains(
-
-            event.target
-
-        )
-
+        !clickedInsideWrapper &&
+        !clickedInsideDropdown
     ) {
-//console.log('CLICK OUTSIDE', event.target)
         closeDropdown()
-
     }
-
 }
 
 onMounted(() => {
@@ -711,24 +709,21 @@ const showClearButton = computed(
         </button>
 
             </div>
+            <Teleport to="body">
+
                 <div
-
-                v-if="open"
-
-                class="
-                    absolute
-                    z-50
-                    mt-2
-                    max-h-64
-                    w-full
-                    overflow-y-auto
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    shadow-xl
-                "
-
+                    v-if="open"
+                    ref="dropdownRef"
+                    :style="dropdownStyle"
+                    class="
+                        max-h-64
+                        overflow-y-auto
+                        rounded-xl
+                        border
+                        border-gray-200
+                        bg-white
+                        shadow-xl
+                    "
                 >
                   <div
 
@@ -948,8 +943,9 @@ const showClearButton = computed(
 
                 :message="error"
 
-            />
-
+               />
+            </Teleport>
          </div>
+         
 
 </template>

@@ -52,10 +52,9 @@ Route::middleware(
                         'show'
                     )->name('show');
 
-                    Route::put(
-                        '/{openingStock}',
-                        'update'
-                    )->name('update');
+                    Route::put('/{openingStock}',
+                        'update')
+                        ->name('update');
 
                     Route::get(
                         '/{openingStock}/data',
@@ -144,145 +143,74 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-
-            '/adjustments',
-
+        Route::delete(
+            'inventory-adjustments/{inventoryAdjustment}',
             [
-
                 InventoryAdjustmentController::class,
-
-                'index'
-
+                'destroy',
             ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.index'
-
+        )->name(
+            'inventory-adjustments.destroy'
         );
-
-        Route::get(
-
-            '/adjustments/create',
-
-            [
-
-                InventoryAdjustmentController::class,
-
-                'create'
-
-            ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.create'
-
-        );
-
         Route::post(
-
-            '/adjustments',
-
-            [
-
-                InventoryAdjustmentController::class,
-
-                'store'
-
-            ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.store'
-
+            'inventory-adjustments/{inventoryAdjustment}/duplicate',
+            [InventoryAdjustmentController::class, 'duplicate']
+        )->name(
+            'inventory-adjustments.duplicate'
         );
-
         Route::get(
-
-            '/adjustments/{inventoryAdjustment}',
-
+            '/adjustments/{inventoryAdjustment}/data',
             [
-
                 InventoryAdjustmentController::class,
-
-                'show'
-
+                'data'
             ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.show'
-
+        )->name(
+            'inventory-adjustments.data'
         );
-
-        Route::post(
-
-            '/adjustments/{inventoryAdjustment}/post',
-
-            [
-
-                InventoryAdjustmentController::class,
-
-                'post'
-
-            ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.post'
-
-        );
-
-        Route::post(
-
-            '/adjustments/{inventoryAdjustment}/cancel',
-
-            [
-
-                InventoryAdjustmentController::class,
-
-                'cancel'
-
-            ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.cancel'
-
-        );
-
         Route::get(
+            'inventory-adjustments/stock',
+            [InventoryAdjustmentController::class, 'stock']
+        )->name('inventory-adjustments.stock');
 
-            '/adjustments/warehouse/{warehouse}',
+        Route::get('/adjustments', [InventoryAdjustmentController::class,'index'])
+        ->name('inventory-adjustments.index');
 
-            [
+        Route::get('/adjustments/create',[InventoryAdjustmentController::class,'create'])
+        ->name('inventory-adjustments.create');
+
+        Route::post('/adjustments',[InventoryAdjustmentController::class,'store'])
+            ->name('inventory-adjustments.store');
+
+            Route::put('/adjustments/{inventoryAdjustment}',[InventoryAdjustmentController::class,'update']
+            )->name('inventory-adjustments.update');
+
+        Route::get('/adjustments/{inventoryAdjustment}',[InventoryAdjustmentController::class,'show'])
+        ->name('inventory-adjustments.show');
+
+        Route::post('/adjustments/{inventoryAdjustment}/post',[InventoryAdjustmentController::class,'post'])
+
+        ->name('inventory-adjustments.post');
+        
+        Route::post('/adjustments/{inventoryAdjustment}/cancel',[InventoryAdjustmentController::class,'cancel'] )
+
+        ->name('inventory-adjustments.cancel');
+            Route::post(
+                '/adjustments/{inventoryAdjustment}/resubmit',
+                [
+                    InventoryAdjustmentController::class,
+                    'resubmit'
+                ]
+            )
+            ->name(
+                'inventory-adjustments.resubmit'
+            );
+        Route::get('/adjustments/warehouse/{warehouse}',[
 
                 InventoryAdjustmentController::class,
-
                 'getWarehouseStocks'
+            ])
 
-            ]
-
-        )
-
-        ->name(
-
-            'inventory-adjustments.warehouse-stocks'
-
-        );
+        ->name('inventory-adjustments.warehouse-stocks');
             /*
         |--------------------------------------------------------------------------
         | Stock Transfer
