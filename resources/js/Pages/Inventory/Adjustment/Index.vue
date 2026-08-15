@@ -1319,20 +1319,7 @@ function formatNumber(value)
         Number(value ?? 0)
     )
 }
-watch(
-    () => props.adjustment,
-    (value) => {
 
-        console.log(
-            'POST MODAL DETAIL:',
-            value?.details
-        )
-
-    },
-    {
-        immediate: true,
-    }
-)
 </script>
 <template>
 <AppLayout>
@@ -1917,7 +1904,7 @@ watch(
     @close="closeView"
 />
 <!-- ========================================================= -->
-<!-- Post Opening Stock Review -->
+<!-- Post Inventory Adjustment Review -->
 <!-- ========================================================= -->
 
 <Teleport to="body">

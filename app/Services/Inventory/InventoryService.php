@@ -11,6 +11,10 @@ use App\Models\Inventory\OpeningStockDetail;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use App\Models\Core\DocumentActivity;
+use App\Models\Inventory\StockTransferHeader;
+use App\Models\Inventory\StockTransferDetail;
+use App\Models\MasterData\Warehouse;
+
 class InventoryService
 {
     public function __construct(
@@ -1397,47 +1401,210 @@ public function transfer(array $data): void
     |--------------------------------------------------------------------------
     */
 
-    private function updateCurrentStock(array $data): ProductStock
-{
-    $stock = ProductStock::firstOrNew([
+    private function updateCurrentStock(
+    array $data
+): ProductStock {
 
-        'company_id'         => $data['company_id'],
+    /*
+    |--------------------------------------------------------------------------
+    | Find / Lock Stock
+    |--------------------------------------------------------------------------
+    */
 
-        'branch_id'          => $data['branch_id'],
+    $query = ProductStock::query()
+        ->whereNull(
+            'company_id'
+        )
+        ->where(
+            'branch_id',
+            $data['branch_id']
+        )
+        ->where(
+            'warehouse_id',
+            $data['warehouse_id']
+        )
+        ->where(
+            'product_variant_id',
+            $data['product_variant_id']
+        )
+        ->where(
+            'unit_id',
+            $data['unit_id']
+        );
 
-        'warehouse_id'       => $data['warehouse_id'],
 
-        'product_variant_id' => $data['product_variant_id'],
+    if (
+        ($data['lock'] ?? false)
+        === true
+    ) {
 
-        'unit_id'            => $data['unit_id'],
+        $query->lockForUpdate();
 
-    ]);
-
-    if (! $stock->exists) {
-
-        $stock->on_hand_qty = 0;
-
-        $stock->reserved_qty = 0;
-
-        $stock->available_qty = 0;
-
-        $stock->average_cost = 0;
     }
 
-    $stock->on_hand_qty += $data['qty'];
+
+    $stock = $query->first();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create New Stock
+    |--------------------------------------------------------------------------
+    */
+
+    if (! $stock) {
+
+        $stock = new ProductStock();
+
+        $stock->company_id =
+            null;
+
+        $stock->branch_id =
+            $data['branch_id'];
+
+        $stock->warehouse_id =
+            $data['warehouse_id'];
+
+        $stock->product_variant_id =
+            $data['product_variant_id'];
+
+        $stock->unit_id =
+            $data['unit_id'];
+
+        $stock->on_hand_qty =
+            0;
+
+        $stock->reserved_qty =
+            0;
+
+        $stock->available_qty =
+            0;
+
+        $stock->average_cost =
+            0;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Existing Stock Snapshot
+    |--------------------------------------------------------------------------
+    */
+
+    $oldQty =
+        (float) $stock->on_hand_qty;
+
+    $oldAverageCost =
+        (float) $stock->average_cost;
+
+    $movementQty =
+        (float) $data['qty'];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $stock->on_hand_qty =
+        $oldQty +
+        $movementQty;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prevent Negative Stock
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $stock->on_hand_qty < 0
+    ) {
+
+        throw new \RuntimeException(
+            'Stock quantity cannot be negative.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Weighted Average
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        ($data['update_average_cost'] ?? false)
+        === true
+        &&
+        $movementQty > 0
+    ) {
+
+        $incomingCost =
+            (float) (
+                $data['average_cost']
+                ?? 0
+            );
+
+
+        if (
+            $oldQty <= 0
+        ) {
+
+            $stock->average_cost =
+                $incomingCost;
+
+        } else {
+
+            $stock->average_cost =
+                (
+                    (
+                        $oldQty *
+                        $oldAverageCost
+                    )
+                    +
+                    (
+                        $movementQty *
+                        $incomingCost
+                    )
+                )
+                /
+                $stock->on_hand_qty;
+
+        }
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Available Quantity
+    |--------------------------------------------------------------------------
+    */
 
     $stock->available_qty =
         $stock->on_hand_qty -
         $stock->reserved_qty;
 
-    if (isset($data['average_cost'])) {
 
-        $stock->average_cost =
-            $data['average_cost'];
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Transaction
+    |--------------------------------------------------------------------------
+    */
 
     $stock->last_transaction_at =
         $data['transaction_date'];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Audit
+    |--------------------------------------------------------------------------
+    */
 
     $stock->updated_by =
         auth()->id();
@@ -1445,7 +1612,9 @@ public function transfer(array $data): void
     $stock->created_by ??=
         auth()->id();
 
+
     $stock->save();
+
 
     return $stock;
 }
@@ -2394,6 +2563,1002 @@ public function resubmitInventoryAdjustment(
             );
 
     });
+
+}
+/** Stock Transfer service */
+public function createStockTransfer(
+    array $data
+): StockTransferHeader {
+
+    return DB::transaction(function () use ($data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Locations
+        |--------------------------------------------------------------------------
+        */
+
+        $this->validateTransferLocations($data);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
+        $transfer = StockTransferHeader::create([
+
+            'company_id' => null,
+
+            'from_branch_id' =>
+                $data['from_branch_id'],
+
+            'from_warehouse_id' =>
+                $data['from_warehouse_id'],
+
+            'to_branch_id' =>
+                $data['to_branch_id'],
+
+            'to_warehouse_id' =>
+                $data['to_warehouse_id'],
+
+            'number' =>
+                $this->codeGeneratorService
+                    ->next('stock_transfer'),
+
+            'transaction_date' =>
+                $data['transaction_date'],
+
+            'status' =>
+                'Draft',
+
+            'description' =>
+                $data['description'] ?? null,
+
+            'created_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $data['details']
+            as $detail
+        ) {
+            $sourceStock =
+                ProductStock::query()
+                    ->where(
+                        'branch_id',
+                        $data['from_branch_id']
+                    )
+                    ->where(
+                        'warehouse_id',
+                        $data['from_warehouse_id']
+                    )
+                    ->where(
+                        'product_variant_id',
+                        $detail['product_variant_id']
+                    )
+                    ->where(
+                        'unit_id',
+                        $detail['unit_id']
+                    )
+                    ->first();
+
+            $unitCost =
+                (float) (
+                    $sourceStock?->average_cost
+                    ?? 0
+                );
+
+            $totalCost =
+                $unitCost *
+                (float) $detail['qty'];
+
+
+            StockTransferDetail::create([
+
+                'stock_transfer_header_id' =>
+                    $transfer->id,
+
+                'product_variant_id' =>
+                    $detail['product_variant_id'],
+
+                'unit_id' =>
+                    $detail['unit_id'],
+
+                'qty' =>
+                    $detail['qty'],
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'description' =>
+                    $detail['description']
+                    ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+            
+        }
+
+
+        return $transfer;
+    });
+}
+private function validateTransferLocations(
+    array $data
+): void {
+
+    $fromWarehouse =
+        Warehouse::query()
+            ->findOrFail(
+                $data['from_warehouse_id']
+            );
+
+    $toWarehouse =
+        Warehouse::query()
+            ->findOrFail(
+                $data['to_warehouse_id']
+            );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source Warehouse → Source Branch
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        (int) $fromWarehouse->branch_id
+        !==
+        (int) $data['from_branch_id']
+    ) {
+
+        throw new \RuntimeException(
+            'Source warehouse does not belong to the selected source branch.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Destination Warehouse → Destination Branch
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        (int) $toWarehouse->branch_id
+        !==
+        (int) $data['to_branch_id']
+    ) {
+
+        throw new \RuntimeException(
+            'Destination warehouse does not belong to the selected destination branch.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Must Be Different
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        (int) $data['from_warehouse_id']
+        ===
+        (int) $data['to_warehouse_id']
+    ) {
+
+        throw new \RuntimeException(
+            'Source and destination warehouse must be different.'
+        );
+
+    }
+}
+public function updateStockTransfer(
+    StockTransferHeader $transfer,
+    array $data
+): void {
+
+    DB::transaction(function () use (
+        $transfer,
+        $data
+    ) {
+
+        $transfer =
+            StockTransferHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $transfer->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $transfer->status !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock transfer can be updated.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Locations
+        |--------------------------------------------------------------------------
+        */
+
+        $this->validateTransferLocations(
+            $data
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Header
+        |--------------------------------------------------------------------------
+        */
+
+        $transfer->update([
+
+            'from_branch_id' =>
+                $data['from_branch_id'],
+
+            'from_warehouse_id' =>
+                $data['from_warehouse_id'],
+
+            'to_branch_id' =>
+                $data['to_branch_id'],
+
+            'to_warehouse_id' =>
+                $data['to_warehouse_id'],
+
+            'transaction_date' =>
+                $data['transaction_date'],
+
+            'description' =>
+                $data['description'] ?? null,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Replace Details
+        |--------------------------------------------------------------------------
+        */
+
+        $transfer
+            ->details()
+            ->delete();
+
+
+        foreach (
+            $data['details']
+            as $detail
+        ) {
+
+            $sourceStock =
+            $this->getSourceStock(
+                $data['from_branch_id'],
+                $data['from_warehouse_id'],
+                $detail['product_variant_id'],
+                $detail['unit_id']
+            );
+
+        $unitCost =
+            (float) (
+                $sourceStock?->average_cost
+                ?? 0
+            );
+
+        $totalCost =
+            $unitCost *
+            (float) $detail['qty'];
+
+
+        StockTransferDetail::create([
+
+            'stock_transfer_header_id' =>
+                $transfer->id,
+
+            'product_variant_id' =>
+                $detail['product_variant_id'],
+
+            'unit_id' =>
+                $detail['unit_id'],
+
+            'qty' =>
+                $detail['qty'],
+
+            'unit_cost' =>
+                $unitCost,
+
+            'total_cost' =>
+                $totalCost,
+
+            'description' =>
+                $detail['description']
+                ?? null,
+
+            'created_by' =>
+                auth()->id(),
+
+        ]);
+
+        }
+
+    });
+}
+public function postStockTransfer(
+    StockTransferHeader $stockTransfer
+): void {
+
+    DB::transaction(function () use (
+        $stockTransfer
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockTransfer =
+            StockTransferHeader::query()
+                ->with('details')
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockTransfer->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockTransfer->status !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock transfer can be posted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Locations
+        |--------------------------------------------------------------------------
+        */
+
+        $this->validateTransferLocations([
+
+            'from_branch_id' =>
+                $stockTransfer->from_branch_id,
+
+            'from_warehouse_id' =>
+                $stockTransfer->from_warehouse_id,
+
+            'to_branch_id' =>
+                $stockTransfer->to_branch_id,
+
+            'to_warehouse_id' =>
+                $stockTransfer->to_warehouse_id,
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Process Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $stockTransfer->details
+            as $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $sourceStock =
+                ProductStock::query()
+                    ->lockForUpdate()
+                    ->whereNull(
+                        'company_id'
+                    )
+                    ->where(
+                        'branch_id',
+                        $stockTransfer->from_branch_id
+                    )
+                    ->where(
+                        'warehouse_id',
+                        $stockTransfer->from_warehouse_id
+                    )
+                    ->where(
+                        'product_variant_id',
+                        $detail->product_variant_id
+                    )
+                    ->where(
+                        'unit_id',
+                        $detail->unit_id
+                    )
+                    ->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (! $sourceStock) {
+
+                throw new \RuntimeException(
+                    'Insufficient stock for product variant ID '
+                    . $detail->product_variant_id
+                    . '.'
+                );
+
+            }
+
+
+            if (
+                (float) $sourceStock->available_qty
+                <
+                (float) $detail->qty
+            ) {
+
+                throw new \RuntimeException(
+                    'Insufficient available stock for product variant ID '
+                    . $detail->product_variant_id
+                    . '.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Source Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost =
+                (float) $sourceStock->average_cost;
+
+
+            $totalCost =
+                $unitCost *
+                (float) $detail->qty;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Detail Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $detail->update([
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | SOURCE STOCK OUT
+            |--------------------------------------------------------------------------
+            */
+
+            $sourceStock =
+                $this->updateCurrentStock([
+
+                    'company_id' =>
+                        null,
+
+                    'branch_id' =>
+                        $stockTransfer->from_branch_id,
+
+                    'warehouse_id' =>
+                        $stockTransfer->from_warehouse_id,
+
+                    'product_variant_id' =>
+                        $detail->product_variant_id,
+
+                    'unit_id' =>
+                        $detail->unit_id,
+
+                    'qty' =>
+                        -(
+                            (float) $detail->qty
+                        ),
+
+                    'average_cost' =>
+                        $unitCost,
+
+                    'transaction_date' =>
+                        $stockTransfer->transaction_date,
+
+                    'update_average_cost' =>
+                        false,
+
+                    'lock' =>
+                        true,
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | SOURCE MOVEMENT OUT
+            |--------------------------------------------------------------------------
+            */
+
+            $this->createMovement(
+
+                $sourceStock,
+
+                [
+
+                    'reference_type' =>
+                        'STOCK_TRANSFER',
+
+                    'reference_id' =>
+                        $stockTransfer->id,
+
+                    'reference_number' =>
+                        $stockTransfer->number,
+
+                    'qty_in' =>
+                        0,
+
+                    'qty_out' =>
+                        $detail->qty,
+
+                    'unit_cost' =>
+                        $unitCost,
+
+                    'total_cost' =>
+                        $totalCost,
+
+                    'transaction_date' =>
+                        $stockTransfer->transaction_date,
+
+                    'description' =>
+                        $detail->description
+                        ??
+                        $stockTransfer->description
+                        ??
+                        null,
+
+                ]
+
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | DESTINATION STOCK IN
+            |--------------------------------------------------------------------------
+            */
+
+            $destinationStock =
+                $this->updateCurrentStock([
+
+                    'company_id' =>
+                        null,
+
+                    'branch_id' =>
+                        $stockTransfer->to_branch_id,
+
+                    'warehouse_id' =>
+                        $stockTransfer->to_warehouse_id,
+
+                    'product_variant_id' =>
+                        $detail->product_variant_id,
+
+                    'unit_id' =>
+                        $detail->unit_id,
+
+                    'qty' =>
+                        (float) $detail->qty,
+
+                    'average_cost' =>
+                        $unitCost,
+
+                    'transaction_date' =>
+                        $stockTransfer->transaction_date,
+
+                    'update_average_cost' =>
+                        true,
+
+                    'lock' =>
+                        true,
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | DESTINATION MOVEMENT IN
+            |--------------------------------------------------------------------------
+            */
+
+            $this->createMovement(
+
+                $destinationStock,
+
+                [
+
+                    'reference_type' =>
+                        'STOCK_TRANSFER',
+
+                    'reference_id' =>
+                        $stockTransfer->id,
+
+                    'reference_number' =>
+                        $stockTransfer->number,
+
+                    'qty_in' =>
+                        $detail->qty,
+
+                    'qty_out' =>
+                        0,
+
+                    'unit_cost' =>
+                        $unitCost,
+
+                    'total_cost' =>
+                        $totalCost,
+
+                    'transaction_date' =>
+                        $stockTransfer->transaction_date,
+
+                    'description' =>
+                        $detail->description
+                        ??
+                        $stockTransfer->description
+                        ??
+                        null,
+
+                ]
+
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Mark Posted
+        |--------------------------------------------------------------------------
+        */
+
+        $stockTransfer->update([
+
+            'status' =>
+                'Posted',
+
+            'posted_at' =>
+                now(),
+
+            'posted_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+
+                $stockTransfer,
+
+                'POSTED',
+
+                'Draft',
+
+                'Posted',
+
+                'Stock transfer posted.'
+
+            );
+
+    });
+}
+public function cancelStockTransfer(
+    StockTransferHeader $stockTransfer,
+    string $reason
+): void {
+
+    DB::transaction(function () use (
+        $stockTransfer,
+        $reason
+    ) {
+
+        $stockTransfer =
+            StockTransferHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockTransfer->id
+                );
+
+
+        if (
+            $stockTransfer->status !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock transfer can be cancelled.'
+            );
+
+        }
+
+
+        $stockTransfer->update([
+
+            'status' =>
+                'Rejected',
+
+            'rejected_at' =>
+                now(),
+
+            'rejected_by' =>
+                auth()->id(),
+
+            'rejected_reason' =>
+                $reason,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        $this->documentActivityService
+            ->record(
+
+                $stockTransfer,
+
+                'REJECTED',
+
+                'Draft',
+
+                'Rejected',
+
+                'Stock transfer rejected.',
+
+                [
+                    'reason' =>
+                        $reason,
+                ]
+
+            );
+
+    });
+}
+public function duplicateStockTransfer(
+    StockTransferHeader $stockTransfer
+): StockTransferHeader {
+
+    return DB::transaction(function () use (
+        $stockTransfer
+    ) {
+
+        $stockTransfer->load(
+            'details'
+        );
+
+
+        $duplicate =
+            StockTransferHeader::create([
+
+                'company_id' => null,
+                   // $stockTransfer->company_id,
+
+                'from_branch_id' =>
+                    $stockTransfer->from_branch_id,
+
+                'from_warehouse_id' =>
+                    $stockTransfer->from_warehouse_id,
+
+                'to_branch_id' =>
+                    $stockTransfer->to_branch_id,
+
+                'to_warehouse_id' =>
+                    $stockTransfer->to_warehouse_id,
+
+                'number' =>
+                    $this->codeGeneratorService
+                        ->next('stock_transfer'),
+
+                'transaction_date' =>
+                    $stockTransfer->transaction_date,
+
+                'status' =>
+                    'Draft',
+
+                'description' =>
+                    $stockTransfer->description
+                    ? 'Copy - ' .
+                        $stockTransfer->description
+                    : 'Copy Stock Transfer',
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+        foreach (
+            $stockTransfer->details
+            as $detail
+        ) {
+
+            StockTransferDetail::create([
+
+                'stock_transfer_header_id' =>
+                    $duplicate->id,
+
+                'product_variant_id' =>
+                    $detail->product_variant_id,
+
+                'unit_id' =>
+                    $detail->unit_id,
+
+                'qty' =>
+                    $detail->qty,
+
+                'unit_cost' =>
+                    0,
+
+                'total_cost' =>
+                    0,
+
+                'description' =>
+                    $detail->description,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        return $duplicate;
+    });
+}
+public function deleteStockTransfers(
+    array $ids
+): void {
+
+    DB::transaction(function () use ($ids) {
+
+        $stockTransfers =
+            StockTransferHeader::query()
+                ->whereIn(
+                    'id',
+                    $ids
+                )
+                ->lockForUpdate()
+                ->get();
+
+
+        foreach (
+            $stockTransfers
+            as $stockTransfer
+        ) {
+
+            if (
+                $stockTransfer->status === 'Posted'
+            ) {
+
+                throw new \RuntimeException(
+                    'Posted stock transfer cannot be deleted.'
+                );
+
+            }
+
+
+            $stockTransfer->details()->delete();
+
+
+            $stockTransfer->update([
+
+                'deleted_by' =>
+                    auth()->id(),
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            $stockTransfer->delete();
+
+        }
+
+    });
+}
+private function getSourceStock(
+    int $branchId,
+    int $warehouseId,
+    int $productVariantId,
+    int $unitId
+): ?ProductStock {
+
+    return ProductStock::query()
+        ->where(
+            'branch_id',
+            $branchId
+        )
+        ->where(
+            'warehouse_id',
+            $warehouseId
+        )
+        ->where(
+            'product_variant_id',
+            $productVariantId
+        )
+        ->where(
+            'unit_id',
+            $unitId
+        )
+        ->first();
 
 }
 }

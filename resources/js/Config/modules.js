@@ -189,13 +189,13 @@ const modules = {
                    },
                    
 
-                     stockIssues: {
+                    stockIssues: {
                 key: 'stockIssues',
                 title: 'Stock Issues',
                 icon: UsersIcon,
-                route: 'stock-issues.index',
+                route: 'stock-transfers.index',
                 permission: 'stock-issues.view',
-                 },
+                },
 
                  stockCards: {
                 key: 'stockCards',

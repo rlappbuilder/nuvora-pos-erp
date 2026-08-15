@@ -6,1089 +6,909 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-use App\Models\Product\Product;
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Unit;
 use App\Models\MasterData\Warehouse;
+use App\Models\Product\ProductVariant;
+use App\Services\Inventory\InventoryService;
+use App\Services\Core\CodeGeneratorService;
 
+use App\Http\Requests\Inventory\StockTransfer\StoreStockTransferRequest;
+use App\Http\Requests\Inventory\StockTransfer\UpdateStockTransferRequest;
+use App\Http\Requests\Inventory\StockTransfer\CancelStockTransferRequest;
+use App\Models\Inventory\StockTransferHeader;
 use App\Models\Inventory\ProductStock;
-use Illuminate\Support\Facades\DB;
 
-use Carbon\Carbon;
-use App\Models\Inventory\StockTransfer;
-use App\Models\Inventory\StockTransferDetail;
-use App\Models\Inventory\InventoryMovement;
+
 class StockTransferController extends Controller
 {
-    public function index()
+    public function __construct(
+    protected InventoryService $inventoryService,
+    protected CodeGeneratorService $codeGeneratorService
+) {
+}
+
+
+    /*
+|--------------------------------------------------------------------------
+| Index
+|--------------------------------------------------------------------------
+*/
+
+public function index(Request $request)
 {
-    $startDate =
+    /*
+    |--------------------------------------------------------------------------
+    | Base Query
+    |--------------------------------------------------------------------------
+    */
 
-    Carbon::now()
-
-    ->startOfMonth()
-
-    ->format(
-
-        'Y-m-d'
-
-    );
-
-$endDate =
-
-    Carbon::now()
-
-    ->endOfMonth()
-
-    ->format(
-
-        'Y-m-d'
-
-    );
-    $query = StockTransfer::query()
-
-        ->with([
-
+    $query =
+        StockTransferHeader::query()
+            ->with([
+                'fromBranch',
                 'fromWarehouse',
-
+                'toBranch',
                 'toWarehouse',
-
                 'creator',
-
                 'details',
-
             ])
-
-        ->withCount(
-
-            'details'
-
-        )
-
-        ->when(
-
-            request('search'),
-
-            function (
-
-                $q
-
-            ) {
-
-                $q->where(
-
-                    'transfer_number',
-
-                    'like',
-
-                    '%' .
-
-                    request(
-
-                        'search'
-
-                    )
-
-                    . '%'
-
-                );
-
-            }
-
-        )
-
-        ->when(
-
-            request('status'),
-
-            function (
-
-                $q
-
-            ) {
-
-                $q->where(
-
-                    'status',
-
-                    request(
-
-                        'status'
-
-                    )
-
-                );
-
-            }
-
-        )
-        
-   ->when(
-
-    request('date'),
-
-    function (
-
-        $query
-
-    ) {
-
-        $dates = explode(
-
-            ' to ',
-
-            request('date')
-
-        );
-
-        $from = $dates[0];
-
-        $to = $dates[1] ?? $dates[0];
-
-        $query->whereBetween(
-
-            'transfer_date',
-
-            [
-
-                $from,
-
-                $to,
-
-            ]
-
-        );
-
-    
-
-
-
-        $query->whereBetween(
-
-            'transfer_date',
-
-            [
-
-                $from,
-
-                $to,
-
-            ]
-
-        );
-
-    }
-
-)
-->when(
-
-    !request('date'),
-
-    function (
-
-        $query
-
-    ) use (
-
-        $startDate,
-
-        $endDate
-
-    ) {
-
-        $query->whereBetween(
-
-            'transfer_date',
-
-            [
-
-                $startDate,
-
-                $endDate,
-
-            ]
-
-        );
-
-    }
-
-)
-
-        ->latest();
-$summaryQuery = clone $query;
-    $transfers =
-
-        $query
-
-        ->paginate(10)
-
-        ->through(
-
-            function (
-
-                $transfer
-
-            ) {
-
-                return [
-
-                    'id' =>
-
-                        $transfer->id,
-
-                    'transfer_number' =>
-
-                        $transfer->transfer_number,
-
-                    'transfer_date' =>
-
-                        $transfer->transfer_date,
-
-                    'from_warehouse' =>
-
-                        $transfer
-
-                        ->fromWarehouse
-
-                        ?->name,
-
-                    'to_warehouse' =>
-
-                        $transfer
-
-                        ->toWarehouse
-
-                        ?->name,
-
-                    'status' =>
-
-                        $transfer->status,
-
-                    'items' =>
-
-                        $transfer
-
-                        ->details_count,
-
-                    'total_qty' =>
-
-                        $transfer
-
-                        ->details
-
-                        ->sum(
-
-                            'qty'
-
-                        ),
-
-                    'total_value' =>
-
-                        $transfer
-
-                        ->details
-
-                        ->sum(
-
-                            'total_cost'
-
-                        ),
-
-                    'creator' =>
-
-                        $transfer
-
-                        ->creator
-
-                        ?->name,
-
-                ];
-
-            }
-
-        )
-
-        ->withQueryString();
-
-    return Inertia::render(
-
-        'Inventory/Transfer/Index',
-
-        [
-
-            'transfers' =>
-
-                $transfers,
-
-            'filters' => [
-
-                'search' =>
-
-                    request(
-
-                        'search'
-
-                    ),
-
-                'status' =>
-
-                    request(
-
-                        'status'
-
-                    ),
-
-            ],
-
-            'summary' => [
-
-    'draft' =>
-
-        (
-
-            clone $summaryQuery
-
-        )
-
-        ->where(
-
-            'status',
-
-            'Draft'
-
-        )
-
-        ->count(),
-
-    'posted' =>
-
-        (
-
-            clone $summaryQuery
-
-        )
-
-        ->where(
-
-            'status',
-
-            'Posted'
-
-        )
-
-        ->count(),
-
-    'completed' =>
-
-        (
-
-            clone $summaryQuery
-
-        )
-
-        ->where(
-
-            'status',
-
-            'Completed'
-
-        )
-
-        ->count(),
-
-    'cancelled' =>
-
-        (
-
-            clone $summaryQuery
-
-        )
-
-        ->where(
-
-            'status',
-
-            'Cancelled'
-
-        )
-
-        ->count(),
-
-]
-
-        ]
-
-    );
-
-}
-public function create()
-{
-    return Inertia::render(
-
-        'Inventory/Transfer/Create',
-
-        [
-
-            'warehouses' =>
-
-                Warehouse::orderBy('name')
-
-                ->get(),
-
-            'products' =>
-
-                Product::where(
-
-                    'status',
-
-                    true
-
-                )
-
-                ->orderBy('name')
-
-                ->get(),
-
-        ]
-
-    );
-}
-public function store(
-    Request $request
-)
-{
-    $request->validate([
-
-        'from_warehouse_id' =>
-
-            'required',
-
-        'to_warehouse_id' =>
-
-            'required',
-
-        'transfer_date' =>
-
-            'required|date',
-
-        'details' =>
-
-            'required|array|min:1',
-
-    ]);
-
-    $transfer =
-
-        StockTransfer::create([
-
-            'transfer_number' =>
-
-                'TRF' .
-
-                str_pad(
-
-                    StockTransfer::count() + 1,
-
-                    5,
-
-                    '0',
-
-                    STR_PAD_LEFT
-
-                ),
-
-            'from_warehouse_id' =>
-
-                $request->from_warehouse_id,
-
-            'to_warehouse_id' =>
-
-                $request->to_warehouse_id,
-
-            'transfer_date' =>
-
-                $request->transfer_date,
-
-            'status' =>
-
-                'Draft',
-
-            'remarks' =>
-
-                $request->remarks,
-
-            'created_by' =>
-
-                auth()->id(),
-
-        ]);
-
-    foreach (
-
-        $request->details
-
-        as $row
-
-    ) {
-
-        StockTransferDetail::create([
-
-            'stock_transfer_id' =>
-
-                $transfer->id,
-
-            'product_id' =>
-
-                $row['product_id'],
-
-            'qty' =>
-
-                $row['qty'],
-
-            'unit_cost' =>
-
-                $row['unit_cost'],
-
-            'total_cost' =>
-
-                $row['qty']
-                *
-                $row['unit_cost'],
-
-            'remarks' =>
-
-                $row['remarks']
-                ?? null,
-
-        ]);
-
-    }
-
-    return redirect()
-
-        ->route(
-
-            'stock-transfers.show',
-
-            $transfer
-
-        )
-
-        ->with(
-
-            'success',
-
-            'Stock Transfer created.'
-
-        );
-}
-public function show(
-    StockTransfer
-    $stockTransfer
-)
-{
-    $stockTransfer->load(
-
-        'fromWarehouse',
-
-        'toWarehouse',
-
-        'details.product',
-
-        'creator',
-
-        'poster',
-
-        'completer',
-
-        'canceller'
-
-    );
-
-    return Inertia::render(
-
-        'Inventory/Transfer/Show',
-
-        [
-
-            'transfer' =>
-
-                $stockTransfer,
-
-        ]
-
-    );
-}
-public function post(
-    StockTransfer $stockTransfer
-)
-{
-    if (
-
-        $stockTransfer->status
-        !==
-        'Draft'
-
-    ) {
-
-        return back();
-
-    }
-
-    DB::transaction(
-
-        function ()
-
-        use (
-
-            $stockTransfer
-
-        ) {
-
-            foreach (
-
-                $stockTransfer->details
-
-                as $detail
-
-            ) {
-
-                $sourceStock =
-
-                    ProductStock::where(
-
-                        'product_id',
-
-                        $detail->product_id
-
-                    )
-
-                    ->where(
-
-                        'warehouse_id',
-
-                        $stockTransfer
-                        ->from_warehouse_id
-
-                    )
-
-                    ->first();
-
-                if (
-
-                    !$sourceStock ||
-
-                    $sourceStock->qty
-                    <
-                    $detail->qty
-
-                ) {
-
-                    throw new \Exception(
-
-                        'Insufficient stock.'
-
-                    );
-
-                }
-
-                $sourceStock->decrement(
-
-                    'qty',
-
-                    $detail->qty
-
-                );
-
-                InventoryMovement::create([
-
-                    'product_id' =>
-
-                        $detail->product_id,
-
-                    'warehouse_id' =>
-
-                        $stockTransfer
-                        ->from_warehouse_id,
-
-                    'reference_type' =>
-
-                        'TRANSFER_OUT',
-
-                    'reference_id' =>
-
-                        $stockTransfer->id,
-
-                    'reference_number' =>
-
-                        $stockTransfer
-                        ->transfer_number,
-
-                    'qty_in' => 0,
-
-                    'qty_out' =>
-
-                        $detail->qty,
-
-                    'balance_qty' =>
-
-                        $sourceStock
-                        ->fresh()
-                        ->qty,
-
-                    'unit_cost' =>
-
-                        $detail->unit_cost,
-
-                    'total_cost' =>
-
-                        $detail->total_cost,
-
-                    'transaction_date' =>
-
-                        now(),
-
-                    'created_by' =>
-
-                        auth()->id(),
-
-                ]);
-
-                $destinationStock =
-
-                    ProductStock::firstOrCreate(
-
-                        [
-
-                            'product_id' =>
-
-                                $detail->product_id,
-
-                            'warehouse_id' =>
-
-                                $stockTransfer
-                                ->to_warehouse_id,
-
-                        ],
-
-                        [
-
-                            'qty' => 0,
-
-                        ]
-
-                    );
-
-                $destinationStock->increment(
-
-                    'qty',
-
-                    $detail->qty
-
-                );
-
-                InventoryMovement::create([
-
-                    'product_id' =>
-
-                        $detail->product_id,
-
-                    'warehouse_id' =>
-
-                        $stockTransfer
-                        ->to_warehouse_id,
-
-                    'reference_type' =>
-
-                        'TRANSFER_IN',
-
-                    'reference_id' =>
-
-                        $stockTransfer->id,
-
-                    'reference_number' =>
-
-                        $stockTransfer
-                        ->transfer_number,
-
-                    'qty_in' =>
-
-                        $detail->qty,
-
-                    'qty_out' => 0,
-
-                    'balance_qty' =>
-
-                        $destinationStock
-                        ->fresh()
-                        ->qty,
-
-                    'unit_cost' =>
-
-                        $detail->unit_cost,
-
-                    'total_cost' =>
-
-                        $detail->total_cost,
-
-                    'transaction_date' =>
-
-                        now(),
-
-                    'created_by' =>
-
-                        auth()->id(),
-
-                ]);
-
-            }
-
-            $stockTransfer->update([
-
-                'status' =>
-
-                    'Posted',
-
-                'posted_by' =>
-
-                    auth()->id(),
-
-                'posted_at' =>
-
-                    now(),
-
-            ]);
-
-        }
-
-    );
-
-    return redirect()
-
-    ->route(
-
-        'stock-transfers.show',
-
-        $stockTransfer
-
-    )
-
-    ->with(
-
-        'success',
-
-        'Transfer posted successfully.'
-
-    );
-}
-public function complete(
-    StockTransfer $stockTransfer
-)
-{
-    if (
-
-        $stockTransfer->status
-        !== 'Posted'
-
-    ) {
-
-        return back();
-
-    }
-
-    $stockTransfer->update([
-
-        'status' => 'Completed',
-
-        'completed_by' => auth()->id(),
-
-        'completed_at' => now(),
-
-    ]);
-
-    return redirect()
-
-        ->route(
-
-            'stock-transfers.show',
-
-            $stockTransfer
-
-        )
-
-        ->with(
-
-            'success',
-
-            'Transfer completed successfully.'
-
-        );
-
-}
-public function cancel(
-    Request $request,
-    StockTransfer $stockTransfer
-)
-{
-    if (
-
-        $stockTransfer->status
-        !==
-        'Draft'
-
-    ) {
-
-        return back()
-
-            ->with(
-
-                'error',
-
-                'Only draft transfers can be cancelled.'
-
+            ->withCount(
+                'details'
+            )
+            ->withSum(
+                'details',
+                'total_cost'
             );
 
-    }
 
-    $request->validate([
+    /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
 
-        'cancel_reason' =>
+    $query->when(
+        $request->filled('search'),
+        function ($query) use ($request) {
 
-            'required|string|max:500',
+            $search =
+                $request->search;
 
-    ]);
-
-    $stockTransfer->update([
-
-        'status' =>
-
-            'Cancelled',
-
-        'cancelled_by' =>
-
-            auth()->id(),
-
-        'cancelled_at' =>
-
-            now(),
-
-        'cancel_reason' =>
-
-            $request->cancel_reason,
-
-    ]);
-
-  return redirect()
-
-    ->route(
-
-        'stock-transfers.show',
-
-        $stockTransfer
-
-    )
-
-    ->with(
-
-        'success',
-
-        'Transfer cancelled successfully.'
-
-    );
-
-}
-public function getWarehouseStocks(
-    Warehouse $warehouse
-)
-{
-    $stocks =
-
-        ProductStock::with(
-
-            'product'
-
-        )
-
-        ->where(
-
-            'warehouse_id',
-
-            $warehouse->id
-
-        )
-
-        ->where(
-
-            'qty',
-
-            '>',
-
-            0
-
-        )
-
-        ->get()
-
-        ->map(
-
-            function (
-
-                $stock
-
+            $query->where(function ($query) use (
+                $search
             ) {
 
+                $query
+                    ->where(
+                        'number',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'description',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhereHas(
+                        'fromBranch',
+                        function ($branch) use (
+                            $search
+                        ) {
+
+                            $branch->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
+
+                        }
+                    )
+
+                    ->orWhereHas(
+                        'toBranch',
+                        function ($branch) use (
+                            $search
+                        ) {
+
+                            $branch->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
+
+                        }
+                    )
+
+                    ->orWhereHas(
+                        'fromWarehouse',
+                        function ($warehouse) use (
+                            $search
+                        ) {
+
+                            $warehouse->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
+
+                        }
+                    )
+
+                    ->orWhereHas(
+                        'toWarehouse',
+                        function ($warehouse) use (
+                            $search
+                        ) {
+
+                            $warehouse->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
+
+                        }
+                    );
+
+            });
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Branch Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('branch_id'),
+        function ($query) use ($request) {
+
+            $branchId =
+                $request->branch_id;
+
+            $query->where(function ($query) use (
+                $branchId
+            ) {
+
+                $query
+                    ->where(
+                        'from_branch_id',
+                        $branchId
+                    )
+                    ->orWhere(
+                        'to_branch_id',
+                        $branchId
+                    );
+
+            });
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('warehouse_id'),
+        function ($query) use ($request) {
+
+            $warehouseId =
+                $request->warehouse_id;
+
+            $query->where(function ($query) use (
+                $warehouseId
+            ) {
+
+                $query
+                    ->where(
+                        'from_warehouse_id',
+                        $warehouseId
+                    )
+                    ->orWhere(
+                        'to_warehouse_id',
+                        $warehouseId
+                    );
+
+            });
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('status'),
+        function ($query) use ($request) {
+
+            $query->where(
+                'status',
+                $request->status
+            );
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Date Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('date_from'),
+        function ($query) use ($request) {
+
+            $query->whereDate(
+                'transaction_date',
+                '>=',
+                $request->date_from
+            );
+
+        }
+    );
+
+
+    $query->when(
+        $request->filled('date_to'),
+        function ($query) use ($request) {
+
+            $query->whereDate(
+                'transaction_date',
+                '<=',
+                $request->date_to
+            );
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sorting
+    |--------------------------------------------------------------------------
+    */
+
+    $sortBy =
+        $request->input(
+            'sort_by',
+            'id'
+        );
+
+    $sortDirection =
+        $request->input(
+            'sort_direction',
+            'desc'
+        );
+
+
+    $allowedSorts = [
+
+        'id',
+
+        'number',
+
+        'transaction_date',
+
+        'status',
+
+        'total_cost',
+
+    ];
+
+
+    if (
+        ! in_array(
+            $sortBy,
+            $allowedSorts,
+            true
+        )
+    ) {
+
+        $sortBy = 'id';
+
+    }
+
+
+    if (
+        ! in_array(
+            $sortDirection,
+            [
+                'asc',
+                'desc',
+            ],
+            true
+        )
+    ) {
+
+        $sortDirection = 'desc';
+
+    }
+
+
+    if (
+        $sortBy === 'total_cost'
+    ) {
+
+        $query->orderBy(
+            'details_sum_total_cost',
+            $sortDirection
+        );
+
+    } else {
+
+        $query->orderBy(
+            $sortBy,
+            $sortDirection
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Statistics
+    |--------------------------------------------------------------------------
+    |
+    | Clone BEFORE pagination.
+    |
+    */
+
+    $statisticsQuery =
+        clone $query;
+
+
+    $statistics = [
+
+        'total' =>
+            (clone $statisticsQuery)
+                ->count(),
+
+        'draft' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Draft'
+                )
+                ->count(),
+
+        'rejected' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Rejected'
+                )
+                ->count(),
+
+        'posted' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Posted'
+                )
+                ->count(),
+
+    ];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+    $transfers =
+        $query
+            ->paginate(
+                $request->integer(
+                    'per_page',
+                    10
+                )
+            )
+            ->withQueryString();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Transform
+    |--------------------------------------------------------------------------
+    */
+
+    $transfers
+        ->getCollection()
+        ->transform(
+            function ($transfer) {
+
+                $transfer->details_count =
+                    $transfer->details_count
+                    ?? 0;
+
+                $transfer->total_cost =
+                    $transfer->details_sum_total_cost
+                    ?? 0;
+
+                return $transfer;
+
+            }
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Master Data
+    |--------------------------------------------------------------------------
+    */
+
+    $branches =
+        Branch::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($branch) {
+
                 return [
+                    'id' =>
+                        $branch->id,
 
-                    'product_id' =>
-
-                        $stock->product_id,
-
-                    'product_name' =>
-
-                        $stock->product?->name,
-
-                    'available_qty' =>
-
-                        $stock->qty,
-
-                    'unit_cost' =>
-
-                        InventoryMovement::where(
-
-                            'product_id',
-
-                            $stock->product_id
-
-                        )
-
-                        ->where(
-
-                            'warehouse_id',
-
-                            $stock->warehouse_id
-
-                        )
-
-                        ->latest('id')
-
-                        ->value(
-
-                            'unit_cost'
-
-                        )
-
-                        ?? 0,
+                    'label' =>
+                        $branch->name,
 
                 ];
 
+            })
+            ->values();
+
+
+    $warehouses =
+        Warehouse::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($warehouse) {
+
+                return [
+                    'id' =>
+                        $warehouse->id,
+
+                    'label' =>
+                        $warehouse->name,
+
+                    'branch_id' =>
+                        $warehouse->branch_id,
+
+                ];
+
+            })
+            ->values();
+
+
+    $variants =
+        ProductVariant::query()
+            ->with('product')
+            ->orderBy('id')
+            ->get();
+
+
+    $units =
+        Unit::query()
+            ->orderBy('name')
+            ->get();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Preview Number
+    |--------------------------------------------------------------------------
+    */
+
+    $previewNumber =
+        $this->codeGeneratorService
+            ->preview(
+                'stock_transfer'
+            );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return
+    |--------------------------------------------------------------------------
+    */
+
+    return Inertia::render(
+    'Inventory/Transfer/Index',
+    [
+
+        'title' =>
+            'Stock Transfer',
+
+        'transfers' =>
+            $transfers,
+
+        'statistics' =>
+            $statistics,
+
+                'branches' =>
+            \App\Models\MasterData\Branch::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($branch) => [
+                    'id' => $branch->id,
+                    'label' => $branch->name,
+                ])
+                ->values(),
+
+        'warehouses' =>
+            Warehouse::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($warehouse) => [
+                    'id' => $warehouse->id,
+                    'label' => $warehouse->name,
+                    'branch_id' => $warehouse->branch_id,
+                ])
+                ->values(),
+
+       'variants' =>
+    \App\Models\Product\ProductVariant::query()
+        ->active()
+        ->whereHas(
+            'units',
+            function ($query) {
+
+                $query->active();
+
             }
+        )
+        ->with([
+            'product',
 
-        );
+            'units' => function ($query) {
 
-    return response()->json(
+                $query
+                    ->active()
+                    ->with('unit')
+                    ->orderBy('sort_order');
 
-        $stocks
+            },
+        ])
+        ->orderBy('sku')
+        ->get([
+            'id',
+            'product_id',
+            'sku',
+            'name',
+        ])
+        ->map(fn ($variant) => [
 
-    );
+            'id' =>
+                $variant->id,
+
+            'label' =>
+                implode(
+                    ' - ',
+                    array_filter([
+                        $variant->product?->name,
+                        $variant->name,
+                    ])
+                ),
+
+            'units' =>
+                $variant->units
+                    ->map(fn ($variantUnit) => [
+
+                        'id' =>
+                            $variantUnit->unit_id,
+
+                        'label' =>
+                            $variantUnit->unit?->name,
+
+                        'conversion_factor' =>
+                            $variantUnit->conversion_factor,
+
+                        'is_base' =>
+                            $variantUnit->is_base,
+
+                        'is_default' =>
+                            $variantUnit->is_default,
+
+                    ])
+                    ->values(),
+
+        ])
+        ->values(),
+
+        'previewNumber' =>
+            $this->codeGeneratorService
+                ->preview('stock_transfer'),
+
+        'filters' =>
+            $request->only([
+                'search',
+                'status',
+                'per_page',
+                'sort_by',
+                'sort_direction',
+            ]),
+
+    ]
+);
 }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Create
+    |--------------------------------------------------------------------------
+    */
+
+    public function create()
+    {
+        return Inertia::render(
+            'Inventory/Transfer/Create',
+            [
+
+                'title' =>
+                    'Create Stock Transfer',
+
+            ]
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Store
+    |--------------------------------------------------------------------------
+    */
+
+    public function store(
+        StoreStockTransferRequest $request
+    ) {
+
+        $transfer =
+            $this->inventoryService
+                ->createStockTransfer(
+                    $request->validated()
+                );
+
+
+        return redirect()
+            ->route(
+                'stock-transfers.index',
+                $transfer
+            )
+            ->with(
+                'success',
+                'Stock transfer created successfully.'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Show
+    |--------------------------------------------------------------------------
+    */
+
+    public function show(
+        StockTransferHeader $stockTransfer
+    ) {
+
+        $stockTransfer->load([
+
+            'company',
+
+            'fromBranch',
+
+            'fromWarehouse',
+
+            'toBranch',
+
+            'toWarehouse',
+
+            'creator',
+
+            'updater',
+
+            'poster',
+
+            'rejector',
+
+            'deleter',
+
+            'details.variant.product',
+
+            'details.unit',
+
+            'movements',
+
+            'activities',
+
+        ]);
+
+
+        return Inertia::render(
+            'Inventory/Transfer/Show',
+            [
+
+                'transfer' =>
+                    $stockTransfer,
+
+            ]
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update
+    |--------------------------------------------------------------------------
+    */
+
+    public function update(
+        UpdateStockTransferRequest $request,
+        StockTransferHeader $stockTransfer
+    ) {
+
+        $this->inventoryService
+            ->updateStockTransfer(
+                $stockTransfer,
+                $request->validated()
+            );
+
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Stock transfer updated successfully.'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Post
+    |--------------------------------------------------------------------------
+    */
+
+    public function post(
+        StockTransferHeader $stockTransfer
+    ) {
+
+        $this->inventoryService
+            ->postStockTransfer(
+                $stockTransfer
+            );
+
+
+        return redirect()
+            ->route(
+                'stock-transfers.show',
+                $stockTransfer
+            )
+            ->with(
+                'success',
+                'Stock transfer posted successfully.'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cancel
+    |--------------------------------------------------------------------------
+    */
+
+    public function cancel(
+        CancelStockTransferRequest $request,
+        StockTransferHeader $stockTransfer
+    ) {
+
+        $this->inventoryService
+            ->cancelStockTransfer(
+                $stockTransfer,
+                $request->validated()['reason']
+            );
+
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Stock transfer rejected successfully.'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Stocks
+    |--------------------------------------------------------------------------
+    */
+
+    public function getWarehouseStocks(
+    Warehouse $warehouse
+) {
+
+    $stocks = ProductStock::query()
+        ->with([
+            'variant.product',
+            'unit',
+        ])
+        ->where(
+            'warehouse_id',
+            $warehouse->id
+        )
+        ->orderBy(
+            'product_variant_id'
+        )
+        ->get();
+
+    return response()->json([
+        'data' => $stocks,
+    ]);
+}
+    /*
+|--------------------------------------------------------------------------
+| Duplicate
+|--------------------------------------------------------------------------
+*/
+
+public function duplicate(
+    StockTransferHeader $stockTransfer
+) {
+
+    $duplicate =
+        $this->inventoryService
+            ->duplicateStockTransfer(
+                $stockTransfer
+            );
+
+
+    return redirect()
+        ->route(
+            'stock-transfers.index',
+            $duplicate
+        )
+        ->with(
+            'success',
+            'Stock transfer duplicated successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Destroy
+|--------------------------------------------------------------------------
+*/
+
+public function destroy(
+    StockTransferHeader $stockTransfer
+) {
+
+    $this->inventoryService
+        ->deleteStockTransfers([
+            $stockTransfer->id,
+        ]);
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock transfer deleted successfully.'
+        );
+}
 }

@@ -217,165 +217,44 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
+        Route::get('/transfers',[StockTransferController::class,'index'])
 
-            '/transfers',
+        ->name('stock-transfers.index');
 
-            [
+        Route::get('/transfers/create',[StockTransferController::class,'create'])
 
-                StockTransferController::class,
+        ->name('stock-transfers.create');
 
-                'index'
+            Route::put('inventory/transfers/{stockTransfer}',[StockTransferController::class, 'update']
+            )->name('stock-transfers.update');
 
-            ]
+        Route::post('/transfers',[StockTransferController::class,'store'])
+        ->name('stock-transfers.store');
 
-        )
+        Route::post('inventory/transfers/{stockTransfer}/duplicate',[StockTransferController::class,'duplicate', ]
+        )->name('stock-transfers.duplicate');
 
-        ->name(
 
-            'stock-transfers.index'
+        Route::delete('inventory/transfers/{stockTransfer}',[StockTransferController::class,'destroy',]
+        )->name('stock-transfers.destroy');
 
-        );
+        Route::get('/transfers/{stockTransfer}',[StockTransferController::class,'show'])
+        ->name('stock-transfers.show');
 
-        Route::get(
+        Route::post('/transfers/{stockTransfer}/post',[StockTransferController::class,'post'])
 
-            '/transfers/create',
+        ->name('stock-transfers.post');
 
-            [
+        Route::post('/transfers/{stockTransfer}/complete',[StockTransferController::class,'complete'])
 
-                StockTransferController::class,
+        ->name('stock-transfers.complete');
 
-                'create'
+        Route::post('/transfers/{stockTransfer}/cancel',[StockTransferController::class, 'cancel'] )
 
-            ]
+        ->name('stock-transfers.cancel');
 
-        )
-
-        ->name(
-
-            'stock-transfers.create'
-
-        );
-
-        Route::post(
-
-            '/transfers',
-
-            [
-
-                StockTransferController::class,
-
-                'store'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.store'
-
-        );
-
-        Route::get(
-
-            '/transfers/{stockTransfer}',
-
-            [
-
-                StockTransferController::class,
-
-                'show'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.show'
-
-        );
-
-        Route::post(
-
-            '/transfers/{stockTransfer}/post',
-
-            [
-
-                StockTransferController::class,
-
-                'post'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.post'
-
-        );
-
-        Route::post(
-
-            '/transfers/{stockTransfer}/complete',
-
-            [
-
-                StockTransferController::class,
-
-                'complete'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.complete'
-
-        );
-
-        Route::post(
-
-            '/transfers/{stockTransfer}/cancel',
-
-            [
-
-                StockTransferController::class,
-
-                'cancel'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.cancel'
-
-        );
-
-        Route::get(
-
-            '/transfers/warehouse/{warehouse}',
-
-            [
-
-                StockTransferController::class,
-
-                'getWarehouseStocks'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-transfers.warehouse-stocks'
-
-        );
+        Route::get('/transfers/warehouse/{warehouse}',[StockTransferController::class,'getWarehouseStocks'])
+        ->name('stock-transfers.warehouse-stocks' );
             /*
         |--------------------------------------------------------------------------
         | Stock Issue
