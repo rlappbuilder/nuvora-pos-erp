@@ -216,7 +216,9 @@ Route::middleware(
         | Stock Transfer
         |--------------------------------------------------------------------------
         */
-
+        Route::get(
+    'stock-transfers/{stockTransfer}/data',[StockTransferController::class,'data',]
+          )->name('stock-transfers.data' );
         Route::get('/transfers',[StockTransferController::class,'index'])
 
         ->name('stock-transfers.index');

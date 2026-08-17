@@ -7,7 +7,6 @@ import BaseModal from '@/Components/Modal/BaseModal.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import AuditTrail from '@/Components/Workflow/AuditTrail.vue'
-import AdjustmentSummary from '@/Components/Inventory/AdjustmentSummary.vue'
 const props = defineProps({
 
     show: {
@@ -15,7 +14,7 @@ const props = defineProps({
         default: false,
     },
 
-    adjustment: {
+    transfer: {
         type: Object,
         default: null,
     },
@@ -39,7 +38,7 @@ const emit = defineEmits([
 
 const details = computed(() => {
 
-    return props.adjustment?.details ?? []
+    return props.transfer?.details ?? []
 
 })
 
@@ -49,13 +48,13 @@ const totalItems = computed(() => {
 
 })
 
-const totalDifference = computed(() => {
+const totalQuantity = computed(() => {
 
     return details.value.reduce(
         (total, detail) =>
             total +
             Number(
-                detail.difference_qty || 0
+                detail.qty || 0
             ),
         0
     )
@@ -152,7 +151,7 @@ function formatDateTime(value)
 
 <BaseModal
     :show="show"
-    title="Inventory Adjustment Detail"
+    title="Stock Transfer Detail"
     size="xl"
     @close="emit('close')"
 >
@@ -209,7 +208,7 @@ function formatDateTime(value)
                 </svg>
 
                 <span class="text-sm">
-                    Loading inventory adjustment...
+                    Loading Stock Transfer...
                 </span>
 
             </div>
@@ -223,7 +222,7 @@ function formatDateTime(value)
             class="space-y-6"
         >
 
-            <!-- ===================================================== -->
+           <!-- ===================================================== -->
             <!-- Document Information -->
             <!-- ===================================================== -->
 
@@ -257,14 +256,14 @@ function formatDateTime(value)
                                 text-gray-500
                             "
                         >
-                            Inventory adjustment transaction information.
+                            Stock transfer transaction information.
                         </p>
 
                     </div>
 
                     <StatusBadge
                         :status="
-                            adjustment?.status
+                            props.transfer?.status
                         "
                     />
 
@@ -301,7 +300,8 @@ function formatDateTime(value)
                             "
                         >
                             {{
-                                adjustment?.number || '-'
+                                props.transfer?.number
+                                ?? '-'
                             }}
                         </div>
 
@@ -325,7 +325,7 @@ function formatDateTime(value)
                         >
                             {{
                                 formatDate(
-                                    adjustment?.transaction_date
+                                    props.transfer?.transaction_date
                                 )
                             }}
                         </div>
@@ -333,12 +333,12 @@ function formatDateTime(value)
                     </div>
 
 
-                    <!-- Branch -->
+                    <!-- Source Branch -->
 
                     <div>
 
                         <div class="text-xs text-gray-500">
-                            Branch
+                            From Branch
                         </div>
 
                         <div
@@ -349,9 +349,9 @@ function formatDateTime(value)
                             "
                         >
                             {{
-                                adjustment?.branch?.name
+                                props.transfer?.from_branch?.name
                                 ??
-                                adjustment?.branch?.label
+                                props.transfer?.from_branch?.label
                                 ??
                                 '-'
                             }}
@@ -360,12 +360,12 @@ function formatDateTime(value)
                     </div>
 
 
-                    <!-- Warehouse -->
+                    <!-- Source Warehouse -->
 
                     <div>
 
                         <div class="text-xs text-gray-500">
-                            Warehouse
+                            From Warehouse
                         </div>
 
                         <div
@@ -376,9 +376,63 @@ function formatDateTime(value)
                             "
                         >
                             {{
-                                adjustment?.warehouse?.name
+                                props.transfer?.from_warehouse?.name
                                 ??
-                                adjustment?.warehouse?.label
+                                props.transfer?.from_warehouse?.label
+                                ??
+                                '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- Destination Branch -->
+
+                    <div>
+
+                        <div class="text-xs text-gray-500">
+                            To Branch
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                props.transfer?.to_branch?.name
+                                ??
+                                props.transfer?.to_branch?.label
+                                ??
+                                '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- Destination Warehouse -->
+
+                    <div>
+
+                        <div class="text-xs text-gray-500">
+                            To Warehouse
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                props.transfer?.to_warehouse?.name
+                                ??
+                                props.transfer?.to_warehouse?.label
                                 ??
                                 '-'
                             }}
@@ -404,7 +458,8 @@ function formatDateTime(value)
                             "
                         >
                             {{
-                                adjustment?.description || '-'
+                                props.transfer?.description
+                                || '-'
                             }}
                         </div>
 
@@ -414,48 +469,147 @@ function formatDateTime(value)
 
             </section>
            <!-- ========================================================= -->
-            <!-- Adjustment Summary -->
+            <!-- Transfer Stock Summary -->
             <!-- ========================================================= -->
 
-            <section>
+<section>
 
-                <div class="mb-4">
+    <div class="mb-4">
 
-                    <h3
-                        class="
-                            text-base
-                            font-semibold
-                            text-gray-900
-                        "
-                    >
-                        Adjustment Summary
-                    </h3>
+        <h3
+            class="
+                text-base
+                font-semibold
+                text-gray-900
+            "
+        >
+            Transfer Summary
+        </h3>
 
-                    <p
-                        class="
-                            mt-1
-                            text-sm
-                            text-gray-500
-                        "
-                    >
-                        Summary of quantity and cost adjustment.
-                    </p>
+        <p
+            class="
+                mt-1
+                text-sm
+                text-gray-500
+            "
+        >
+            Summary of transferred quantities and costs.
+        </p>
 
-                </div>
+    </div>
 
 
-                <AdjustmentSummary
-                    :details="details"
-                />
+    <div
+        class="
+            grid
+            grid-cols-1
+            gap-4
+            md:grid-cols-3
+        "
+    >
 
-            </section>
+        <!-- Total Items -->
+
+        <div
+            class="
+                rounded-xl
+                border
+                border-gray-200
+                bg-green-50
+                p-5
+            "
+        >
+
+            <div class="text-xs text-gray-500">
+                Total Items
+            </div>
+
+            <div
+                class="
+                    mt-1
+                    text-xl
+                    font-semibold
+                    text-gray-900
+                "
+            >
+                {{ totalItems }}
+            </div>
+
+        </div>
+        <div
+            class="
+                rounded-xl
+                border
+                border-gray-200
+                bg-red-100
+                p-5
+            "
+        >
+
+            <div class="text-xs text-gray-500">
+                Total Quantity
+            </div>
+
+            <div
+                class="
+                    mt-1
+                    text-xl
+                    font-semibold
+                    text-gray-900
+                "
+            >
+                {{
+                    formatNumber(
+                        totalQuantity
+                    )
+                }}
+            </div>
+
+        </div>
+
+        <!-- Total Cost -->
+
+        <div
+            class="
+                rounded-xl
+                border
+                border-gray-200
+                bg-orange-50
+                p-5
+            "
+        >
+
+            <div class="text-xs text-gray-500">
+                Total Cost
+            </div>
+
+            <div
+                class="
+                    mt-1
+                    text-xl
+                    font-semibold
+                    text-gray-900
+                "
+            >
+                {{
+                    formatCurrency(
+                        totalCost
+                    )
+                }}
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
             <!-- ===================================================== -->
             <!-- Rejection Information -->
             <!-- ===================================================== -->
 
             <section
                 v-if="
-                    adjustment?.status === 'Rejected'
+                    transfer?.status === 'Rejected'
                 "
                 class="
                     rounded-xl
@@ -493,7 +647,7 @@ function formatDateTime(value)
                             "
                         >
                             {{
-                                adjustment?.rejected_reason
+                                transfer?.rejected_reason
                                 || '-'
                             }}
                         </div>
@@ -525,7 +679,7 @@ function formatDateTime(value)
                             >
                                 {{
                                     formatDateTime(
-                                        adjustment?.rejected_at
+                                        transfer?.rejected_at
                                     )
                                 }}
                             </div>
@@ -547,7 +701,7 @@ function formatDateTime(value)
                                 "
                             >
                                 {{
-                                    adjustment?.rejector?.name
+                                    transfer?.rejector?.name
                                     ?? '-'
                                 }}
                             </div>
@@ -559,8 +713,8 @@ function formatDateTime(value)
                 </div>
 
             </section>
-<!-- ===================================================== -->
-            <!-- Adjustment Details -->
+            <!-- ===================================================== -->
+            <!--ent Details -->
             <!-- ===================================================== -->
 
             <section>
@@ -574,7 +728,7 @@ function formatDateTime(value)
                             text-gray-900
                         "
                     >
-                        Adjustment Details
+                        Transfer Details
                     </h3>
 
                     <p
@@ -584,7 +738,7 @@ function formatDateTime(value)
                             text-gray-500
                         "
                     >
-                        Stock quantity adjustment details.
+                        Stock quantity Transer Stock details.
                     </p>
 
                 </div>
@@ -624,37 +778,15 @@ function formatDateTime(value)
                                     <th class="px-4 py-3">
                                         Unit
                                     </th>
-
-                                    <th
+                                        <th
                                         class="
                                             px-4
                                             py-3
                                             text-right
                                         "
                                     >
-                                        System Qty
+                                        Transfer Qty
                                     </th>
-
-                                    <th
-                                        class="
-                                            px-4
-                                            py-3
-                                            text-right
-                                        "
-                                    >
-                                        Actual Qty
-                                    </th>
-
-                                    <th
-                                        class="
-                                            px-4
-                                            py-3
-                                            text-right
-                                        "
-                                    >
-                                        Difference
-                                    </th>
-
                                     <th
                                         class="
                                             px-4
@@ -776,29 +908,7 @@ function formatDateTime(value)
                                             '-'
                                         }}
                                     </td>
-
-
-                                    <!-- System Qty -->
-
-                                    <td
-                                        class="
-                                            whitespace-nowrap
-                                            px-4
-                                            py-3
-                                            text-right
-                                            text-sm
-                                            text-gray-700
-                                        "
-                                    >
-                                        {{
-                                            formatNumber(
-                                                detail.system_qty
-                                            )
-                                        }}
-                                    </td>
-
-
-                                    <!-- Actual Qty -->
+                                    <!-- Quantity -->
 
                                     <td
                                         class="
@@ -813,52 +923,10 @@ function formatDateTime(value)
                                     >
                                         {{
                                             formatNumber(
-                                                detail.actual_qty
+                                                detail.qty
                                             )
                                         }}
                                     </td>
-
-
-                                    <!-- Difference -->
-
-                                    <td
-                                        class="
-                                            whitespace-nowrap
-                                            px-4
-                                            py-3
-                                            text-right
-                                            text-sm
-                                            font-semibold
-                                        "
-                                        :class="
-                                            Number(
-                                                detail.difference_qty
-                                                || 0
-                                            ) > 0
-                                                ? 'text-green-600'
-                                                : Number(
-                                                    detail.difference_qty
-                                                    || 0
-                                                ) < 0
-                                                    ? 'text-red-600'
-                                                    : 'text-gray-500'
-                                        "
-                                    >
-                                        {{
-                                            Number(
-                                                detail.difference_qty
-                                                || 0
-                                            ) > 0
-                                                ? '+'
-                                                : ''
-                                        }}{{
-                                            formatNumber(
-                                                detail.difference_qty
-                                            )
-                                        }}
-                                    </td>
-
-
                                     <!-- Unit Cost -->
 
                                     <td
@@ -909,7 +977,7 @@ function formatDateTime(value)
                                 >
 
                                     <td
-                                        colspan="7"
+                                        colspan="5"
                                         class="
                                             px-4
                                             py-8
@@ -918,7 +986,7 @@ function formatDateTime(value)
                                             text-gray-500
                                         "
                                     >
-                                        No adjustment details found.
+                                        No Transfer Stock details found.
                                     </td>
 
                                 </tr>
@@ -954,14 +1022,14 @@ function formatDateTime(value)
                             text-gray-500
                         "
                     >
-                        Inventory impact generated by this document.
+                        Transer impact generated by this document.
                     </p>
 
                 </div>
 
-                I<StockImpact
+                <StockImpact
                     :movements="
-                        adjustment?.movements
+                        props.transfer?.movements
                         ?? []
                     "
                 />
@@ -1002,7 +1070,7 @@ function formatDateTime(value)
 
                     <WorkflowTimeline
                         :activities="
-                            adjustment.activities
+                            props.transfer?.activities
                             ?? []
                         "
                     />
@@ -1037,11 +1105,11 @@ function formatDateTime(value)
 
 
         <AuditTrail
-            :activities="
-                adjustment.activities
-                ?? []
-            "
-        />
+                :activities="
+                    props.transfer?.activities
+                    ?? []
+                "
+            />
 
     </section>
 </div>

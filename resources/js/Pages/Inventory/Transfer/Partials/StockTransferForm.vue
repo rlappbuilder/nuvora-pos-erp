@@ -10,6 +10,7 @@ import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import {DatePicker,CurrencyInput,} from '@/Components/Form'
 import { ref,computed,watch } from 'vue'
 import { formatCurrency } from '@/Utils/currency'
+import { success, error, currency,formatDate,} from '@/Utils'
 
 const props = defineProps({
 
@@ -87,12 +88,76 @@ console.log(
 )
 const warehouseStocks = ref([])
 const loadingStocks = ref(false)
+const qtyExceedingAvailable = ref({})
 const emit = defineEmits([
     'submit',
     'submitAndNew',
     'cancel',
 ])
+const validateQty = (detail, index) => {
 
+    const qty =
+        Number(detail.qty ?? 0)
+
+    if (
+        !qty ||
+        qty <= 0
+    ) {
+
+        qtyExceedingAvailable.value[index] =
+            false
+
+        return
+
+    }
+
+
+    const stock =
+        getStock(
+            detail.product_variant_id,
+            detail.unit_id
+        )
+
+
+    const available =
+        Number(
+            stock?.available_qty ?? 0
+        )
+
+
+    if (
+        qty <= available
+    ) {
+
+        qtyExceedingAvailable.value[index] =
+            false
+
+        return
+
+    }
+
+
+    qtyExceedingAvailable.value[index] =
+        true
+
+
+    error(
+        `Stock tidak mencukupi. Available: ${available}. Qty transfer otomatis disesuaikan menjadi ${available}.`
+    )
+
+
+    detail.qty =
+        available
+
+
+    setTimeout(() => {
+
+        qtyExceedingAvailable.value[index] =
+            false
+
+    }, 500)
+
+}
 /*
 |--------------------------------------------------------------------------
 | Detail
@@ -1016,14 +1081,25 @@ watch(
                                 ]
                             "
                         >
+                        
 
                             <FormInput
-                                v-model="detail.qty"
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="0"
-                            />
+                                    v-model="detail.qty"
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="0"
+                                    :class="{
+                                        'border-red-500 ring-1 ring-red-500':
+                                            qtyExceedingAvailable[index]
+                                    }"
+                                    @change="
+                                        validateQty(
+                                            detail,
+                                            index
+                                        )
+                                    "
+                                />
 
                         </FormField>
 

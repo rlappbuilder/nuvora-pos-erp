@@ -14,7 +14,7 @@ use App\Models\Core\DocumentActivity;
 use App\Models\Inventory\StockTransferHeader;
 use App\Models\Inventory\StockTransferDetail;
 use App\Models\MasterData\Warehouse;
-
+use App\Models\MasterData\Branch;
 class InventoryService
 {
     public function __construct(
@@ -1412,8 +1412,9 @@ public function transfer(array $data): void
     */
 
     $query = ProductStock::query()
-        ->whereNull(
-            'company_id'
+        ->where(
+            'company_id',
+        $data['company_id'] ?? null
         )
         ->where(
             'branch_id',
@@ -1457,7 +1458,7 @@ public function transfer(array $data): void
         $stock = new ProductStock();
 
         $stock->company_id =
-            null;
+        $data['company_id'] ?? null;
 
         $stock->branch_id =
             $data['branch_id'];
@@ -2589,7 +2590,10 @@ public function createStockTransfer(
 
         $transfer = StockTransferHeader::create([
 
-            'company_id' => null,
+            'company_id' =>
+            Branch::findOrFail(
+                $data['from_branch_id']
+            )->company_id,
 
             'from_branch_id' =>
                 $data['from_branch_id'],
@@ -2628,39 +2632,89 @@ public function createStockTransfer(
         |--------------------------------------------------------------------------
         */
 
-        foreach (
-            $data['details']
-            as $detail
-        ) {
+        
+           foreach (
+                $data['details']
+                as $index => $detail
+            ) {
+            
             $sourceStock =
                 ProductStock::query()
+                    ->lockForUpdate()
                     ->where(
-                        'branch_id',
-                        $data['from_branch_id']
+                        'company_id',
+                        Branch::findOrFail(
+                            $data['from_branch_id']
+                        )->company_id
                     )
-                    ->where(
-                        'warehouse_id',
-                        $data['from_warehouse_id']
-                    )
-                    ->where(
-                        'product_variant_id',
-                        $detail['product_variant_id']
-                    )
-                    ->where(
-                        'unit_id',
-                        $detail['unit_id']
-                    )
-                    ->first();
+                ->where(
+                    'branch_id',
+                    $data['from_branch_id']
+                )
+                ->where(
+                    'warehouse_id',
+                    $data['from_warehouse_id']
+                )
+                ->where(
+                    'product_variant_id',
+                    $detail['product_variant_id']
+                )
+                ->where(
+                    'unit_id',
+                    $detail['unit_id']
+                )
+                ->first();
 
-            $unitCost =
-                (float) (
-                    $sourceStock?->average_cost
-                    ?? 0
-                );
 
-            $totalCost =
-                $unitCost *
-                (float) $detail['qty'];
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Source Stock
+        |--------------------------------------------------------------------------
+        */
+
+        if (! $sourceStock) {
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+
+                "details.{$index}.qty" =>
+                    'Source stock is not available for this product and unit.',
+
+            ]);
+
+        }
+
+
+        if (
+            (float) $sourceStock->available_qty
+            <
+            (float) $detail['qty']
+        ) {
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+
+                "details.{$index}.qty" =>
+                    'Transfer quantity cannot exceed available stock. Available: '
+                    . $sourceStock->available_qty
+                    . '.',
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Source Cost
+        |--------------------------------------------------------------------------
+        */
+
+        $unitCost =
+            (float) $sourceStock->average_cost;
+
+
+        $totalCost =
+            $unitCost *
+            (float) $detail['qty'];
 
 
             StockTransferDetail::create([
@@ -2701,7 +2755,7 @@ public function createStockTransfer(
 private function validateTransferLocations(
     array $data
 ): void {
-
+        
     $fromWarehouse =
         Warehouse::query()
             ->findOrFail(
@@ -2713,8 +2767,34 @@ private function validateTransferLocations(
             ->findOrFail(
                 $data['to_warehouse_id']
             );
+    $fromBranch =
+            Branch::query()
+                ->findOrFail(
+                    $data['from_branch_id']
+                );
 
+        $toBranch =
+            Branch::query()
+                ->findOrFail(
+                    $data['to_branch_id']
+                );
+        /*
+        |--------------------------------------------------------------------------
+        | Branch Must Belong To Same Company
+        |--------------------------------------------------------------------------
+        */
 
+        if (
+            (int) $fromBranch->company_id
+            !==
+            (int) $toBranch->company_id
+        ) {
+
+            throw new \RuntimeException(
+                'Source and destination branch must belong to the same company.'
+            );
+
+        }
     /*
     |--------------------------------------------------------------------------
     | Source Warehouse → Source Branch
@@ -2796,11 +2876,18 @@ public function updateStockTransfer(
         */
 
         if (
-            $transfer->status !== 'Draft'
+            ! in_array(
+                $transfer->status,
+                [
+                    'Draft',
+                    'Rejected',
+                ],
+                true
+            )
         ) {
 
             throw new \RuntimeException(
-                'Only Draft stock transfer can be updated.'
+                'Only Draft or Rejected stock transfer can be updated.'
             );
 
         }
@@ -2873,17 +2960,17 @@ public function updateStockTransfer(
                 $detail['unit_id']
             );
 
-        $unitCost =
-            (float) (
-                $sourceStock?->average_cost
-                ?? 0
-            );
+            $unitCost =
+                (float) (
+                    $sourceStock?->average_cost
+                    ?? 0
+                );
 
-        $totalCost =
-            $unitCost *
-            (float) $detail['qty'];
+            $totalCost =
+                $unitCost *
+                (float) $detail['qty'];
 
-
+        
         StockTransferDetail::create([
 
             'stock_transfer_header_id' =>
@@ -2907,15 +2994,44 @@ public function updateStockTransfer(
             'description' =>
                 $detail['description']
                 ?? null,
-
+                
             'created_by' =>
                 auth()->id(),
 
         ]);
 
         }
+        /*
+|--------------------------------------------------------------------------
+| Update Workflow State
+|--------------------------------------------------------------------------
+*/
 
+if ($transfer->status === 'Rejected') {
+
+    $transfer->update([
+
+        'status' =>
+            'Draft',
+
+        'rejected_at' =>
+            null,
+
+        'rejected_by' =>
+            null,
+
+        'rejected_reason' =>
+            null,
+
+        'updated_by' =>
+            auth()->id(),
+
+    ]);
+
+}
+        
     });
+    
 }
 public function postStockTransfer(
     StockTransferHeader $stockTransfer
@@ -3000,8 +3116,9 @@ public function postStockTransfer(
             $sourceStock =
                 ProductStock::query()
                     ->lockForUpdate()
-                    ->whereNull(
-                        'company_id'
+                    ->where(
+                        'company_id',
+                        $stockTransfer->company_id
                     )
                     ->where(
                         'branch_id',
@@ -3099,7 +3216,7 @@ public function postStockTransfer(
                 $this->updateCurrentStock([
 
                     'company_id' =>
-                        null,
+                    $stockTransfer->company_id,
 
                     'branch_id' =>
                         $stockTransfer->from_branch_id,
@@ -3191,7 +3308,7 @@ public function postStockTransfer(
                 $this->updateCurrentStock([
 
                     'company_id' =>
-                        null,
+                    $stockTransfer->company_id,
 
                     'branch_id' =>
                         $stockTransfer->to_branch_id,

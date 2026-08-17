@@ -51,7 +51,9 @@ public function index(Request $request)
                 'toBranch',
                 'toWarehouse',
                 'creator',
-                'details',
+                'details.variant.product',
+                'details.unit',
+                
             ])
             ->withCount(
                 'details'
@@ -796,7 +798,7 @@ public function index(Request $request)
 
         return redirect()
             ->route(
-                'stock-transfers.show',
+                'stock-transfers.index',
                 $stockTransfer
             )
             ->with(
@@ -866,7 +868,46 @@ public function index(Request $request)
 | Duplicate
 |--------------------------------------------------------------------------
 */
+public function data(
+    StockTransferHeader $stockTransfer
+) {
 
+    $stockTransfer->load([
+
+        'fromBranch',
+
+        'fromWarehouse',
+
+        'toBranch',
+
+        'toWarehouse',
+
+        'creator',
+
+        'updater',
+
+        'poster',
+
+        'rejector',
+
+        'deleter',
+
+        'details.variant.product',
+
+        'details.unit',
+
+        'movements.productVariant.product',
+
+        'movements.unit',
+
+        'activities.performer',
+
+    ]);
+
+    return response()->json([
+        'data' => $stockTransfer,
+    ]);
+}
 public function duplicate(
     StockTransferHeader $stockTransfer
 ) {

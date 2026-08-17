@@ -21,6 +21,8 @@ class StoreStockTransferRequest extends FormRequest
             | Location
             |--------------------------------------------------------------------------
             */
+            
+            
 
             'from_branch_id' => [
                 'required',

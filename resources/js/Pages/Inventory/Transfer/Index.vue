@@ -26,6 +26,9 @@ import { formatCurrency } from '@/Utils/currency'
 import StockTransferForm  from './Partials/StockTransferForm.vue'
 import StockTransferPostModal from './Partials/StockTransferPostModal.vue'
 import StockTransferRejectModal from './Partials/StockTransferRejectModal.vue'
+import StockTransferView from './Partials/StockTransferView.vue'
+import FlatPickr from 'vue-flatpickr-component'
+import 'flatpickr/dist/flatpickr.css'
 /*
 |--------------------------------------------------------------------------
 | Props
@@ -185,8 +188,56 @@ function loadData()
         }
     )
 }
+function handleDateRangeChange(selectedDates)
+{
+    if (!selectedDates.length) {
+
+        filters.date_from = ''
+
+        filters.date_to = ''
+
+        loadData()
+
+        return
+    }
 
 
+    filters.date_from =
+        formatDateForFilter(
+            selectedDates[0]
+        )
+
+
+    filters.date_to =
+        selectedDates.length > 1
+            ? formatDateForFilter(
+                selectedDates[1]
+            )
+            : formatDateForFilter(
+                selectedDates[0]
+            )
+
+
+    loadData()
+}
+function formatDateForFilter(date)
+{
+    const year =
+        date.getFullYear()
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2, '0')
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2, '0')
+
+
+    return `${year}-${month}-${day}`
+}
 watch(
     () => filters.search,
     () => {
@@ -275,7 +326,7 @@ watch(
     }
 )
 
-
+const dateRange = ref('')
 function refresh()
 {
     Object.assign(filters, {
@@ -296,7 +347,7 @@ function refresh()
         per_page: 10,
 
     })
-
+    dateRange.value=''
     loadData()
 }
 
@@ -436,10 +487,7 @@ const form = useForm({
     number:
         props.previewNumber ?? '',
 
-    company_id:
-        props.companyId ?? null,
-
-    transaction_date:
+     transaction_date:
         new Date()
             .toISOString()
             .slice(0, 10),
@@ -464,6 +512,15 @@ const form = useForm({
     ],
 
 })
+console.log(
+    '🔥 STOCK TRANSFER COMPANY:',
+    props.companyId
+)
+
+console.log(
+    '🔥 FORM COMPANY:',
+    form.company_id
+)
 watch(
     () => form.from_warehouse_id,
     (newValue, oldValue) => {
@@ -974,13 +1031,6 @@ nextTick(() => {
 */
 
 const selectedItem = ref(null)
-
-function showTransfer(item)
-{
-    selectedItem.value = item
-
-    view.value = 'show'
-}
 
 /*
 |--------------------------------------------------------------------------
@@ -1611,6 +1661,7 @@ const viewLoading = ref(false)
 const showView = ref(false)
 const viewItem = ref(null)
 
+
 async function openView(item)
 {
     viewLoading.value = true
@@ -1646,7 +1697,7 @@ async function openView(item)
             await response.json()
 
         console.log(
-            'Transfer STOCK VIEW RESPONSE:',
+            'stock transfer VIEW RESPONSE:',
             responseData
         )
 
@@ -1656,7 +1707,7 @@ async function openView(item)
     } catch (exception) {
 
         console.error(
-            'Transfers STOCK VIEW ERROR:',
+            'stock transfer VIEW ERROR:',
             exception
         )
 
@@ -1665,7 +1716,7 @@ async function openView(item)
         viewItem.value = null
 
         error(
-            'Failed to load Transfers stock detail.'
+            'Failed to load Stock Transfer detail.'
         )
 
     } finally {
@@ -1782,14 +1833,16 @@ const datePresetOptions = [
         <div class="space-y-6">
 
             <!-- ===================================================== -->
-            <!-- Page Header -->
-            <!-- ===================================================== -->
-
+            <!-- Page Header 
             <PageHeader
                 icon="📦"
                 title="Stock Transfer"
                 subtitle="Manage Stock Transfer transactions."
             />
+            -->
+            <!-- ===================================================== -->
+
+            
 
 
             <!-- ===================================================== -->
@@ -1840,162 +1893,158 @@ const datePresetOptions = [
         <Card class="mt-4">
 
             <!-- ===================================================== -->
-            <!-- Toolbar -->
-            <!-- ===================================================== -->
+<!-- Toolbar -->
+<!-- ===================================================== -->
 
-            <div
-                class="
-                    flex
-                    flex-col
-                    gap-4
-                    lg:flex-row
-                    lg:items-center
-                    lg:justify-between
-                "
-            >
+<div
+    class="
+        flex
+        flex-col
+        gap-4
+        lg:flex-row
+        lg:items-center
+        lg:justify-between
+    "
+>
 
-                <!-- Left -->
-                <div
-                    class="
-                        flex
-                        flex-1
-                        flex-col
-                        gap-3
-                        lg:flex-row
-                        lg:items-center
-                    "
-                >
+    <!-- Left -->
+    <div
+        class="
+            flex
+            flex-1
+            flex-col
+            gap-3
+            lg:flex-row
+            lg:items-center
+        "
+    >
 
-                    <!-- Search -->
+        <!-- Search -->
 
-                    <input
-                        v-model="filters.search"
-                        type="text"
-                        placeholder="Search number..."
-                        class="
-                            w-full
-                            lg:w-80
-                            rounded-xl
-                            border
-                            border-gray-300
-                            px-4
-                            py-2.5
-                        "
-                    />
-
-
-                    <!-- Branch -->
-
-                    <SearchableSelect
-                        v-model="filters.from_branch_id"
-                        :options="branches"
-                        label="label"
-                        value-key="id"
-                        placeholder="From Branch"
-                    />
+        <input
+            v-model="filters.search"
+            type="text"
+            placeholder="Search number..."
+            class="
+                w-full
+                lg:w-72
+                rounded-xl
+                border
+                border-gray-300
+                px-4
+                py-2.5
+            "
+        />
 
 
-                    <SearchableSelect
-                        v-model="filters.from_warehouse_id"
-                        :options="warehouses"
-                        label="label"
-                        value-key="id"
-                        placeholder="From Warehouse"
-                    />
-                    <SearchableSelect
-                        v-model="filters.to_branch_id"
-                        :options="branches"
-                        label="label"
-                        value-key="id"
-                        placeholder="To Branch"
-                    />
-                    <SearchableSelect
-                        v-model="filters.to_warehouse_id"
-                        :options="warehouses"
-                        label="label"
-                        value-key="id"
-                        placeholder="To Warehouse"
-                    />
-                    <SearchableSelect
-                    v-model="filters.status"
-                    :options="statusOptions"
-                    label="label"
-                    value-key="value"
-                    placeholder="All Status"
-                    />
-                </div>
-                <!-- Right -->
+        <!-- Date From -->
 
-                <div
-                    class="
-                        flex
-                        flex-col
-                        gap-2
-                        w-full
-                        lg:w-auto
-                        lg:flex-row
-                        lg:items-center
-                    "
-                >
-
-                    <!-- Refresh -->
-
-                    <BaseButton
-                        variant="secondary"
-                        class="
-                            w-full
-                            shrink-0
-                            whitespace-nowrap
-                            lg:w-auto
-                        "
-                        @click="refresh"
-                    >
-                        Refresh
-                    </BaseButton>
+        <FlatPickr
+            v-model="dateRange"
+            :config="{
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+            }"
+            placeholder="Date Range"
+            class="
+                w-full
+                lg:w-77
+                rounded-xl
+                border
+                border-gray-300
+                px-4
+                py-2.5
+                text-sm
+            "
+            @on-change="handleDateRangeChange"
+        />
 
 
-                    <!-- Add -->
+        <!-- Status -->
 
-                    <BaseButton
-                        class="
-                            w-full
-                            shrink-0
-                            whitespace-nowrap
-                            lg:w-auto
-                        "
-                        @click="create"
-                    >
+        <SearchableSelect
+            v-model="filters.status"
+            :options="statusOptions"
+            label="label"
+            value-key="value"
+            placeholder="All Status"
+        />
 
-                        <template #icon>
-
-                            <PlusIcon class="h-5 w-5" />
-
-                        </template>
-
-                        Add
-
-                    </BaseButton>
+    </div>
 
 
-                    <!-- Bulk -->
+    <!-- Right -->
 
-                    <BulkActionDropdown
-                        :count="selectedRows.length"
-                        :disabled="
-                            selectedRows.length === 0
-                        "
-                        :actions="[
-                            'export',
-                            'delete',
-                        ]"
-                        @delete="openBulkDelete"
-                        @export="exportSelected"
-                        class="w-full lg:w-auto"
-                    />
+    <div
+        class="
+            flex
+            flex-col
+            gap-2
+            w-full
+            lg:w-auto
+            lg:flex-row
+            lg:items-center
+        "
+    >
 
-                </div>               
+        <!-- Refresh -->
 
-            </div>
+        <BaseButton
+            variant="secondary"
+            class="
+                w-full
+                shrink-0
+                whitespace-nowrap
+                lg:w-auto
+            "
+            @click="refresh"
+        >
+            Refresh
+        </BaseButton>
+
+
+        <!-- Add -->
+
+        <BaseButton
+            class="
+                w-full
+                shrink-0
+                whitespace-nowrap
+                lg:w-auto
+            "
+            @click="create"
+        >
+
+            <template #icon>
+
+                <PlusIcon class="h-5 w-5" />
+
+            </template>
+
+            Add
+
+        </BaseButton>
+
+
+        <!-- Bulk -->
+
+        <BulkActionDropdown
+            :count="selectedRows.length"
+            :disabled="
+                selectedRows.length === 0
+            "
+            :actions="[
+                'export',
+                'delete',
+            ]"
+            @delete="openBulkDelete"
+            @export="exportSelected"
+            class="w-full lg:w-auto"
+        />
+
+    </div>
+
+</div>
 
 
             <!-- ===================================================== -->
@@ -2297,7 +2346,7 @@ const datePresetOptions = [
                             <DataTableCell align="center">
 
                                 <ActionDropdown
-                                    @view="showTransfer(item)"
+                                    @view="openView(item)"
                                     @edit="editTransfer(item)"
                                     @duplicate="duplicate(item)"
                                     @post="openPost(item)"
@@ -2427,6 +2476,12 @@ const datePresetOptions = [
     @close="closeReject"
     @confirm="confirmReject"
     @update:reason="rejectReason = $event"
+/>
+<StockTransferView
+    :show="showView"
+    :transfer="viewItem"
+    :loading="viewLoading"
+    @close="closeView"
 />
 </template>
 <style scoped>
