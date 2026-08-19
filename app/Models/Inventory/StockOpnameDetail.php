@@ -4,6 +4,7 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Product\ProductVariant;
 use App\Models\MasterData\Unit;
 use App\Models\User;
@@ -11,6 +12,13 @@ use App\Models\User;
 class StockOpnameDetail extends Model
 {
     use HasFactory;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fillable
+    |--------------------------------------------------------------------------
+    */
 
     protected $fillable = [
 
@@ -22,6 +30,7 @@ class StockOpnameDetail extends Model
 
         'stock_opname_header_id',
 
+
         /*
         |--------------------------------------------------------------------------
         | Inventory
@@ -31,6 +40,7 @@ class StockOpnameDetail extends Model
         'product_variant_id',
 
         'unit_id',
+
 
         /*
         |--------------------------------------------------------------------------
@@ -44,6 +54,7 @@ class StockOpnameDetail extends Model
 
         'difference_qty',
 
+
         /*
         |--------------------------------------------------------------------------
         | Cost
@@ -54,6 +65,7 @@ class StockOpnameDetail extends Model
 
         'difference_cost',
 
+
         /*
         |--------------------------------------------------------------------------
         | Information
@@ -61,6 +73,7 @@ class StockOpnameDetail extends Model
         */
 
         'description',
+
 
         /*
         |--------------------------------------------------------------------------
@@ -74,35 +87,56 @@ class StockOpnameDetail extends Model
 
     ];
 
-    protected $casts = [
-
-        'system_qty' => 'decimal:2',
-
-        'actual_qty' => 'decimal:2',
-
-        'difference_qty' => 'decimal:2',
-
-        'unit_cost' => 'decimal:2',
-
-        'difference_cost' => 'decimal:2',
-
-    ];
 
     /*
     |--------------------------------------------------------------------------
-    | Relationships
+    | Casts
     |--------------------------------------------------------------------------
     */
 
-    public function header()
+    protected $casts = [
+
+        'system_qty' =>
+            'decimal:2',
+
+        'actual_qty' =>
+            'decimal:2',
+
+        'difference_qty' =>
+            'decimal:2',
+
+        'unit_cost' =>
+            'decimal:2',
+
+        'difference_cost' =>
+            'decimal:2',
+
+    ];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Header
+    |--------------------------------------------------------------------------
+    */
+
+    public function stockOpnameHeader(): BelongsTo
     {
         return $this->belongsTo(
             StockOpnameHeader::class,
-            'stock_opname_header_id'
+            'stock_opname_header_id',
+            'id'
         );
     }
 
-    public function variant()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product Variant
+    |--------------------------------------------------------------------------
+    */
+
+    public function variant(): BelongsTo
     {
         return $this->belongsTo(
             ProductVariant::class,
@@ -110,14 +144,28 @@ class StockOpnameDetail extends Model
         );
     }
 
-    public function unit()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unit
+    |--------------------------------------------------------------------------
+    */
+
+    public function unit(): BelongsTo
     {
         return $this->belongsTo(
             Unit::class
         );
     }
 
-    public function creator()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Created / Updated By
+    |--------------------------------------------------------------------------
+    */
+
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(
             User::class,
@@ -125,11 +173,13 @@ class StockOpnameDetail extends Model
         );
     }
 
-    public function updater()
+
+    public function updater(): BelongsTo
     {
         return $this->belongsTo(
             User::class,
             'updated_by'
         );
     }
+
 }

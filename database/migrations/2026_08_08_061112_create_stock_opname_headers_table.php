@@ -33,18 +33,21 @@ return new class extends Migration
             ->constrained()
             ->cascadeOnDelete();
 
+
         /*
         |--------------------------------------------------------------------------
         | Document
         |--------------------------------------------------------------------------
         */
 
-        $table->string('number', 100);
+        $table->string('number', 100)
+            ->unique();
 
         $table->date('transaction_date');
 
         $table->string('status', 20)
             ->default('Draft');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -55,9 +58,10 @@ return new class extends Migration
         $table->text('description')
             ->nullable();
 
+
         /*
         |--------------------------------------------------------------------------
-        | Audit
+        | Workflow Audit
         |--------------------------------------------------------------------------
         */
 
@@ -67,7 +71,35 @@ return new class extends Migration
         $table->unsignedBigInteger('updated_by')
             ->nullable();
 
+        $table->unsignedBigInteger('posted_by')
+            ->nullable();
+
+        $table->timestamp('posted_at')
+            ->nullable();
+
+        $table->unsignedBigInteger('rejected_by')
+            ->nullable();
+
+        $table->timestamp('rejected_at')
+            ->nullable();
+
+        $table->text('rejected_reason')
+            ->nullable();
+
+        $table->unsignedBigInteger('deleted_by')
+            ->nullable();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Timestamps
+        |--------------------------------------------------------------------------
+        */
+
         $table->timestamps();
+
+        $table->softDeletes();
+
 
         /*
         |--------------------------------------------------------------------------
@@ -96,7 +128,6 @@ return new class extends Migration
 
     });
 }
-
     /**
      * Reverse the migrations.
      */

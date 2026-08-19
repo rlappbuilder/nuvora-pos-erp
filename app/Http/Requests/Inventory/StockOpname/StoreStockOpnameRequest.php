@@ -11,30 +11,29 @@ class StoreStockOpnameRequest extends FormRequest
         return true;
     }
 
+
     public function rules(): array
     {
         return [
 
             /*
             |--------------------------------------------------------------------------
-            | Identity
+            | Location
             |--------------------------------------------------------------------------
             */
 
-            'company_id' => [
-                'required',
-                'exists:companies,id',
-            ],
-
             'branch_id' => [
                 'required',
+                'integer',
                 'exists:branches,id',
             ],
 
             'warehouse_id' => [
                 'required',
+                'integer',
                 'exists:warehouses,id',
             ],
+
 
             /*
             |--------------------------------------------------------------------------
@@ -50,8 +49,9 @@ class StoreStockOpnameRequest extends FormRequest
             'description' => [
                 'nullable',
                 'string',
-                'max:500',
+                'max:1000',
             ],
+
 
             /*
             |--------------------------------------------------------------------------
@@ -67,11 +67,13 @@ class StoreStockOpnameRequest extends FormRequest
 
             'details.*.product_variant_id' => [
                 'required',
+                'integer',
                 'exists:product_variants,id',
             ],
 
             'details.*.unit_id' => [
                 'required',
+                'integer',
                 'exists:units,id',
             ],
 
@@ -84,45 +86,97 @@ class StoreStockOpnameRequest extends FormRequest
             'details.*.description' => [
                 'nullable',
                 'string',
-                'max:500',
+                'max:1000',
             ],
 
         ];
     }
 
-    public function attributes(): array
-    {
-        return [
-
-            'company_id' => 'Company',
-
-            'branch_id' => 'Branch',
-
-            'warehouse_id' => 'Warehouse',
-
-            'transaction_date' => 'Transaction Date',
-
-            'description' => 'Description',
-
-            'details' => 'Stock Opname Details',
-
-            'details.*.product_variant_id' =>
-                'Product Variant',
-
-            'details.*.unit_id' =>
-                'Unit',
-
-            'details.*.actual_qty' =>
-                'Actual Quantity',
-
-            'details.*.description' =>
-                'Detail Description',
-
-        ];
-    }
 
     public function messages(): array
     {
-        return [];
+        return [
+
+            /*
+            |--------------------------------------------------------------------------
+            | Location
+            |--------------------------------------------------------------------------
+            */
+
+            'branch_id.required' =>
+                'Branch is required.',
+
+            'branch_id.exists' =>
+                'Selected branch is invalid.',
+
+
+            'warehouse_id.required' =>
+                'Warehouse is required.',
+
+            'warehouse_id.exists' =>
+                'Selected warehouse is invalid.',
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document
+            |--------------------------------------------------------------------------
+            */
+
+            'transaction_date.required' =>
+                'Transaction date is required.',
+
+            'transaction_date.date' =>
+                'Transaction date must be a valid date.',
+
+
+            'description.max' =>
+                'Description cannot exceed 1000 characters.',
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Details
+            |--------------------------------------------------------------------------
+            */
+
+            'details.required' =>
+                'Opname details are required.',
+
+            'details.array' =>
+                'Opname details must be a valid list.',
+
+            'details.min' =>
+                'At least one opname item is required.',
+
+
+            'details.*.product_variant_id.required' =>
+                'Product variant is required.',
+
+            'details.*.product_variant_id.exists' =>
+                'Selected product variant is invalid.',
+
+
+            'details.*.unit_id.required' =>
+                'Unit is required.',
+
+            'details.*.unit_id.exists' =>
+                'Selected unit is invalid.',
+
+
+            'details.*.actual_qty.required' =>
+                'Actual quantity is required.',
+
+            'details.*.actual_qty.numeric' =>
+                'Actual quantity must be a number.',
+
+            'details.*.actual_qty.gte' =>
+                'Actual quantity cannot be negative.',
+
+
+            'details.*.description.max' =>
+                'Detail description cannot exceed 1000 characters.',
+
+        ];
     }
 }

@@ -17,6 +17,8 @@ use App\Models\MasterData\Warehouse;
 use App\Models\MasterData\Branch;
 use App\Models\Inventory\StockIssueHeader;
 use App\Models\Inventory\StockIssueDetail;
+use App\Models\Inventory\StockOpnameHeader;
+use App\Models\Inventory\StockOpnameDetail;
 class InventoryService
 {
     public function __construct(
@@ -4840,4 +4842,1187 @@ private function getSourceStock(
         ->first();
 
 }
+/** Stock opname */
+public function createStockOpname(
+    array $data
+): StockOpnameHeader {
+
+    return DB::transaction(function () use ($data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Location
+        |--------------------------------------------------------------------------
+        */
+
+            $this->validateLocation(
+                $data
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Header
+            |--------------------------------------------------------------------------
+            */
+
+            $stockOpname =
+                StockOpnameHeader::create([
+
+                    'company_id' =>
+                        Branch::findOrFail(
+                            $data['branch_id']
+                        )->company_id,
+
+                    'branch_id' =>
+                        $data['branch_id'],
+
+                    'warehouse_id' =>
+                        $data['warehouse_id'],
+
+                    'number' =>
+                        $this->codeGeneratorService
+                            ->next('stock_opname'),
+
+                    'transaction_date' =>
+                        $data['transaction_date'],
+
+                    'status' =>
+                        'Draft',
+
+                    'description' =>
+                        $data['description']
+                        ?? null,
+
+                    'created_by' =>
+                        auth()->id(),
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Details
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $data['details']
+                as $detail
+            ) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Find Current Stock
+                |--------------------------------------------------------------------------
+                */
+
+                $stock =
+                    ProductStock::query()
+                        ->where(
+                            'company_id',
+                            Branch::findOrFail(
+                                $data['branch_id']
+                            )->company_id
+                        )
+                        ->where(
+                            'branch_id',
+                            $data['branch_id']
+                        )
+                        ->where(
+                            'warehouse_id',
+                            $data['warehouse_id']
+                        )
+                        ->where(
+                            'product_variant_id',
+                            $detail['product_variant_id']
+                        )
+                        ->where(
+                            'unit_id',
+                            $detail['unit_id']
+                        )
+                        ->first();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | System Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $systemQty =
+                    (float) (
+                        $stock?->on_hand_qty
+                        ?? 0
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unit Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $unitCost =
+                    (float) (
+                        $stock?->average_cost
+                        ?? 0
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Actual Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $actualQty =
+                    (float) $detail['actual_qty'];
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Difference Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $differenceQty =
+                    $actualQty -
+                    $systemQty;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Difference Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $differenceCost =
+                    $differenceQty *
+                    $unitCost;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Create Detail
+                |--------------------------------------------------------------------------
+                */
+
+                StockOpnameDetail::create([
+
+                    'stock_opname_header_id' =>
+                        $stockOpname->id,
+
+                    'product_variant_id' =>
+                        $detail['product_variant_id'],
+
+                    'unit_id' =>
+                        $detail['unit_id'],
+
+                    'system_qty' =>
+                        $systemQty,
+
+                    'actual_qty' =>
+                        $actualQty,
+
+                    'difference_qty' =>
+                        $differenceQty,
+
+                    'unit_cost' =>
+                        $unitCost,
+
+                    'difference_cost' =>
+                        $differenceCost,
+
+                    'description' =>
+                        $detail['description']
+                        ?? null,
+
+                    'created_by' =>
+                        auth()->id(),
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Return
+            |--------------------------------------------------------------------------
+            */
+
+            return $stockOpname;
+
+        });
+    }
+
+        private function validateLocation(
+            array $data
+        ): void {
+
+            $warehouse =
+                Warehouse::query()
+                    ->findOrFail(
+                        $data['warehouse_id']
+                    );
+
+            if (
+                (int) $warehouse->branch_id
+                !==
+                (int) $data['branch_id']
+            ) {
+
+                throw new \RuntimeException(
+                    'Warehouse does not belong to the selected branch.'
+                );
+
+            }
+
+        }
+    /*
+    |--------------------------------------------------------------------------
+    | Update Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+    public function updateStockOpname(
+        StockOpnameHeader $stockOpname,
+        array $data
+    ): StockOpnameHeader {
+
+        return DB::transaction(function () use (
+            $stockOpname,
+            $data
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Header
+            |--------------------------------------------------------------------------
+            */
+
+            $stockOpname =
+                StockOpnameHeader::query()
+                    ->lockForUpdate()
+                    ->findOrFail(
+                        $stockOpname->id
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (! in_array(
+                $stockOpname->status,
+                [
+                    'Draft',
+                    'Rejected',
+                ],
+                true
+            )) {
+
+                throw new \RuntimeException(
+                    'Only Draft or Rejected stock opname can be updated.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Location
+            |--------------------------------------------------------------------------
+            */
+
+            $this->validateLocation(
+                $data
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Header
+            |--------------------------------------------------------------------------
+            */
+
+            $stockOpname->update([
+
+                'company_id' =>
+                    $data['company_id']
+                    ?? $stockOpname->company_id,
+
+                'branch_id' =>
+                    $data['branch_id'],
+
+                'warehouse_id' =>
+                    $data['warehouse_id'],
+
+                'transaction_date' =>
+                    $data['transaction_date'],
+
+                'description' =>
+                    $data['description']
+                    ?? null,
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Delete Existing Details
+            |--------------------------------------------------------------------------
+            */
+
+            $stockOpname
+                ->details()
+                ->delete();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create New Details
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $data['details']
+                as $detail
+            ) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Get Latest Stock
+                |--------------------------------------------------------------------------
+                */
+
+                $stock =
+                    ProductStock::query()
+                        ->where(
+                            'company_id',
+                            $data['company_id']
+                        )
+                        ->where(
+                            'branch_id',
+                            $data['branch_id']
+                        )
+                        ->where(
+                            'warehouse_id',
+                            $data['warehouse_id']
+                        )
+                        ->where(
+                            'product_variant_id',
+                            $detail['product_variant_id']
+                        )
+                        ->where(
+                            'unit_id',
+                            $detail['unit_id']
+                        )
+                        ->first();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | System Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $systemQty =
+                    (float) (
+                        $stock?->on_hand_qty
+                        ?? 0
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unit Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $unitCost =
+                    (float) (
+                        $stock?->average_cost
+                        ?? 0
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Actual Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $actualQty =
+                    (float) $detail['actual_qty'];
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Difference Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $differenceQty =
+                    $actualQty -
+                    $systemQty;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Difference Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $differenceCost =
+                    $differenceQty *
+                    $unitCost;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Create Detail
+                |--------------------------------------------------------------------------
+                */
+
+                StockOpnameDetail::create([
+
+                    'stock_opname_header_id' =>
+                        $stockOpname->id,
+
+                    'product_variant_id' =>
+                        $detail['product_variant_id'],
+
+                    'unit_id' =>
+                        $detail['unit_id'],
+
+                    'system_qty' =>
+                        $systemQty,
+
+                    'actual_qty' =>
+                        $actualQty,
+
+                    'difference_qty' =>
+                        $differenceQty,
+
+                    'unit_cost' =>
+                        $unitCost,
+
+                    'difference_cost' =>
+                        $differenceCost,
+
+                    'description' =>
+                        $detail['description']
+                        ?? null,
+
+                    'created_by' =>
+                        auth()->id(),
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resubmit Rejected → Draft
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $stockOpname->status
+                === 'Rejected'
+            ) {
+
+                $stockOpname->update([
+
+                    'status' =>
+                        'Draft',
+
+                    'rejected_at' =>
+                        null,
+
+                    'rejected_by' =>
+                        null,
+
+                    'rejected_reason' =>
+                        null,
+
+                    'updated_by' =>
+                        auth()->id(),
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this->documentActivityService
+                ->record(
+                    $stockOpname,
+                    'UPDATED'
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Return Fresh Data
+            |--------------------------------------------------------------------------
+            */
+
+            return $stockOpname->fresh([
+                'details',
+            ]);
+
+        });
+
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Post Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+   public function postStockOpname(
+    StockOpnameHeader $stockOpname
+): void {
+
+    DB::transaction(function () use ($stockOpname) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname =
+            StockOpnameHeader::query()
+                ->with('details')
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockOpname->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockOpname->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock opname can be posted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $stockOpname->details
+            as $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Difference
+            |--------------------------------------------------------------------------
+            */
+
+            $differenceQty =
+                (float) $detail->difference_qty;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | No Stock Impact
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $differenceQty == 0
+            ) {
+
+                continue;
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Determine Stock Direction
+            |--------------------------------------------------------------------------
+            */
+
+            $qtyIn =
+                $differenceQty > 0
+                    ? $differenceQty
+                    : 0;
+
+
+            $qtyOut =
+                $differenceQty < 0
+                    ? abs(
+                        $differenceQty
+                    )
+                    : 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Product Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $stock =
+                $this->updateCurrentStock([
+
+                    'company_id' =>
+                        $stockOpname
+                            ->company_id,
+
+                    'branch_id' =>
+                        $stockOpname
+                            ->branch_id,
+
+                    'warehouse_id' =>
+                        $stockOpname
+                            ->warehouse_id,
+
+                    'product_variant_id' =>
+                        $detail
+                            ->product_variant_id,
+
+                    'unit_id' =>
+                        $detail
+                            ->unit_id,
+
+                    'qty' =>
+                        $differenceQty,
+
+                    'average_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'transaction_date' =>
+                        $stockOpname
+                            ->transaction_date,
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory Movement
+            |--------------------------------------------------------------------------
+            */
+
+            $this->createMovement(
+
+                $stock,
+
+                [
+
+                    'reference_type' =>
+                        'STOCK_OPNAME',
+
+                    'reference_id' =>
+                        $stockOpname
+                            ->id,
+
+                    'reference_number' =>
+                        $stockOpname
+                            ->number,
+
+                    'qty_in' =>
+                        $qtyIn,
+
+                    'qty_out' =>
+                        $qtyOut,
+
+                    'unit_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'total_cost' =>
+                        $detail
+                            ->difference_cost,
+
+                    'transaction_date' =>
+                        $stockOpname
+                            ->transaction_date,
+
+                    'description' =>
+                        $detail
+                            ->description
+                        ??
+                        $stockOpname
+                            ->description
+                        ??
+                        null,
+
+                ]
+
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Mark Posted
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname->update([
+
+            'status' =>
+                'Posted',
+
+            'posted_at' =>
+                now(),
+
+            'posted_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+
+                $stockOpname,
+
+                'POSTED',
+
+                'Draft',
+
+                'Posted',
+
+                'Stock opname posted.'
+
+            );
+
+    });
+
+}
+    /*
+    |--------------------------------------------------------------------------
+    | Cancel / Reject Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+ public function cancelStockOpname(
+    StockOpnameHeader $stockOpname,
+    string $reason
+): void {
+
+    DB::transaction(function () use (
+        $stockOpname,
+        $reason
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname =
+            StockOpnameHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockOpname->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockOpname->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock opname can be rejected.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Workflow State
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname->update([
+
+            'status' =>
+                'Rejected',
+
+            'rejected_reason' =>
+                $reason,
+
+            'rejected_at' =>
+                now(),
+
+            'rejected_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $stockOpname,
+                'REJECTED',
+                'Draft',
+                'Rejected',
+                $reason
+            );
+
+    });
+
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+   public function deleteStockOpname(
+    StockOpnameHeader $stockOpname
+): void {
+
+    DB::transaction(function () use ($stockOpname) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname =
+            StockOpnameHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockOpname->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (! in_array(
+            $stockOpname->status,
+            [
+                'Draft',
+                'Rejected',
+            ],
+            true
+        )) {
+
+            throw new \RuntimeException(
+                'Only Draft or Rejected stock opname can be deleted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname->update([
+
+            'deleted_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        $stockOpname->delete();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $stockOpname,
+                'DELETED'
+            );
+
+    });
+
+}
+
+public function bulkDelete(
+    array $ids
+): void {
+
+    DB::transaction(function () use ($ids) {
+
+        $stockOpnames =
+            StockOpnameHeader::query()
+                ->whereIn(
+                    'id',
+                    $ids
+                )
+                ->lockForUpdate()
+                ->get();
+
+
+        foreach (
+            $stockOpnames
+            as $stockOpname
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (! in_array(
+                $stockOpname->status,
+                [
+                    'Draft',
+                    'Rejected',
+                ],
+                true
+            )) {
+
+                throw new \RuntimeException(
+                    'Only Draft or Rejected stock opnames can be deleted.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Delete
+            |--------------------------------------------------------------------------
+            */
+
+            $stockOpname->update([
+
+                'deleted_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            $stockOpname->delete();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this->documentActivityService
+                ->record(
+                    $stockOpname,
+                    'DELETED'
+                );
+
+        }
+
+    });
+
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+  public function duplicateStockOpname(
+    StockOpnameHeader $stockOpname
+): StockOpnameHeader {
+
+    return DB::transaction(function () use (
+        $stockOpname
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Details
+        |--------------------------------------------------------------------------
+        */
+
+        $stockOpname->load(
+            'details'
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Company
+        |--------------------------------------------------------------------------
+        */
+
+        $companyId =
+            Branch::findOrFail(
+                $stockOpname->branch_id
+            )->company_id;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
+        $duplicate =
+            StockOpnameHeader::create([
+
+                'company_id' =>
+                    $companyId,
+
+                'branch_id' =>
+                    $stockOpname->branch_id,
+
+                'warehouse_id' =>
+                    $stockOpname->warehouse_id,
+
+                'number' =>
+                    $this->codeGeneratorService
+                        ->next('stock_opname'),
+
+                'transaction_date' =>
+                    $stockOpname->transaction_date,
+
+                'status' =>
+                    'Draft',
+
+                'description' =>
+                    $stockOpname->description
+                        ? 'Copy - ' .
+                            $stockOpname->description
+                        : 'Copy Stock Opname',
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $stockOpname->details
+            as $detail
+        ) {
+
+            StockOpnameDetail::create([
+
+                'stock_opname_header_id' =>
+                    $duplicate->id,
+
+                'product_variant_id' =>
+                    $detail->product_variant_id,
+
+                'unit_id' =>
+                    $detail->unit_id,
+
+                'system_qty' =>
+                    $detail->system_qty,
+
+                'actual_qty' =>
+                    $detail->actual_qty,
+
+                'difference_qty' =>
+                    $detail->difference_qty,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Cost
+                |--------------------------------------------------------------------------
+                */
+
+                'unit_cost' =>
+                    $detail->unit_cost,
+
+                'difference_cost' =>
+                    $detail->difference_cost,
+
+                'description' =>
+                    $detail->description,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        return $duplicate;
+
+    });
+
+}
+
 }

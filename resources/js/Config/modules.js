@@ -183,8 +183,8 @@ const modules = {
                 key: 'stockOpname',
                 title: 'Stock Opname',
                 icon: UsersIcon,
-                route: 'stock-balance.index',
-                permission: 'stock-balance.view',
+                route: 'stock-opnames.index',
+                permission: 'stock-opnames.view',
                  },
 
                    stockTransfers: {

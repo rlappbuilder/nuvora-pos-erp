@@ -4,14 +4,27 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 use App\Models\MasterData\Company;
 use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
 use App\Models\User;
+use App\Models\Core\DocumentActivity;
 
 class StockOpnameHeader extends Model
 {
     use HasFactory;
+    use SoftDeletes;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fillable
+    |--------------------------------------------------------------------------
+    */
 
     protected $fillable = [
 
@@ -27,6 +40,7 @@ class StockOpnameHeader extends Model
 
         'warehouse_id',
 
+
         /*
         |--------------------------------------------------------------------------
         | Document
@@ -39,6 +53,7 @@ class StockOpnameHeader extends Model
 
         'status',
 
+
         /*
         |--------------------------------------------------------------------------
         | Information
@@ -46,6 +61,31 @@ class StockOpnameHeader extends Model
         */
 
         'description',
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Posting
+        |--------------------------------------------------------------------------
+        */
+
+        'posted_at',
+
+        'posted_by',
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rejection
+        |--------------------------------------------------------------------------
+        */
+
+        'rejected_at',
+
+        'rejected_by',
+
+        'rejected_reason',
+
 
         /*
         |--------------------------------------------------------------------------
@@ -57,50 +97,96 @@ class StockOpnameHeader extends Model
 
         'updated_by',
 
-    ];
-
-    protected $casts = [
-
-        'transaction_date' => 'date',
+        'deleted_by',
 
     ];
+
 
     /*
     |--------------------------------------------------------------------------
-    | Relationships
+    | Casts
     |--------------------------------------------------------------------------
     */
 
-    public function company()
+    protected $casts = [
+
+        'transaction_date' =>
+            'date',
+
+        'posted_at' =>
+            'datetime',
+
+        'rejected_at' =>
+            'datetime',
+
+    ];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Company
+    |--------------------------------------------------------------------------
+    */
+
+    public function company(): BelongsTo
     {
         return $this->belongsTo(
             Company::class
         );
     }
 
-    public function branch()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Branch
+    |--------------------------------------------------------------------------
+    */
+
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(
             Branch::class
         );
     }
 
-    public function warehouse()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse
+    |--------------------------------------------------------------------------
+    */
+
+    public function warehouse(): BelongsTo
     {
         return $this->belongsTo(
             Warehouse::class
         );
     }
 
-    public function details()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Details
+    |--------------------------------------------------------------------------
+    */
+
+    public function details(): HasMany
     {
         return $this->hasMany(
             StockOpnameDetail::class,
-            'stock_opname_header_id'
+            'stock_opname_header_id',
+            'id'
         );
     }
 
-    public function creator()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Created / Updated By
+    |--------------------------------------------------------------------------
+    */
+
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(
             User::class,
@@ -108,11 +194,100 @@ class StockOpnameHeader extends Model
         );
     }
 
-    public function updater()
+
+    public function updater(): BelongsTo
     {
         return $this->belongsTo(
             User::class,
             'updated_by'
         );
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Posted By
+    |--------------------------------------------------------------------------
+    */
+
+    public function poster(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'posted_by'
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rejected By
+    |--------------------------------------------------------------------------
+    */
+
+    public function rejector(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'rejected_by'
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deleted By
+    |--------------------------------------------------------------------------
+    */
+
+    public function deleter(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'deleted_by'
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Document Activities
+    |--------------------------------------------------------------------------
+    */
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(
+            DocumentActivity::class,
+            'document_id'
+        )
+        ->where(
+            'document_type',
+            class_basename($this)
+        )
+        ->orderBy(
+            'performed_at',
+            'asc'
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Movements
+    |--------------------------------------------------------------------------
+    */
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(
+            InventoryMovement::class,
+            'reference_id'
+        )
+        ->where(
+            'reference_type',
+            'STOCK_OPNAME'
+        );
+    }
+
 }

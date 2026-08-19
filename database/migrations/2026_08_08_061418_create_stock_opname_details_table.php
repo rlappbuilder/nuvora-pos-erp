@@ -117,6 +117,14 @@ return new class extends Migration
             ],
             'sod_product_idx'
         );
+        $table->unique(
+    [
+        'stock_opname_header_id',
+        'product_variant_id',
+        'unit_id',
+    ],
+    'sod_unique_item'
+);
 
     });
 }

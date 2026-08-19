@@ -559,8 +559,8 @@ function formatDateTime(value)
                 </div>
 
             </section>
-<!-- ===================================================== -->
-            <!-- Adjustment Details -->
+        <!-- ===================================================== -->
+            <!-- Stock Opnmame Details -->
             <!-- ===================================================== -->
 
             <section>
@@ -574,7 +574,7 @@ function formatDateTime(value)
                             text-gray-900
                         "
                     >
-                        Adjustment Details
+                        Stock Opname Details
                     </h3>
 
                     <p
@@ -584,7 +584,7 @@ function formatDateTime(value)
                             text-gray-500
                         "
                     >
-                        Stock quantity adjustment details.
+                        Stock Opname quantity details.
                     </p>
 
                 </div>
@@ -672,7 +672,7 @@ function formatDateTime(value)
                                             text-right
                                         "
                                     >
-                                        Total Cost
+                                       Different Cost
                                     </th>
 
                                 </tr>
@@ -894,7 +894,7 @@ function formatDateTime(value)
                                     >
                                         {{
                                             formatCurrency(
-                                                detail.total_cost
+                                                detail.difference_cost
                                             )
                                         }}
                                     </td>
@@ -918,7 +918,7 @@ function formatDateTime(value)
                                             text-gray-500
                                         "
                                     >
-                                        No adjustment details found.
+                                        No Stock Opname details found.
                                     </td>
 
                                 </tr>
