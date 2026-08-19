@@ -119,23 +119,8 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-
-            '/stock-card',
-
-            [
-
-                StockCardController::class,
-
-                'index'
-
-            ]
-
-        )->name(
-
-            'stock-card.index'
-
-        );
+        Route::get('/stock-card', [StockCardController::class,'index']
+        )->name('stock-card.index');
       
         /*
         |--------------------------------------------------------------------------
@@ -143,15 +128,9 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::delete(
-            'inventory-adjustments/{inventoryAdjustment}',
-            [
-                InventoryAdjustmentController::class,
-                'destroy',
-            ]
-        )->name(
-            'inventory-adjustments.destroy'
-        );
+        Route::delete('inventory-adjustments/{inventoryAdjustment}',[InventoryAdjustmentController::class,'destroy',]
+        )->name('inventory-adjustments.destroy');
+        
         Route::post(
             'inventory-adjustments/{inventoryAdjustment}/duplicate',
             [InventoryAdjustmentController::class, 'duplicate']
@@ -263,165 +242,70 @@ Route::middleware(
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-
+       Route::get(
             '/issues',
+            [StockIssueController::class, 'index']
+        )->name('stock-issues.index');
 
-            [
-
-                StockIssueController::class,
-
-                'index'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.index'
-
-        );
 
         Route::get(
-
             '/issues/create',
+            [StockIssueController::class, 'create']
+        )->name('stock-issues.create');
 
-            [
-
-                StockIssueController::class,
-
-                'create'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.create'
-
-        );
 
         Route::post(
-
             '/issues',
+            [StockIssueController::class, 'store']
+        )->name('stock-issues.store');
 
-            [
-
-                StockIssueController::class,
-
-                'store'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.store'
-
-        );
 
         Route::get(
-
             '/issues/{stockIssue}',
+            [StockIssueController::class, 'show']
+        )->name('stock-issues.show');
 
-            [
 
-                StockIssueController::class,
+        Route::put(
+            '/issues/{stockIssue}',
+            [StockIssueController::class, 'update']
+        )->name('stock-issues.update');
 
-                'show'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.show'
-
-        );
 
         Route::post(
-
             '/issues/{stockIssue}/post',
+            [StockIssueController::class, 'post']
+        )->name('stock-issues.post');
 
-            [
-
-                StockIssueController::class,
-
-                'post'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.post'
-
-        );
 
         Route::post(
-
-            '/issues/{stockIssue}/complete',
-
-            [
-
-                StockIssueController::class,
-
-                'complete'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.complete'
-
-        );
-
-        Route::post(
-
             '/issues/{stockIssue}/cancel',
+            [StockIssueController::class, 'cancel']
+        )->name('stock-issues.cancel');
 
-            [
-
-                StockIssueController::class,
-
-                'cancel'
-
-            ]
-
-        )
-
-        ->name(
-
-            'stock-issues.cancel'
-
-        );
 
         Route::get(
-
             '/issues/warehouse/{warehouse}',
+            [StockIssueController::class, 'getWarehouseStocks']
+        )->name('stock-issues.warehouse-stocks');
 
-            [
 
-                StockIssueController::class,
+        Route::get(
+            '/issues/{stockIssue}/data',
+            [StockIssueController::class, 'data']
+        )->name('stock-issues.data');
 
-                'getWarehouseStocks'
 
-            ]
+        Route::post(
+            '/issues/{stockIssue}/duplicate',
+            [StockIssueController::class, 'duplicate']
+        )->name('stock-issues.duplicate');
 
-        )
 
-        ->name(
-
-            'stock-issues.warehouse-stocks'
-
-        );
+        Route::delete(
+            '/issues/{stockIssue}',
+            [StockIssueController::class, 'destroy']
+        )->name('stock-issues.destroy');
 
     }
 

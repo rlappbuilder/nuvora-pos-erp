@@ -1,1483 +1,2284 @@
 <script setup>
-
-import {
-
-    Head,
-    Link,
-    router,
-
-} from '@inertiajs/vue3'
-
-import {
-
-    ref,
-
-} from 'vue'
-
-import FlatPickr
-
-from 'vue-flatpickr-component'
-
-import 'flatpickr/dist/flatpickr.css'
-
+import {ref,reactive,computed,watch,onMounted,onUnmounted,toRefs,nextTick,} from 'vue'
+import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/Layout/PageHeader.vue'
+import Card from '@/Components/Layout/Card.vue'
+import StatsCard from '@/Components/Card/StatsCard.vue'
+import BaseButton from '@/Components/Button/BaseButton.vue'
+import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
+import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
+import DataTable from '@/Components/Table/DataTable.vue'
+import DataTableHead from '@/Components/Table/DataTableHead.vue'
+import DataTableBody from '@/Components/Table/DataTableBody.vue'
+import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
+import DataTableRow from '@/Components/Table/DataTableRow.vue'
+import DataTableCell from '@/Components/Table/DataTableCell.vue'
+import TablePagination from '@/Components/Table/TablePagination.vue'
+import TableEmpty from '@/Components/Table/TableEmpty.vue'
+import StatusBadge from '@/Components/Display/StatusBadge.vue'
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+import { LoadingOverlay,} from '@/Components/Feedback'
+import {PlusIcon,} from '@heroicons/vue/24/solid'
+import {success,error,currency,formatDate,} from '@/Utils'
+import StockIssueForm from './Partials/StockIssueForm.vue'
+import StockIssueViewModal from './Partials/StockIssueViewModal.vue'
+import StockIssuePostModal from './Partials/StockIssuePostModal.vue'
+import StockIssueRejectModal from './Partials/StockIssueRejectModal.vue'
+import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
+import { formatCurrency } from '@/Utils/currency'
+import FlatPickr from 'vue-flatpickr-component'
+import 'flatpickr/dist/flatpickr.css'
+/*
+|--------------------------------------------------------------------------
+| Props
+|--------------------------------------------------------------------------
+*/
 
-import SearchableSelect
-
-from '@/Components/Form/SearchableSelect.vue'
-import {
-
-    EyeIcon,
-
-} from '@heroicons/vue/24/outline'
 const props = defineProps({
 
-    issues: Object,
+    issues: {
+        type: Object,
+        default: () => ({
+            data: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+            total: 0,
+        }),
+    },
 
-    filters: Object,
+    statistics: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            draft: 0,
+            rejected: 0,
+            posted: 0,
+        }),
+    },
 
-    summary: Object,
+    companyId: {
+    type: [Number, String],
+    default: null,
+    },
+
+    branches: {
+        type: Array,
+        default: () => [],
+    },
+
+    warehouses: {
+        type: Array,
+        default: () => [],
+    },
+
+    variants: {
+        type: Array,
+        default: () => [],
+    },
+
+    units: {
+        type: Array,
+        default: () => [],
+    },
+
+    issueTypeOptions: {
+    type: Array,
+    default: () => [],
+    },
+
+    filters: {
+        type: Object,
+        default: () => ({}),
+    },
+
+    previewNumber: {
+        type: String,
+        default: '',
+    },
 
 })
 
-const dateConfig = {
 
-    mode: 'range',
+const {
+    issues,
+    statistics,
+} = toRefs(props)
 
-    dateFormat: 'Y-m-d',
 
+/*
+|--------------------------------------------------------------------------
+| Page
+|--------------------------------------------------------------------------
+*/
+
+const pageTitle = computed(() => 'Stock Issues')
+
+
+/*
+|--------------------------------------------------------------------------
+| Loading
+|--------------------------------------------------------------------------
+*/
+
+const loading = ref(false)
+
+let removeStartListener
+let removeFinishListener
+
+const startLoading = () => {
+    loading.value = true
 }
 
-const search = ref(
-
-    props.filters.search ?? ''
-
-)
-
-const status = ref(
-
-    props.filters.status ?? ''
-
-)
-const showCancelModal = ref(
-    false
-)
-
-const cancelReason = ref('')
-
-const cancelTransfer = () => {
-
-    showCancelModal.value = true
-
+const stopLoading = () => {
+    loading.value = false
 }
 
-const confirmCancel = () => {
 
-    router.post(
+/*
+|--------------------------------------------------------------------------
+| Filters
+|--------------------------------------------------------------------------
+*/
 
+const filters = reactive({
+
+    search:
+        props.filters?.search ?? '',
+
+    branch_id:
+        props.filters?.branch_id ?? '',
+
+    warehouse_id:
+        props.filters?.warehouse_id ?? '',
+
+    issue_type:
+        props.filters?.issue_type ?? '',
+
+    status:
+        props.filters?.status ?? '',
+
+    date_from:
+        props.filters?.date_from ?? '',
+
+    date_to:
+        props.filters?.date_to ?? '',
+
+    per_page:
+        props.filters?.per_page ?? 10,
+
+})
+
+
+let debounceTimer = null
+
+
+function loadData()
+{
+    router.get(
+        route('stock-issues.index'),
+        filters,
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }
+    )
+}
+
+
+watch(
+    () => filters.search,
+    () => {
+
+        clearTimeout(debounceTimer)
+
+        debounceTimer = setTimeout(() => {
+
+            loadData()
+
+        }, 500)
+
+    }
+)
+
+
+watch(
+    () => filters.branch_id,
+    () => {
+
+        loadData()
+
+    }
+)
+
+
+watch(
+    () => filters.warehouse_id,
+    () => {
+
+        loadData()
+
+    }
+)
+watch(
+    () => filters.issue_type,
+    () => {
+
+        loadData()
+
+    }
+)
+
+watch(
+    () => filters.status,
+    () => {
+
+        loadData()
+
+    }
+)
+
+watch(
+    () => filters.date_from,
+    () => {
+
+        loadData()
+
+    }
+)
+
+
+watch(
+    () => filters.date_to,
+    () => {
+
+        loadData()
+
+    }
+)
+
+watch(
+    () => filters.per_page,
+    () => {
+
+        loadData()
+
+    }
+)
+function refresh()
+{
+    Object.assign(filters, {
+
+        search: '',
+
+        branch_id: '',
+
+        warehouse_id: '',
+
+        issue_type: '',
+
+        status: '',
+
+        date_from: '',
+
+        date_to: '',
+
+        per_page: 10,
+
+    })
+
+    dateRange.value = ''
+
+    loadData()
+}
+const dateRange = ref('')
+function formatDateForFilter(date)
+{
+    const year =
+        date.getFullYear()
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2, '0')
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+}
+function handleDateRangeChange(selectedDates)
+{
+    if (!selectedDates.length) {
+
+        filters.date_from = ''
+
+        filters.date_to = ''
+
+        loadData()
+
+        return
+    }
+
+
+    filters.date_from =
+        formatDateForFilter(
+            selectedDates[0]
+        )
+
+
+    filters.date_to =
+        selectedDates.length > 1
+            ? formatDateForFilter(
+                selectedDates[1]
+            )
+            : formatDateForFilter(
+                selectedDates[0]
+            )
+
+
+    loadData()
+}
+/*
+|--------------------------------------------------------------------------
+| Status
+|--------------------------------------------------------------------------
+*/
+
+const statusOptions = [
+
+    {
+        value: '',
+        label: 'All Status',
+    },
+
+    {
+        value: 'Draft',
+        label: 'Draft',
+    },
+
+    {
+        value: 'Rejected',
+        label: 'Rejected',
+    },
+
+    {
+        value: 'Posted',
+        label: 'Posted',
+    },
+
+]
+/*
+|--------------------------------------------------------------------------
+| Selection
+|--------------------------------------------------------------------------
+*/
+
+const selectedRows = ref([])
+
+const selectAllRef = ref(null)
+
+
+const isAllSelected = computed(() => {
+
+    const totalRows =
+        issues.value?.data?.length ?? 0
+
+    return (
+        totalRows > 0 &&
+        selectedRows.value.length === totalRows
+    )
+
+})
+
+
+const isIndeterminate = computed(() => {
+
+    const totalRows =
+        issues.value?.data?.length ?? 0
+
+    return (
+        selectedRows.value.length > 0 &&
+        selectedRows.value.length < totalRows
+    )
+
+})
+
+
+watch(
+    isIndeterminate,
+    (value) => {
+
+        if (selectAllRef.value) {
+
+            selectAllRef.value.indeterminate = value
+
+        }
+
+    },
+    {
+        immediate: true,
+    }
+)
+
+
+function toggleSelectAll(event)
+{
+    if (event.target.checked) {
+
+        selectedRows.value =
+            issues.value?.data?.map(
+                item => item.id
+            ) ?? []
+
+    } else {
+
+        selectedRows.value = []
+
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| View State
+|--------------------------------------------------------------------------
+*/
+
+const view = ref('list')
+
+const formMode = ref('create')
+
+const editingItem = ref(null)
+
+
+/*
+|--------------------------------------------------------------------------
+| Form
+|--------------------------------------------------------------------------
+*/
+
+const createEmptyDetail = () => ({
+    product_variant_id: null,
+    unit_id: null,
+
+    available_qty: 0,
+
+    qty: 0,
+
+    unit_cost: 0,
+    total_cost: 0,
+
+    description: null,
+})
+
+const form = useForm({
+
+    number:
+        props.previewNumber ?? '',
+
+    company_id:
+        props.companyId ?? null,
+
+    branch_id:
+        null,
+
+    warehouse_id:
+        null,
+
+    issue_type:
+        null,
+
+    transaction_date:
+        new Date()
+            .toISOString()
+            .slice(0, 10),
+
+    description:
+        null,
+
+    details: [
+        createEmptyDetail(),
+    ],
+
+})
+/*
+|--------------------------------------------------------------------------
+| Filtered Options
+|--------------------------------------------------------------------------
+*/
+
+const filteredVariants = computed(() => {
+
+    return props.variants ?? []
+
+})
+
+
+const filteredUnits = computed(() => {
+
+    return props.units ?? []
+
+})
+
+
+/*
+|--------------------------------------------------------------------------
+| Create
+|--------------------------------------------------------------------------
+*/
+
+function create()
+{
+    isEditing.value = false
+
+    formMode.value = 'create'
+
+    editingItem.value = null
+
+    form.reset()
+
+    form.clearErrors()
+
+    form.number =
+        props.previewNumber ?? ''
+
+    form.company_id =
+        props.companyId ?? null
+
+    form.branch_id =
+        null
+
+    form.warehouse_id =
+        null
+
+    form.issue_type =
+        null
+
+    form.transaction_date =
+        new Date()
+            .toISOString()
+            .slice(0, 10)
+
+    form.details = [
+        createEmptyDetail(),
+    ]
+
+    view.value = 'form'
+}
+
+/*
+|--------------------------------------------------------------------------
+| Cancel Form
+|--------------------------------------------------------------------------
+*/
+
+function cancelForm()
+{
+    form.reset()
+
+    form.clearErrors()
+
+    editingItem.value = null
+
+    view.value = 'list'
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Submit
+|--------------------------------------------------------------------------
+*/
+
+function submit()
+{
+    if (formMode.value === 'create') {
+
+        console.log(
+            'SUBMIT STOCK ISSUE:',
+            JSON.parse(JSON.stringify(form.data()))
+        )
+
+        form.post(
+            route('stock-issues.store'),
+            {
+                preserveScroll: true,
+
+                onSuccess: () => {
+
+                    console.log(
+                        'CREATE SUCCESS'
+                    )
+
+                    success(
+                        'Success',
+                        'Stock Issues created successfully.'
+                    )
+
+                    view.value = 'list'
+                },
+
+                onError: (errors) => {
+
+                    console.error(
+                        'CREATE ERRORS:',
+                        errors
+                    )
+
+                },
+
+                onFinish: () => {
+
+                    console.log(
+                        'CREATE FINISHED'
+                    )
+
+                },
+            }
+        )
+
+        return
+    }
+
+    form.put(
         route(
-
-            'stock-transfers.cancel',
-
-            transfer.id
-
+            'stock-issues.update',
+            editingItem.value.id
         ),
-
         {
+            preserveScroll: true,
 
-            cancel_reason:
+            onSuccess: () => {
 
-                cancelReason.value
+                success(
+                    'Success',
+                    'Stock Issue updated successfully.'
+                )
 
-        },
+                view.value = 'list'
 
+            },
+
+            onError: (errors) => {
+
+                console.error(
+                    'UPDATE ERRORS:',
+                    errors
+                )
+
+                error(
+                    'Failed to update Stock Issue.'
+                )
+
+            },
+        }
+    )
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Save & New
+|--------------------------------------------------------------------------
+*/
+
+function submitAndNew()
+{
+    form.post(
+        route('stock-issues.store'),
         {
+            preserveScroll: true,
 
-            preserveState: false,
+            onSuccess: () => {
+
+                success(
+                    'Success',
+                    'Stock Issue created successfully.'
+                )
+
+                form.reset()
+
+                form.clearErrors()
+
+                form.number =
+                    props.previewNumber ?? ''
+
+                form.company_id =
+                    props.companyId
+
+                form.transaction_date =
+                    new Date()
+                        .toISOString()
+                        .slice(0, 10)
+
+                form.details = [
+                    createEmptyDetail(),
+                ]
+
+            },
+        }
+    )
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Edit
+|--------------------------------------------------------------------------
+*/
+function editStockIssue(item)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | DEBUG — Edit Stock Issue
+    |--------------------------------------------------------------------------
+    */
+
+    console.log(
+        '========== EDIT STOCK ISSUE ITEM =========='
+    )
+
+    console.log(
+        'EDIT ITEM:',
+        item
+    )
+
+    console.log(
+        'BRANCH ID:',
+        item?.branch_id
+    )
+
+    console.log(
+        'WAREHOUSE ID:',
+        item?.warehouse_id
+    )
+
+    console.log(
+        'WAREHOUSE:',
+        item?.warehouse
+    )
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Status
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        ![
+            'Draft',
+            'Rejected',
+        ].includes(item.status)
+    ) {
+
+        error(
+            'Posted Stock Issue cannot be edited.'
+        )
+
+        return
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Edit State
+    |--------------------------------------------------------------------------
+    */
+
+    isEditing.value =
+        true
+
+    editingItem.value =
+        item
+
+    formMode.value =
+        'edit'
+
+    form.clearErrors()
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Header
+    |--------------------------------------------------------------------------
+    */
+
+    form.number =
+        item.number
+
+    form.company_id =
+        item.company_id
+
+    form.transaction_date =
+        item.transaction_date
+            ? String(
+                item.transaction_date
+            ).slice(0, 10)
+            : null
+
+    form.issue_type =
+        item.issue_type
+
+    form.branch_id =
+        item?.branch_id ?? null
+
+    form.description =
+        item.description ?? null
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Details
+    |--------------------------------------------------------------------------
+    */
+
+    form.details =
+        item.details?.map(
+            detail => ({
+
+                product_variant_id:
+                    detail.product_variant_id,
+
+                unit_id:
+                    detail.unit_id,
+
+                available_qty:
+                    0,
+
+                qty:
+                 Number(detail.qty ?? 0),
+
+                unit_cost:
+                    0,
+
+                total_cost:
+                    detail.total_cost,
+
+                description:
+                    detail.description,
+
+            })
+        ) ?? [
+            createEmptyDetail(),
+        ]
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Show Form
+    |--------------------------------------------------------------------------
+    */
+
+    view.value =
+        'form'
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hydrate Warehouse After Form Mount
+    |--------------------------------------------------------------------------
+    */
+
+    nextTick(() => {
+
+        form.warehouse_id =
+            item.warehouse_id
+
+        console.log(
+            '========== EDIT WAREHOUSE HYDRATED =========='
+        )
+
+        console.log(
+            'FORM WAREHOUSE:',
+            form.warehouse_id
+        )
+
+    })
+
+}
+/*
+|--------------------------------------------------------------------------
+| Show
+|--------------------------------------------------------------------------
+*/
+
+const selectedItem = ref(null)
+
+function showaIssue(item)
+{
+    selectedItem.value = item
+
+    view.value = 'show'
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Back From Show
+|--------------------------------------------------------------------------
+*/
+
+function backToList()
+{
+    selectedItem.value = null
+
+    view.value = 'list'
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Duplicate
+|--------------------------------------------------------------------------
+*/
+
+function duplicate(item)
+{
+    router.post(
+        route(
+            'stock-issues.duplicate',
+            item.id
+        ),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                success(
+                    'Success',
+                    'Stock Issues duplicated successfully.'
+                )
+
+            },
+
+            onError: () => {
+
+                error(
+                    'Failed to duplicate Stock Issues.'
+                )
+
+            },
+        }
+    )
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Delete
+|--------------------------------------------------------------------------
+*/
+
+const deleteItem = ref(null)
+
+const showDelete = ref(false)
+
+
+function openDelete(item)
+{
+    if (
+        ![
+            'Draft',
+            'Rejected',
+        ].includes(item.status)
+    ) {
+
+        error(
+            'Only Draft or Rejected Stock Issue can be deleted.'
+        )
+
+        return
+    }
+
+    deleteItem.value = item
+
+    showDelete.value = true
+}
+
+
+function closeDelete()
+{
+    deleteItem.value = null
+
+    showDelete.value = false
+}
+
+
+const deleteMessage = computed(() => {
+
+    if (!deleteItem.value) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to delete "${deleteItem.value.number}"?`
+
+})
+
+
+function confirmDelete()
+{
+    if (!deleteItem.value) {
+
+        return
+
+    }
+
+    router.delete(
+        route(
+            'stock-issues.destroy',
+            deleteItem.value.id
+        ),
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                closeDelete()
+
+                success(
+                    'Success',
+                    'Stock Issue deleted successfully.'
+                )
+
+            },
+
+            onError: () => {
+
+                error(
+                    'Failed to delete Stock Issue.'
+                )
+
+            },
+        }
+    )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Bulk Delete
+|--------------------------------------------------------------------------
+*/
+
+const showBulkDelete = ref(false)
+
+
+function openBulkDelete()
+{
+    if (!selectedRows.value.length) {
+
+        return
+
+    }
+
+    showBulkDelete.value = true
+}
+
+
+const bulkDeleteMessage = computed(() => {
+
+    const total =
+        selectedRows.value.length
+
+    if (!total) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to delete ${total} selected Stock Issue document(s)?`
+
+})
+
+
+function bulkDelete()
+{
+    router.delete(
+        route('stock-issues.bulk-delete'),
+        {
+            data: {
+                ids: selectedRows.value,
+            },
 
             preserveScroll: true,
 
             onSuccess: () => {
 
-                showCancelModal.value = false
+                showBulkDelete.value = false
 
-                cancelReason.value = ''
+                selectedRows.value = []
 
-            }
+                success(
+                    'Success',
+                    'Stock Issue deleted successfully.'
+                )
+
+            },
+
+        }
+    )
+}
+/*
+|--------------------------------------------------------------------------
+| Post
+|--------------------------------------------------------------------------
+*/
+
+const postItem = ref(null)
+
+const showPost = ref(false)
+
+
+/*
+|--------------------------------------------------------------------------
+| Reject
+|--------------------------------------------------------------------------
+*/
+const showRejectModal = ref(false)
+
+const rejectItem = ref(null)
+
+const showReject = ref(false)
+
+const rejectReason = ref('')
+
+function openPost(issue)
+{
+    postItem.value = issue
+
+    showPost.value = true
+}
+function closePost()
+{
+    postItem.value = null
+
+    showPost.value = false
+}
+
+function closeReject()
+{
+    showRejectModal.value =
+        false
+
+    rejectItem.value =
+        null
+
+    rejectReason.value =
+        ''
+}
+function confirmPost()
+{
+    if (!postItem.value) {
+
+        return
+
+    }
+
+    router.post(
+
+        route(
+            'stock-issues.post',
+            postItem.value.id
+        ),
+
+        {},
+
+        {
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                closePost()
+
+                success(
+                    'Success',
+                    'Stock Issue posted successfully.'
+                )
+
+            },
+
+            onError: (errors) => {
+
+                   error(
+                    'Failed to post Stock Issue.'
+                )
+
+            },
 
         }
 
     )
-
 }
-const dateRange = ref(
+function confirmReject()
+{
+    if (!rejectItem.value) {
 
-    props.filters.date ?? ''
+        return
 
-)
-const totalValue = () => {
+    }
 
-    return props.issue.details
+    if (!rejectReason.value.trim()) {
 
-    .reduce(
+        error(
+            'Rejection reason is required.'
+        )
 
-        (
+        return
 
-            total,
+    }
 
-            item
-
-        ) =>
-
-            total +
-
-            Number(
-                item.total_cost
-            ),
-
-        0
-
-    )
-
-}
-
-const searchData = () => {
-
-    router.get(
+    router.post(
 
         route(
-
-            'stock-issues.index'
-
+            'stock-issues.cancel',
+            rejectItem.value.id
         ),
 
         {
-
-            search:
-
-                search.value,
-
-            status:
-
-                status.value,
-
-            date:
-
-                dateRange.value,
-
+            reason:
+                rejectReason.value.trim(),
         },
 
         {
 
-            preserveState: true,
-
             preserveScroll: true,
 
+            onSuccess: () => {
+
+                closeReject()
+
+                success(
+                    'Success',
+                    'Stock Issue rejected successfully.'
+                )
+
+            },
+
+            onError: () => {
+
+                error(
+                    'Failed to reject Stock Issue.'
+                )
+
+            },
+
         }
 
     )
-
 }
 
-const clearFilter = () => {
+const postMessage = computed(() => {
 
-    search.value = ''
+    if (!postItem.value) {
+        return ''
+    }
 
-    status.value = ''
+    return `Are you sure you want to post "${postItem.value.number}"? Once posted, Stockt Issue will be updated.`
+})
+/*
+|--------------------------------------------------------------------------
+| Lifecycle
+|--------------------------------------------------------------------------
+*/
 
-    dateRange.value = ''
+onMounted(() => {
 
-    searchData()
+    removeStartListener =
+        router.on(
+            'start',
+            startLoading
+        )
 
-}
+    removeFinishListener =
+        router.on(
+            'finish',
+            stopLoading
+        )
 
-const statusOptions = [
+})
 
-    {
 
-        id: '',
+onUnmounted(() => {
 
-        name: 'All Status',
+    removeStartListener?.()
 
-    },
+    removeFinishListener?.()
 
-    {
+})
 
-        id: 'Draft',
+/*
+|--------------------------------------------------------------------------
+| Sorting
+|--------------------------------------------------------------------------
+*/
 
-        name: 'Draft',
+const sort = ref(
+    props.filters?.sort_by ?? 'id'
+)
 
-    },
+const direction = ref(
+    props.filters?.sort_direction ?? 'desc'
+)
 
-    {
+function sortBy(column)
+{
+    if (sort.value === column) {
 
-        id: 'Posted',
+        direction.value =
+            direction.value === 'asc'
+                ? 'desc'
+                : 'asc'
 
-        name: 'Posted',
+    } else {
 
-    },
+        sort.value = column
 
-    {
-
-        id: 'Completed',
-
-        name: 'Completed',
-
-    },
-
-    {
-
-        id: 'Cancelled',
-
-        name: 'Cancelled',
-
-    },
-
-]
-
-const getStatusClass = (
-
-    status
-
-) => {
-
-    switch (
-
-        status
-
-    ) {
-
-        case 'Draft':
-
-            return 'bg-yellow-100 text-yellow-800'
-
-        case 'Posted':
-
-            return 'bg-green-100 text-green-800'
-
-        case 'Completed':
-
-            return 'bg-blue-100 text-blue-800'
-
-        case 'Cancelled':
-
-            return 'bg-red-100 text-red-800'
-
-        default:
-
-            return 'bg-gray-100 text-gray-800'
+        direction.value = 'asc'
 
     }
 
-}
-
-const formatCurrency = (
-
-    value
-
-) => {
-
-    return Number(
-
-        value
-
-    ).toLocaleString(
-
-        'id-ID'
-
-    )
-
-}
-
-const formatDate = (
-
-    value
-
-) => {
-
-    if (
-
-        !value
-
-    ) {
-
-        return '-'
-
-    }
-
-    return new Date(
-
-        value
-
-    ).toLocaleDateString(
-
-        'en-GB',
-
+    router.get(
+        route('stock-issues.index'),
         {
+             search: filters.search,
 
-            day: '2-digit',
+            branch_id:
+                filters.branch_id,
 
-            month: 'short',
+            warehouse_id:
+                filters.warehouse_id,
 
-            year: 'numeric',
+            issue_type:
+                filters.issue_type,
+
+            status:
+                filters.status,
+
+            date_from:
+                filters.date_from,
+
+            date_to:
+                filters.date_to,
+
+            per_page:
+                filters.per_page,
+
+            sort_by:
+                sort.value,
+
+            sort_direction:
+                direction.value,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }
+    )
+}
+/** filtered warehouse */
+const isEditing = ref(false)
+const filteredWarehouses = computed(() => {
+
+    if (!form.branch_id) {
+        return []
+    }
+
+    return props.warehouses.filter(
+        warehouse =>
+            Number(warehouse.branch_id) ===
+            Number(form.branch_id)
+    )
+
+})
+watch(
+    () => form.branch_id,
+    (newBranch, oldBranch) => {
+
+        if (
+            oldBranch === undefined ||
+            newBranch === oldBranch
+        ) {
+            return
+        }
+
+        form.warehouse_id = null
+    }
+)
+function canEdit(item)
+{
+    return [
+        'Draft',
+        'Rejected',
+    ].includes(item.status)
+}
+
+function canPost(item)
+{
+    return item.status === 'Draft'
+}
+
+function canReject(item)
+{
+    return item.status === 'Draft'
+}
+
+function canDelete(item)
+{
+    return [
+        'Draft',
+        'Rejected',
+    ].includes(item.status)
+}
+/** view modal */
+const viewLoading = ref(false)
+const showView = ref(false)
+const viewItem = ref(null)
+
+async function openView(item)
+{
+    viewLoading.value = true
+
+    viewItem.value = null
+
+    showView.value = true
+
+    try {
+
+        const response = await fetch(
+            route(
+                'stock-issues.data',
+                item.id
+            ),
+            {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            }
+        )
+
+        if (!response.ok) {
+
+            throw new Error(
+                `HTTP ${response.status}`
+            )
 
         }
 
-    )
+        const responseData =
+            await response.json()
 
+        console.log(
+            'stock issue VIEW RESPONSE:',
+            responseData
+        )
+
+        viewItem.value =
+            responseData.data
+
+    } catch (exception) {
+
+        console.error(
+            'stock issue VIEW ERROR:',
+            exception
+        )
+
+        showView.value = false
+
+        viewItem.value = null
+
+        error(
+            'Failed to load Stock Issue detail.'
+        )
+
+    } finally {
+
+        viewLoading.value = false
+
+    }
 }
 
+function closeView()
+{
+    viewItem.value = null
+
+    showView.value = false
+}
+/** view */
+
+function exportSelected()
+{
+    console.log(
+        'EXPORT SELECTED:',
+        selectedRows.value
+    )
+}
+function formatNumber(value)
+{
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+}
+function openReject(item)
+{
+    if (
+        item.status !== 'Draft'
+    ) {
+
+        error(
+            'Only Draft stock issue can be rejected.'
+        )
+
+        return
+    }
+
+    rejectItem.value =
+        item
+
+    rejectReason.value =
+        ''
+
+    showRejectModal.value =
+        true
+}
 </script>
 <template>
-  
-        <Head
-            title="Inventory Issue"
+<AppLayout>
+   
+    <Transition
+        name="page"
+        mode="out-in"
+    >
+
+        <!-- LIST part b-->
+        <div
+            v-if="view === 'list'"
+            key="list"
+        >
+
+        <div class="space-y-6">
+
+            <!-- ===================================================== -->
+            <!-- Statistics -->
+            <!-- ===================================================== -->
+
+            <div
+                class="
+                    grid
+                    grid-cols-1
+                    gap-4
+                    md:grid-cols-4
+                "
+            >
+
+               <StatsCard
+                    title="Total Issues Stock"
+                    :value="statistics?.total ?? 0"
+                    icon="📦"
+                />
+
+                <StatsCard
+                    title="Draft"
+                    :value="statistics?.draft ?? 0"
+                    icon="📝"
+                />
+
+                <StatsCard
+                    title="Rejected"
+                    :value="statistics?.rejected ?? 0"
+                    icon="❌"
+                />
+
+                <StatsCard
+                    title="Posted"
+                    :value="statistics?.posted ?? 0"
+                    icon="✅"
+                />
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- List Card -->
+        <!-- ========================================================= -->
+
+        <Card class="mt-4">
+
+<!-- ========================================================= -->
+<!-- Toolbar -->
+<!-- ========================================================= -->
+
+<div>
+
+    <!-- ===================================================== -->
+    <!-- TOP ROW -->
+    <!-- Search + Date Range + Actions -->
+    <!-- ===================================================== -->
+
+    <div
+        class="
+            flex
+            flex-col
+            gap-3
+            lg:flex-row
+            lg:items-center
+            lg:justify-between
+        "
+    >
+
+        <!-- Left -->
+
+        <div
+            class="
+                flex
+                flex-1
+                flex-col
+                gap-3
+                lg:flex-row
+                lg:items-center
+            "
+        >
+
+            <!-- Search -->
+
+            <input
+                v-model="filters.search"
+                type="text"
+                placeholder="Search number..."
+                class="
+                    w-full
+                    rounded-xl
+                    border
+                    border-gray-300
+                    px-4
+                    py-2.5
+                    lg:w-80
+                "
+            />
+
+
+            <!-- Date Range -->
+
+        <FlatPickr
+            v-model="dateRange"
+            :config="{
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+            }"
+            placeholder="Date Range"
+            class="
+                w-full
+                lg:w-56
+                rounded-xl
+                border
+                border-gray-300
+                px-4
+                py-2.5
+                text-sm
+            "
+            @on-change="handleDateRangeChange"
         />
+        </div>
 
-        <AppLayout>
-            <template #header>
 
-                    <div
+        <!-- Right Actions -->
 
-                        class="
-                            flex
-                            items-center
-                            justify-between
-                        "
+        <div
+            class="
+                flex
+                flex-col
+                gap-2
+                w-full
+                lg:w-auto
+                lg:flex-row
+                lg:items-center
+            "
+        >
 
-                    >
+            <!-- Refresh -->
 
-                        <div>
+            <BaseButton
+                variant="secondary"
+                class="
+                    w-full
+                    shrink-0
+                    whitespace-nowrap
+                    lg:w-auto
+                "
+                @click="refresh"
+            >
+                Refresh
+            </BaseButton>
 
-                            <h2
 
-                                class="
-                                    text-3xl
-                                    font-bold
-                                    text-gray-800
-                                "
+            <!-- Add -->
 
-                            >
+            <BaseButton
+                class="
+                    w-full
+                    shrink-0
+                    whitespace-nowrap
+                    lg:w-auto
+                "
+                @click="create"
+            >
 
-                                Stock Issues
+                <template #icon>
 
-                            </h2>
-
-                            <p
-
-                                class="
-                                    mt-1
-                                    text-sm
-                                    text-gray-500
-                                "
-
-                            >
-
-                                Manage inventory Issues between warehouses.
-
-                            </p>
-
-                        </div>
-
-                        <Link
-
-                            :href="
-                                route(
-                                    'stock-issues.create'
-                                )
-                            "
-
-                            class="
-                                rounded-2xl
-                                bg-blue-600
-                                px-6
-                                py-3
-                                font-medium
-                                text-white
-                                transition
-                                hover:bg-blue-700
-                            "
-
-                        >
-
-                            + New Issues
-
-                        </Link>
-
-                    </div>
+                    <PlusIcon class="h-5 w-5" />
 
                 </template>
-                <div
 
-                            class="
-                                mb-6
-                                rounded-3xl
-                                bg-white
-                                p-6
-                                shadow-sm
-                            "
+                Add
 
+            </BaseButton>
+
+
+            <!-- Bulk -->
+
+            <BulkActionDropdown
+                :count="selectedRows.length"
+                :disabled="
+                    selectedRows.length === 0
+                "
+                :actions="[
+                    'export',
+                    'delete',
+                ]"
+                @delete="openBulkDelete"
+                @export="exportSelected"
+                class="w-full lg:w-auto"
+            />
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- BOTTOM ROW -->
+    <!-- Searchable Filters -->
+    <!-- ===================================================== -->
+
+    <div
+        class="
+            mt-3
+            flex
+            flex-col
+            gap-3
+            lg:flex-row
+            lg:items-center
+        "
+    >
+
+        <!-- Issue Type -->
+
+        <SearchableSelect
+            v-model="filters.issue_type"
+            :options="issueTypeOptions"
+            label="label"
+            value-key="value"
+            placeholder="All Issue Types"
+            class="w-full lg:w-48"
+        />
+
+
+        <!-- Branch -->
+
+        <SearchableSelect
+            v-model="filters.branch_id"
+            :options="branches"
+            label="label"
+            value-key="id"
+            placeholder="All Branches"
+            class="w-full lg:w-48"
+        />
+
+
+        <!-- Warehouse -->
+
+        <SearchableSelect
+            v-model="filters.warehouse_id"
+            :options="warehouses"
+            label="label"
+            value-key="id"
+            placeholder="All Warehouses"
+            class="w-full lg:w-52"
+        />
+
+
+        <!-- Status -->
+
+        <SearchableSelect
+            v-model="filters.status"
+            :options="statusOptions"
+            label="label"
+            value-key="value"
+            placeholder="All Status"
+            class="w-full lg:w-40"
+        />
+
+    </div>
+
+</div>
+            <!-- ===================================================== -->
+            <!-- Table -->
+            <!-- ===================================================== -->
+
+            <div class="mt-6">
+
+                <!-- Loading -->
+
+                <LoadingOverlay
+                    :show="loading"
+                    text="Loading Stock Issue..."
+                />
+
+
+                <!-- Data -->
+
+                <DataTable
+                    v-if="issues?.data?.length"
+                    sticky-header
+                    max-height="650px"
+                >
+
+                    <DataTableHead sticky>
+
+                        <!-- Select All -->
+
+                        <DataTableHeaderCell
+                            width="60px"
+                            align="center"
                         >
-                         <!-- fileter bar-->
-                        <div
 
-                            class="
-                                mb-6
-                                rounded-3xl
-                                bg-white
-                                p-6
-                                shadow-sm
-                            "
+                            <input
+                                ref="selectAllRef"
+                                type="checkbox"
+                                :checked="isAllSelected"
+                                @change="toggleSelectAll"
+                                class="rounded border-gray-300"
+                            />
 
+                        </DataTableHeaderCell>
+
+
+                        <!-- Number -->
+
+                        <DataTableHeaderCell
+                            sortable
+                            column="number"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                            width="180px"
                         >
-                            <!-- summary card-->
-                                <div
+                            Number
+                        </DataTableHeaderCell>
 
-                                    class="
-                                        mb-6
-                                        grid
-                                        gap-6
-                                        md:grid-cols-4
-                                    "
 
-                                >
+                        <!-- Date -->
 
-                                    <div
+                        <DataTableHeaderCell
+                            sortable
+                            column="transaction_date"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                            width="160px"
+                        >
+                            Transaction Date
+                        </DataTableHeaderCell>
 
-                                        class="
-                                            rounded-3xl
-                                            bg-yellow-50
-                                            p-6
-                                            shadow-sm
-                                        "
 
-                                    >
+                        <!-- Branch -->
 
-                                        <p
+                        <DataTableHeaderCell
+                            width="180px"
+                        >
+                            Branch
+                        </DataTableHeaderCell>
 
-                                            class="
-                                                text-sm
-                                                text-yellow-700
-                                            "
 
-                                        >
+                        <!-- Warehouse -->
 
-                                            Draft
+                        <DataTableHeaderCell
+                            width="200px"
+                        >
+                            Issue Type
+                        </DataTableHeaderCell>
 
-                                        </p>
 
-                                        <h2
+                        <!-- Items -->
 
-                                            class="
-                                                mt-2
-                                                text-3xl
-                                                font-bold
-                                                text-yellow-800
-                                            "
+                        <DataTableHeaderCell
+                            width="100px"
+                            align="right"
+                        >
+                            Items
+                        </DataTableHeaderCell>
 
-                                        >
 
-                                            {{ summary.draft }}
+                        <!-- Total Cost -->
 
-                                        </h2>
+                        <DataTableHeaderCell
+                            sortable
+                            column="total_cost"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                            width="180px"
+                            align="right"
+                        >
+                            Total Cost
+                        </DataTableHeaderCell>
 
-                                    </div>
 
-                                    <div
+                        <!-- Status -->
 
-                                        class="
-                                            rounded-3xl
-                                            bg-green-50
-                                            p-6
-                                            shadow-sm
-                                        "
+                        <DataTableHeaderCell
+                            sortable
+                            column="status"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                            width="120px"
+                            align="center"
+                        >
+                            Status
+                        </DataTableHeaderCell>
 
-                                    >
 
-                                        <p
+                        <!-- Actions -->
 
-                                            class="
-                                                text-sm
-                                                text-green-700
-                                            "
+                        <DataTableHeaderCell
+                            width="100px"
+                            align="center"
+                        >
+                            Actions
+                        </DataTableHeaderCell>
 
-                                        >
+                    </DataTableHead>
 
-                                            Posted
+                    <DataTableBody>
 
-                                        </p>
+                    <DataTableRow
+                        v-for="item in issues.data"
+                        :key="item.id"
+                    >
 
-                                        <h2
+                        <!-- Checkbox -->
 
-                                            class="
-                                                mt-2
-                                                text-3xl
-                                                font-bold
-                                                text-green-800
-                                            "
+                        <DataTableCell align="center">
 
-                                        >
+                            <input
+                                v-model="selectedRows"
+                                :value="item.id"
+                                type="checkbox"
+                                class="rounded border-gray-300"
+                            />
 
-                                            {{ summary.posted }}
+                        </DataTableCell>
 
-                                        </h2>
 
-                                    </div>
+                        <!-- Number -->
 
-                                    <div
+                        <DataTableCell>
 
-                                        class="
-                                            rounded-3xl
-                                            bg-blue-50
-                                            p-6
-                                            shadow-sm
-                                        "
+                            <span class="font-medium text-gray-900">
+                                {{ item.number }}
+                            </span>
 
-                                    >
+                        </DataTableCell>
 
-                                        <p
 
-                                            class="
-                                                text-sm
-                                                text-blue-700
-                                            "
+                        <!-- Transaction Date -->
 
-                                        >
+                        <DataTableCell>
 
-                                            Completed
+                            <span class="text-sm text-gray-700">
+                                {{ formatDate(item.transaction_date) }}
+                            </span>
 
-                                        </p>
+                        </DataTableCell>
 
-                                        <h2
 
-                                            class="
-                                                mt-2
-                                                text-3xl
-                                                font-bold
-                                                text-blue-800
-                                            "
+                        <!-- Location -->
 
-                                        >
+                        <DataTableCell>
 
-                                            {{ summary.completed }}
-
-                                        </h2>
-
-                                    </div>
-
-                                    <div
-
-                                        class="
-                                            rounded-3xl
-                                            bg-red-50
-                                            p-6
-                                            shadow-sm
-                                        "
-
-                                    >
-
-                                        <p
-
-                                            class="
-                                                text-sm
-                                                text-red-700
-                                            "
-
-                                        >
-
-                                            Cancelled
-
-                                        </p>
-
-                                        <h2
-
-                                            class="
-                                                mt-2
-                                                text-3xl
-                                                font-bold
-                                                text-red-800
-                                            "
-
-                                        >
-
-                                            {{ summary.cancelled }}
-
-                                        </h2>
-
-                                    </div>
-
-                                </div>
-                                <!-- end summary card-->
-                </div>
-                <!-- end summary bar-->
-                    
                             <div
-
                                 class="
-                                    grid
-                                    gap-4
-                                    lg:grid-cols-12
+                                    font-semibold
+                                    text-gray-900
                                 "
-
                             >
-
-                                <!-- Search -->
-
-                                <div
-
-                                    class="
-                                        lg:col-span-4
-                                    "
-
-                                >
-
-                                    <label
-
-                                        class="
-                                            mb-2
-                                            block
-                                            text-sm
-                                            font-medium
-                                        "
-
-                                    >
-
-                                        Search
-
-                                    </label>
-
-                                    <input
-
-                                        v-model="
-                                            search
-                                        "
-
-                                        type="text"
-
-                                        placeholder="issues Number..."
-
-                                        class="
-                                            w-full
-                                            rounded-xl
-                                            border
-                                            border-gray-300
-                                            px-4
-                                            py-3
-                                            focus:border-blue-500
-                                            focus:outline-none
-                                        "
-
-                                    >
-
-                                </div>
-
-                                <!-- Date -->
-
-                                <div
-
-                                    class="
-                                        lg:col-span-3
-                                    "
-
-                                >
-
-                                    <label
-
-                                        class="
-                                            mb-2
-                                            block
-                                            text-sm
-                                            font-medium
-                                        "
-
-                                    >
-
-                                        Date
-
-                                    </label>
-
-                                    <FlatPickr
-
-                                        v-model="
-                                            dateRange
-                                        "
-
-                                        :config="
-                                            dateConfig
-                                        "
-
-                                        class="
-                                            w-full
-                                            rounded-xl
-                                            border
-                                            border-gray-300
-                                            px-4
-                                            py-3
-                                        "
-
-                                    />
-
-                                </div>
-
-                                <!-- Status -->
-
-                                <div
-
-                                    class="
-                                        lg:col-span-3
-                                    "
-
-                                >
-
-                                    <label
-
-                                        class="
-                                            mb-2
-                                            block
-                                            text-sm
-                                            font-medium
-                                        "
-
-                                    >
-
-                                        Status
-
-                                    </label>
-
-                                    <SearchableSelect
-
-                                        v-model="
-                                            status
-                                        "
-
-                                        :options="
-                                            statusOptions
-                                        "
-
-                                        placeholder="All Status"
-
-                                    />
-
-                                </div>
-
-                                <!-- Buttons -->
-
-                                <div
-
-                                    class="
-                                        flex
-                                        items-end
-                                        gap-2
-                                        lg:col-span-2
-                                    "
-
-                                >
-
-                                    <button
-
-                                        @click="
-                                            searchData
-                                        "
-
-                                        class="
-                                            flex-1
-                                            rounded-xl
-                                            bg-blue-600
-                                            px-4
-                                            py-3
-                                            font-medium
-                                            text-white
-                                            transition
-                                            hover:bg-blue-700
-                                        "
-
-                                    >
-
-                                        Search
-
-                                    </button>
-
-                                    <button
-
-                                        @click="
-                                            clearFilter
-                                        "
-
-                                        class="
-                                            rounded-xl
-                                            bg-gray-200
-                                            px-4
-                                            py-3
-                                            font-medium
-                                            text-gray-700
-                                            transition
-                                            hover:bg-gray-300
-                                        "
-
-                                    >
-
-                                        Clear
-
-                                    </button>
-
-                                </div>
-
+                                {{ item.branch?.name ?? '-' }}
                             </div>
-                            <!-- entrepise table-->
-                             <br>
+
                             <div
-
                                 class="
-                                    overflow-hidden
-                                    rounded-3xl
-                                    bg-white
-                                    shadow-sm
+                                    mt-0.5
+                                    text-xs
+                                    text-gray-500
                                 "
-
                             >
-
-                                <div
-
-                                    class="
-                                        overflow-x-auto
-                                    "
-
-                                >
-
-                                    <table
-
-                                        class="
-                                            min-w-full
-                                            table-fixed
-                                        "
-
-                                    >
-
-                                        <thead
-
-                                           class="
-                                            border-b
-                                            bg-gray-100
-                                        "
-
-                                        >
-
-                                            <tr>
-
-                                                <th class="w-16 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
-
-                                                    No
-
-                                                </th>
-
-                                                <th class="w-36 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
-
-                                                    Issues No
-
-                                                </th>
-
-                                                <th class="w-48 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
-
-                                                    Date
-
-                                                </th>
-
-                                                <th class="w-30 px-4 py-4 text-left text-xs font-semibold uppercase text-gray-500">
-
-                                                     Issue Type
-
-                                                </th>
-
-                                                <th class="w-48 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                    Warehouse
-
-                                                </th>
-
-                                                <th class="w-24 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                    Issue Value
-
-
-                                                </th>
-
-                                                <th class="w-40 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                    Issue Type
-                                                </th>
-
-                                                <th class="w-32 px-4 py-4 text-center text-xs font-semibold uppercase text-gray-500">
-
-                                                   Action
-
-                                                </th>
-                                            </tr>
-
-                                        </thead>
-
-                                        <tbody>
-
-                                        <tr v-if="stock-issues.data.length === 0">
-
-                                            <td
-
-                                                colspan="9"
-
-                                                class="px-6 py-16"
-
-                                            >
-
-                                                <div
-
-                                                    class="flex flex-col items-center justify-center"
-
-                                                >
-
-                                                    <svg
-
-                                                        xmlns="http://www.w3.org/2000/svg"
-
-                                                        fill="none"
-
-                                                        viewBox="0 0 24 24"
-
-                                                        stroke-width="1.5"
-
-                                                        stroke="currentColor"
-
-                                                        class="h-16 w-16 text-gray-300"
-
-                                                    >
-
-                                                        <path
-
-                                                            stroke-linecap="round"
-
-                                                            stroke-linejoin="round"
-
-                                                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-
-                                                        />
-
-                                                        <path
-
-                                                            stroke-linecap="round"
-
-                                                            stroke-linejoin="round"
-
-                                                            d="M9.75 9.75h4.5v4.5h-4.5z"
-
-                                                        />
-
-                                                    </svg>
-
-                                                    <h3
-
-                                                        class="mt-4 text-lg font-semibold text-gray-700"
-
-                                                    >
-
-                                                        No Stock Issue Found
-
-                                                    </h3>
-
-                                                    <p
-
-                                                        class="mt-2 text-sm text-gray-500"
-
-                                                    >
-
-                                                        Click the button below to create your first Cash Bank.
-
-                                                    </p>
-
-                                                    <Link
-
-                                                        :href="route('stock-issues.create')"
-
-                                                        class="
-                                                            mt-6
-                                                            rounded-xl
-                                                            bg-indigo-600
-                                                            px-5
-                                                            py-3
-                                                            text-white
-                                                            hover:bg-indigo-700
-                                                        "
-
-                                                    >
-
-                                                        + New Issue
-
-                                                    </Link>
-
-                                                </div>
-
-                                            </td>
-
-                                        </tr>
-
-                                           <tr
-
-                                                v-for="
-                                                    (
-                                                        issue,
-                                                        index
-                                                    )
-                                                    in
-                                                    issues.data
-                                                "
-
-                                                :key="
-                                                    issue.id
-                                                "
-
-                                                :class="
-
-                                                    index % 2
-
-                                                    ?
-
-                                                    'bg-gray-50 hover:bg-blue-50 transition'
-
-                                                    :
-
-                                                    'bg-white hover:bg-blue-50 transition'
-
-                                                "
-
-                                            >
-
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                    "
-
-                                                >
-
-                                                    {{
-
-                                                        index + 1 +
-
-                                                        (
-
-                                                            (
-
-                                                                issues.current_page - 1
-
-                                                            )
-
-                                                            *
-
-                                                            issues.per_page
-
-                                                        )
-
-                                                    }}
-
-                                                </td>
-
-                                          <td
-
-                                                class="
-                                                    px-4
-                                                    py-4
-                                                "
-
-                                            >
-
-                                                <Link
-
-                                                    :href="
-                                                        route(
-                                                            'stock-issues.show',
-                                                            issue.id
-                                                        )
-                                                    "
-
-                                                    class="
-                                                        font-semibold
-                                                        text-blue-600
-                                                        transition
-                                                        hover:underline
-                                                    "
-
-                                                >
-
-                                                    {{
-
-                                                        issue.issue_number
-
-                                                    }}
-
-                                                </Link>
-
-                                            </td>
-
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                    "
-
-                                                >
-
-                                                    {{
-
-                                                        formatDate(
-
-                                                            issue.issue_date
-
-                                                        )
-
-                                                    }}
-
-                                                </td>
-  
-                                                <td
-                                                class="
-                                                    px-4
-                                                    py-4
-                                                    text-center
-                                                "
-                                            >
-
-                                                <div
-                                                    class="
-                                                        font-semibold
-                                                    "
-                                                >
-
-                                                    {{
-
-                                                        issue.issue_type
-
-                                                    }}
-
-                                                </div>
-
-                                            </td>
-                                            <td
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                    "
-
-                                                >
-                                                    <div
-
-                                                            class="
-                                                                text-center
-                                                            "
-
-                                                        >
-
-                                                    <div
-
-                                                        class="
-                                                            font-semibold
-                                                        "
-
-                                                    >
-
-                                                        {{
-
-                                                            issue.warehouse
-
-                                                        }}
-
-                                                    </div>
-
-                                                </div>
-                                            </td>
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                        text-right
-                                                        font-medium
-                                                        text-green-600
-                                                    "
-
-                                                >
-
-                                                    Rp
-
-                                                    {{
-
-                                                        formatCurrency(
-
-                                                            issue.total_cost
-
-                                                        )
-
-                                                    }}
-
-                                                </td>
-
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                        text-center
-                                                    "
-
-                                                >
-
-                                                 <span
-
-                                                    :class="
-                                                        getStatusClass(
-                                                            issue.status
-                                                        )
-                                                    "
-
-                                                    class="
-                                                        inline-flex
-                                                        items-center
-                                                        gap-2
-                                                        rounded-full
-                                                        px-3
-                                                        py-1.5
-                                                        text-xs
-                                                        font-semibold
-                                                    "
-
-                                                >
-
-                                                    <span
-
-                                                        class="
-                                                            h-2
-                                                            w-2
-                                                            rounded-full
-                                                            bg-current
-                                                        "
-
-                                                    />
-
-                                                    {{
-
-                                                        issue.status
-
-                                                    }}
-
-                                                </span>
-
-                                                </td>
-
-                                                <td
-
-                                                    class="
-                                                        px-4
-                                                        py-4
-                                                        text-center
-                                                    "
-
-                                                >
-                                                <Link
-
-                                                    :href="
-                                                        route(
-                                                            'stock-issues.show',
-                                                            issue.id
-                                                        )
-                                                    "
-
-                                                    class="
-                                                        inline-flex
-                                                        items-center
-                                                        justify-center
-                                                        rounded-lg
-                                                        p-2
-                                                        text-blue-600
-                                                        transition
-                                                        hover:bg-blue-100
-                                                    "
-
-                                                >
-
-                                                    <EyeIcon
-
-                                                        class="
-                                                            h-5
-                                                            w-5
-                                                        "
-
-                                                    />
-
-                                                </Link>
-
-                                                </td>
-
-                                            </tr>
-
-                                        </tbody>
-
-                                    </table>
-
-                                </div>
-
+                                {{ item.warehouse?.name ?? '-' }}
                             </div>
-                            <!-- end entreprise table-->
-                             <!-- pagination-->
-                            <div
 
+                        </DataTableCell>
+
+
+                        <!-- Issue Type -->
+
+                        <DataTableCell>
+
+                            <span
                                 class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    border-t
-                                    bg-white
-                                    px-6
-                                    py-4
+                                    text-sm
+                                    text-gray-700
                                 "
-
                             >
+                                {{ item.issue_type ?? '-' }}
+                            </span>
 
-                                <div
+                        </DataTableCell>
 
-                                    class="
-                                        text-sm
-                                        text-gray-500
-                                    "
 
-                                >
+                        <!-- Items -->
 
-                                    Showing
+                        <DataTableCell align="right">
 
-                                    <span
+                            <span
+                                class="
+                                    text-sm
+                                    font-medium
+                                    text-gray-900
+                                "
+                            >
+                                {{
+                                    item.details_count
+                                    ?? item.details?.length
+                                    ?? 0
+                                }}
+                            </span>
 
-                                        class="
-                                            font-semibold
-                                        "
+                        </DataTableCell>
 
-                                    >
 
-                                        {{ issues.from }}
+                        <!-- Total Cost -->
 
-                                    </span>
+                        <DataTableCell align="right">
 
-                                    -
+                            <span
+                                class="
+                                    text-sm
+                                    font-medium
+                                    text-gray-900
+                                "
+                            >
+                                {{
+                                    currency(
+                                        item.total_cost ?? 0
+                                    )
+                                }}
+                            </span>
 
-                                    <span
+                        </DataTableCell>
 
-                                        class="
-                                            font-semibold
-                                        "
 
-                                    >
+                        <!-- Status -->
 
-                                        {{ issues.to }}
+                        <DataTableCell align="center">
 
-                                    </span>
+                            <StatusBadge
+                                :status="item.status"
+                            />
 
-                                    of
+                        </DataTableCell>
 
-                                    <span
 
-                                        class="
-                                            font-semibold
-                                        "
+                        <!-- Actions -->
 
-                                    >
+                        <DataTableCell align="center">
 
-                                        {{ issues.total }}
+                            <ActionDropdown
 
-                                    </span>
+                                @view="openView(item)"
+                                @edit="editStockIssue(item)"
+                                @duplicate="duplicate(item)"
+                                @post="openPost(item) "
+                                @reject="openReject(item)"
+                                @delete="openDelete(item)"
+                                :showEdit="canEdit(item)"
+                                :showDuplicate="true"
+                                :showPost="canPost(item)"
+                                :showReject="canReject(item)"
+                                :showExport="false"
+                                :showHistory="false"
+                                :showDelete="canDelete(item)"
 
-                                    issues
+                            />
 
-                                </div>
+                        </DataTableCell>
 
-                                <div
+                    </DataTableRow>
 
-                                    class="
-                                        flex
-                                        items-center
-                                        gap-2
-                                    "
+                </DataTableBody>
 
-                                >
+                </DataTable>
 
-                                    <template
 
-                                        v-for="
+                <!-- Empty -->
 
-                                            link
+                <TableEmpty
+                    v-else
+                    icon="📦"
+                    title="No Stock Issues Found"
+                    description="There are no Stock Issue transactions available."
+                >
 
-                                            in
+                    <template #action>
 
-                                            issues.links
+                        <BaseButton
+                            @click="create"
+                        >
+                            Create Stock Issues
+                        </BaseButton>
 
-                                        "
+                    </template>
 
-                                        :key="
+                </TableEmpty>
 
-                                            link.label
+            </div>
 
-                                        "
 
-                                    >
+            <!-- ===================================================== -->
+            <!-- Pagination -->
+            <!-- ===================================================== -->
 
-                                        <button
+            <div class="mt-6">
 
-                                            v-if="
-                                                link.url
-                                            "
+                <TablePagination
+                    :data="issues"
+                    label="Stock Issue"
+                />
 
-                                            @click="
-                                                router.visit(
-                                                    link.url,
-                                                    {
-                                                        preserveScroll: true,
-                                                        preserveState: true,
-                                                    }
-                                                )
-                                            "
+            </div>
 
-                                            v-html="
-                                                link.label
-                                            "
+        </Card>
+            
+        </div>
+        <!-- end part b-->
 
-                                            :class="
+        <!-- FORM -->
+        <div
+            v-else-if="view === 'form'"
+            key="form"
+            class="space-y-6"
+        >
 
-                                                link.active
+            <PageHeader
+                icon="📦"
+                :title="
+                    formMode === 'create'
+                        ? 'Create Stock Issue'
+                        : 'Edit Stock Issue'
+                "
+                :subtitle="
+                    formMode === 'create'
+                        ? 'Create a new Stock Issue transaction.'
+                        : 'Update Stock Issue transaction.'
+                "
+            />
 
-                                                ?
 
-                                                'bg-blue-600 text-white'
+            <Card>
 
-                                                :
+                <StockIssueForm
+                    :form="form"
+                    :branches="branches"
+                    :warehouses="warehouses"
+                    :filtered-variants="filteredVariants"
+                    :issue-type-options="issueTypeOptions"
+                    :mode="formMode"
+                    @submit="submit"
+                    @submit-and-new="submitAndNew"
+                    @cancel="cancelForm"
+                />
+            </Card>
 
-                                                'bg-white text-gray-700 hover:bg-gray-100'
+        </div>
 
-                                            "
+    </Transition>
 
-                                            class="
-                                                rounded-xl
-                                                border
-                                                px-4
-                                                py-2
-                                                text-sm
-                                                transition
-                                            "
+</AppLayout>
+  <ConfirmDeleteModal
+    :show="showDelete"
+    title="Delete Stock Issue"
+    :message="deleteMessage"
+    confirm-text="Delete"
+    @close="closeDelete"
+    @confirm="confirmDelete"
+/>
 
-                                        />
-
-                                    </template>
-
-                                </div>
-
-                            </div>
-                             <!-- pagination-->
-                        </div>
-                     <!-- end filter bar-->
-    </AppLayout>
-
+<StockIssueViewModal
+    :show="showView"
+    :issue="viewItem"
+    :loading="viewLoading"
+    @close="closeView"
+/>
+<StockIssuePostModal
+    :show="showPost"
+    :issue="postItem"
+    :loading="postLoading"
+    @close="closePost"
+    @confirm="confirmPost"
+/>
+<StockIssueRejectModal
+    :show="showRejectModal"
+    :issue="rejectItem"
+    :reason="rejectReason"
+    @close="closeReject"
+    @confirm="confirmReject"
+    @update:reason="
+        rejectReason = $event
+    "
+/>
 </template>
+<style scoped>
+
+.page-enter-active,
+.page-leave-active {
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.page-enter-from {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.page-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+</style>

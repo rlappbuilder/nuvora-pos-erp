@@ -34,8 +34,10 @@ const navigation = [
             modules.openingStock,
             modules.stockAdjustments,
              modules.stockTransfers,
+             modules.stockIssues,
+             modules.stockOpname,
              modules.stockBalance,
-              modules.stockIssues,
+              
              modules.stockCards,
             
             // modules.stockOpnames,

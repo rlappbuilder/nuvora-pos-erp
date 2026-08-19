@@ -3,1266 +3,972 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
-
-use App\Models\Product\Product;
-use App\Models\Inventory\ProductStock;
-use App\Models\Inventory\StockIssue;
-use App\Models\Inventory\StockIssueDetail;
-use App\Models\MasterData\Warehouse;
-use App\Models\Inventory\InventoryMovement;
 use Illuminate\Http\Request;
-
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
-use Carbon\Carbon;
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Unit;
+use App\Models\MasterData\Warehouse;
+use App\Models\Product\ProductVariant;
+use App\Services\Inventory\InventoryService;
+use App\Services\Core\CodeGeneratorService;
+use App\Models\Inventory\StockIssueHeader;
+use App\Http\Requests\Inventory\StockIssue\StoreStockIssueRequest;
+use App\Http\Requests\Inventory\StockIssue\UpdateStockIssueRequest;
+use App\Http\Requests\Inventory\StockIssue\CancelStockIssueRequest;
+
+use App\Models\Inventory\ProductStock;
+
 
 class StockIssueController extends Controller
 {
- public function index()
-    {
-        $startDate =
+    public function __construct(
+    protected InventoryService $inventoryService,
+    protected CodeGeneratorService $codeGeneratorService
+) {
+}
 
-            Carbon::now()
 
-            ->startOfMonth()
+    /*
+|--------------------------------------------------------------------------
+| Index
+|--------------------------------------------------------------------------
+*/
 
-            ->format(
-
-                'Y-m-d'
-
-            );
-
-        $endDate =
-
-            Carbon::now()
-
-            ->endOfMonth()
-
-            ->format(
-
-                'Y-m-d'
-
-            );
+public function index(Request $request)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Base Query
+    |--------------------------------------------------------------------------
+    */
 
         $query =
+            StockIssueHeader::query()
+                ->with([
+                    'branch',
+                    'warehouse',
+                    'creator',
+                    'details.variant.product',
+                    'details.unit',
+                ])
+                ->withCount(
+                    'details'
+                )
+                ->withSum(
+                    'details',
+                    'total_cost'
+                );
 
-            StockIssue::query()
+    /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
 
-            ->with([
+    $query->when(
+        $request->filled('search'),
+        function ($query) use ($request) {
 
-                'warehouse',
+            $search =
+                $request->search;
 
-                'creator',
+           $query->where(function ($query) use ($search) {
 
-                'details',
-
-            ])
-
-            ->withCount(
-
-                'details'
-
-            )
-
-            ->when(
-
-                request(
-
-                    'search'
-
-                ),
-
-                function (
-
-                    $q
-
-                ) {
-
-                    $q->where(
-
-                        'issue_number',
-
+                $query
+                    ->where(
+                        'number',
                         'like',
+                        "%{$search}%"
+                    )
 
-                        '%'
+                    ->orWhere(
+                        'issue_type',
+                        'like',
+                        "%{$search}%"
+                    )
 
-                        .
+                    ->orWhereHas(
+                        'branch',
+                        function ($branch) use (
+                            $search
+                        ) {
 
-                        request(
+                            $branch->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
 
-                            'search'
+                        }
+                    )
 
-                        )
+                    ->orWhereHas(
+                        'warehouse',
+                        function ($warehouse) use (
+                            $search
+                        ) {
 
-                        .
+                            $warehouse->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
 
-                        '%'
-
+                        }
                     );
-
-                }
-
-            )
-
-            ->when(
-
-                request(
-
-                    'status'
-
-                ),
-
-                function (
-
-                    $q
-
-                ) {
-
-                    $q->where(
-
-                        'status',
-
-                        request(
-
-                            'status'
-
-                        )
-
-                    );
-
-                }
-
-            )
-
-            ->when(
-
-                request(
-
-                    'date'
-
-                ),
-
-                function (
-
-                    $query
-
-                ) {
-
-                    $dates = explode(
-
-                        ' to ',
-
-                        request(
-
-                            'date'
-
-                        )
-
-                    );
-
-                    $from =
-
-                        $dates[0];
-
-                    $to =
-
-                        $dates[1]
-
-                        ??
-
-                        $dates[0];
-
-                    $query->whereBetween(
-
-                        'issue_date',
-
-                        [
-
-                            $from,
-
-                            $to,
-
-                        ]
-
-                    );
-
-                }
-
-            )
-
-            ->when(
-
-                !request(
-
-                    'date'
-
-                ),
-
-                function (
-
-                    $query
-
-                ) use (
-
-                    $startDate,
-
-                    $endDate
-
-                ) {
-
-                    $query->whereBetween(
-
-                        'issue_date',
-
-                        [
-
-                            $startDate,
-
-                            $endDate,
-
-                        ]
-
-                    );
-
-                }
-
-            )
-
-            ->latest();
-
-        $summaryQuery =
-
-            clone $query;
-
-        $issues =
-
-            $query
-
-            ->paginate(10)
-
-            ->through(
-
-                function (
-
-                    $issue
-
-                ) {
-
-                    return [
-
-                        'id' =>
-
-                            $issue->id,
-
-                        'issue_number' =>
-
-                            $issue->issue_number,
-
-                        'issue_date' =>
-
-                            $issue->issue_date,
-
-                        'warehouse' =>
-
-                            $issue
-
-                            ->warehouse
-
-                            ?->name,
-
-                        'issue_type' =>
-
-                            $issue->issue_type,
-
-                        'status' =>
-
-                            $issue->status,
-
-                        'items' =>
-
-                            $issue
-
-                            ->details_count,
-
-                        'total_qty' =>
-
-                            $issue
-
-                            ->details
-
-                            ->sum(
-
-                                'qty'
-
-                            ),
-
-                        'total_cost' =>
-
-                            $issue
-
-                            ->details
-
-                            ->sum(
-
-                                'total_cost'
-
-                            ),
-
-                        'creator' =>
-
-                            $issue
-
-                            ->creator
-
-                            ?->name,
-
-                    ];
-
-                }
-
-            )
-
-            ->withQueryString();
-
-        return Inertia::render(
-
-            'Inventory/Issue/Index',
-
-            [
-
-                'issues' =>
-
-                    $issues,
-
-                'filters' => [
-
-                    'search' =>
-
-                        request(
-
-                            'search'
-
-                        ),
-
-                    'status' =>
-
-                        request(
-
-                            'status'
-
-                        ),
-
-                    'date' =>
-
-                        request(
-
-                            'date'
-
-                        ),
-
-                ],
-
-                'summary' => [
-
-                    'draft' =>
-
-                        (
-
-                            clone $summaryQuery
-
-                        )
-
-                        ->where(
-
-                            'status',
-
-                            'Draft'
-
-                        )
-
-                        ->count(),
-
-                    'posted' =>
-
-                        (
-
-                            clone $summaryQuery
-
-                        )
-
-                        ->where(
-
-                            'status',
-
-                            'Posted'
-
-                        )
-
-                        ->count(),
-
-                    'completed' =>
-
-                        (
-
-                            clone $summaryQuery
-
-                        )
-
-                        ->where(
-
-                            'status',
-
-                            'Completed'
-
-                        )
-
-                        ->count(),
-
-                    'cancelled' =>
-
-                        (
-
-                            clone $summaryQuery
-
-                        )
-
-                        ->where(
-
-                            'status',
-
-                            'Cancelled'
-
-                        )
-
-                        ->count(),
-
-                ],
-
-            ]
-
+            });
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Branch Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('branch_id'),
+        function ($query) use ($request) {
+
+            $query->where(
+                'branch_id',
+                $request->branch_id
+            );
+
+        }
+    );
+    /*
+    |--------------------------------------------------------------------------
+    | Issue Type
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('issue_type'),
+        function ($query) use ($request) {
+
+            $query->where(
+                'issue_type',
+                $request->issue_type
+            );
+
+        }
+    );
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('warehouse_id'),
+        function ($query) use ($request) {
+
+            $query->where(
+                'warehouse_id',
+                $request->warehouse_id
+            );
+
+        }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('status'),
+        function ($query) use ($request) {
+
+            $query->where(
+                'status',
+                $request->status
+            );
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Date Filter
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        $request->filled('date_from'),
+        function ($query) use ($request) {
+
+            $query->whereDate(
+                'transaction_date',
+                '>=',
+                $request->date_from
+            );
+
+        }
+    );
+
+
+    $query->when(
+        $request->filled('date_to'),
+        function ($query) use ($request) {
+
+            $query->whereDate(
+                'transaction_date',
+                '<=',
+                $request->date_to
+            );
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sorting
+    |--------------------------------------------------------------------------
+    */
+
+    $sortBy =
+        $request->input(
+            'sort_by',
+            'id'
         );
+
+    $sortDirection =
+        $request->input(
+            'sort_direction',
+            'desc'
+        );
+
+
+    $allowedSorts = [
+
+        'id',
+
+        'number',
+
+        'transaction_date',
+
+        'issue_type',
+
+        'status',
+
+        'total_cost',
+
+    ];
+
+
+    if (
+        ! in_array(
+            $sortBy,
+            $allowedSorts,
+            true
+        )
+    ) {
+
+        $sortBy = 'id';
+
     }
 
-    public function create()
-{
-    $products =
 
-        ProductStock::with(
-
-            'product'
-
+    if (
+        ! in_array(
+            $sortDirection,
+            [
+                'asc',
+                'desc',
+            ],
+            true
         )
+    ) {
 
-        ->where(
+        $sortDirection = 'desc';
 
-            'qty',
+    }
 
-            '>',
 
-            0
+    if (
+        $sortBy === 'total_cost'
+    ) {
 
-        )
+        $query->orderBy(
+            'details_sum_total_cost',
+            $sortDirection
+        );
 
-        ->get()
+    } else {
 
-        ->map(
+        $query->orderBy(
+            $sortBy,
+            $sortDirection
+        );
 
-            function (
+    }
 
-                $stock
 
-            ) {
+    /*
+    |--------------------------------------------------------------------------
+    | Statistics
+    |--------------------------------------------------------------------------
+    |
+    | Clone BEFORE pagination.
+    |
+    */
 
-                $unitCost =
+    $statisticsQuery =
+        clone $query;
 
-                    InventoryMovement::where(
 
-                        'product_id',
+    $statistics = [
 
-                        $stock->product_id
+        'total' =>
+            (clone $statisticsQuery)
+                ->count(),
 
-                    )
+        'draft' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Draft'
+                )
+                ->count(),
 
-                    ->where(
+        'rejected' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Rejected'
+                )
+                ->count(),
 
-                        'warehouse_id',
+        'posted' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Posted'
+                )
+                ->count(),
 
-                        $stock->warehouse_id
+    ];
 
-                    )
 
-                    ->latest(
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
 
-                        'id'
+    $issues =
+        $query
+            ->paginate(
+                $request->integer(
+                    'per_page',
+                    10
+                )
+            )
+            ->withQueryString();
 
-                    )
 
-                    ->value(
+    /*
+    |--------------------------------------------------------------------------
+    | Transform
+    |--------------------------------------------------------------------------
+    */
+    $issues
+        ->getCollection()
+        ->transform(
+            function ($issue) {
 
-                        'unit_cost'
-
-                    )
-
+                $issue->details_count =
+                    $issue->details_count
                     ?? 0;
 
+                $issue->total_cost =
+                    $issue->details_sum_total_cost
+                    ?? 0;
+
+                return $issue;
+
+            }
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Master Data
+    |--------------------------------------------------------------------------
+    */
+
+    $branches =
+        Branch::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($branch) {
+
                 return [
-
                     'id' =>
+                        $branch->id,
 
-                        $stock->product_id,
-
-                    'sku' =>
-
-                        $stock->product?->sku,
-
-                    'name' =>
-
-                        $stock->product?->name,
-
-                    'warehouse_id' =>
-
-                        $stock->warehouse_id,
-
-                    'qty' =>
-
-                        $stock->qty,
-
-                    'unit_cost' =>
-
-                        $unitCost,
+                    'label' =>
+                        $branch->name,
 
                 ];
 
-            }
+            })
+            ->values();
 
-        )
 
-        ->values();
+    $warehouses =
+        Warehouse::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($warehouse) {
+
+                return [
+                    'id' =>
+                        $warehouse->id,
+
+                    'label' =>
+                        $warehouse->name,
+
+                    'branch_id' =>
+                        $warehouse->branch_id,
+
+                ];
+
+            })
+            ->values();
+
+
+    $variants =
+        ProductVariant::query()
+            ->with('product')
+            ->orderBy('id')
+            ->get();
+
+
+    $units =
+        Unit::query()
+            ->orderBy('name')
+            ->get();
+//dd('Cdddd');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Preview Number
+    |--------------------------------------------------------------------------
+    */
+
+    $previewNumber =
+        $this->codeGeneratorService
+            ->preview(
+                'stock_issue'
+            );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return
+    |--------------------------------------------------------------------------
+    */
 
     return Inertia::render(
+    'Inventory/Issue/Index',
+    [
 
-        'Inventory/Issue/Create',
+        'title' =>
+            'Stock Issue',
 
-        [
+        'issues' =>
+            $issues,
 
-            'issueNumber' =>
+        'statistics' =>
+            $statistics,
 
-                StockIssue::generateNumber(),
-
-            'warehouses' =>
-
-                Warehouse::orderBy(
-
-                    'name'
-
-                )
-
-                ->get(
-
-                    [
-
-                        'id',
-
-                        'name',
-
-                    ]
-
-                ),
-
-            'products' =>
-
-                $products,
-
-            'issueTypes' =>
-
-                collect(
-
-                    config(
-
-                        'inventory.issue_types'
-
-                    )
-
-                )
-
-                ->map(
-
-                    fn (
-
-                        $type
-
-                    ) => [
-
-                        'id' =>
-
-                            $type,
-
-                        'name' =>
-
-                            $type,
-
-                    ]
-
-                )
-
+                'branches' =>
+            \App\Models\MasterData\Branch::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($branch) => [
+                    'id' => $branch->id,
+                    'label' => $branch->name,
+                ])
                 ->values(),
 
-        ]
-
-    );
-}
-public function store(
-    Request $request
-)
-{
-    $request->validate([
-
-        'issue_date' =>
-
-            'required|date',
-
-        'warehouse_id' =>
-
-            'required|exists:warehouses,id',
-
-        'issue_type' =>
-
-            'required|string',
-
-        'reference_number' =>
-
-            'nullable|string|max:100',
-
-        'remarks' =>
-
-            'nullable|string',
-
-        'items' =>
-
-            'required|array|min:1',
-
-        'items.*.product_id' =>
-
-            'required|exists:products,id',
-
-        'items.*.qty' =>
-
-            'required|numeric|min:0.01',
-
-        'items.*.unit_cost' =>
-
-            'required|numeric|min:0',
-
-        'items.*.total_cost' =>
-
-            'required|numeric|min:0',
-
-    ]);
-
-    $issue =
-
-        StockIssue::create([
-
-            'issue_number' =>
-
-                'ISS'
-
-                .
-
-                str_pad(
-
-                    StockIssue::count()
-
-                    + 1,
-
-                    5,
-
-                    '0',
-
-                    STR_PAD_LEFT
-
-                ),
-
-            'issue_date' =>
-
-                $request->issue_date,
-
-            'warehouse_id' =>
-
-                $request->warehouse_id,
-
-            'issue_type' =>
-
-                $request->issue_type,
-
-            'reference_number' =>
-
-                $request->reference_number,
-
-            'remarks' =>
-
-                $request->remarks,
-
-            'total_qty' =>
-
-                collect(
-
-                    $request->items
-
-                )->sum(
-
-                    'qty'
-
-                ),
-
-            'total_cost' =>
-
-                collect(
-
-                    $request->items
-
-                )->sum(
-
-                    'total_cost'
-
-                ),
-
-            'status' =>
-
-                'Draft',
-
-            'created_by' =>
-
-                auth()->id(),
-
-        ]);
-
-    foreach (
-
-        $request->items
-
-        as $item
-
-    ) {
-
-        StockIssueDetail::create([
-
-            'stock_issue_id' =>
-
-                $issue->id,
-
-            'product_id' =>
-
-                $item['product_id'],
-
-            'qty' =>
-
-                $item['qty'],
-
-            'unit_cost' =>
-
-                $item['unit_cost'],
-
-            'total_cost' =>
-
-                $item['total_cost'],
-
-            'remarks' =>
-
-                $item['remarks']
-
-                ??
-
-                null,
-
-        ]);
-
-    }
-
-    return redirect()
-
-        ->route(
-
-            'stock-issues.show',
-
-            $issue
-
+        'warehouses' =>
+            Warehouse::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($warehouse) => [
+                    'id' => $warehouse->id,
+                    'label' => $warehouse->name,
+                    'branch_id' => $warehouse->branch_id,
+                ])
+                ->values(),
+
+       'variants' =>
+    \App\Models\Product\ProductVariant::query()
+        ->active()
+        ->whereHas(
+            'units',
+            function ($query) {
+
+                $query->active();
+
+            }
         )
+        ->with([
+            'product',
 
-        ->with(
+            'units' => function ($query) {
 
-            'success',
+                $query
+                    ->active()
+                    ->with('unit')
+                    ->orderBy('sort_order');
 
-            'Stock Issue created successfully.'
+            },
+        ])
+        ->orderBy('sku')
+        ->get([
+            'id',
+            'product_id',
+            'sku',
+            'name',
+        ])
+        ->map(fn ($variant) => [
 
-        );
+            'id' =>
+                $variant->id,
+
+            'label' =>
+                implode(
+                    ' - ',
+                    array_filter([
+                        $variant->product?->name,
+                        $variant->name,
+                    ])
+                ),
+
+            'units' =>
+                $variant->units
+                    ->map(fn ($variantUnit) => [
+
+                        'id' =>
+                            $variantUnit->unit_id,
+
+                        'label' =>
+                            $variantUnit->unit?->name,
+
+                        'conversion_factor' =>
+                            $variantUnit->conversion_factor,
+
+                        'is_base' =>
+                            $variantUnit->is_base,
+
+                        'is_default' =>
+                            $variantUnit->is_default,
+
+                    ])
+                    ->values(),
+
+        ])
+        ->values(),
+
+        'issueTypeOptions' =>
+         \App\Enums\Inventory\StockIssueType::options(),
+
+        'previewNumber' =>
+            $this->codeGeneratorService
+                ->preview('stock_issue'),
+
+       'filters' =>
+            $request->only([
+                'search',
+                'branch_id',
+                'warehouse_id',
+                'issue_type',
+                'status',
+                'date_from',
+                'date_to',
+                'per_page',
+                'sort_by',
+                'sort_direction',
+            ]),
+
+    ]
+);
 }
-public function show(
-    StockIssue $stockIssue
-)
-{
-    $stockIssue->load(
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create
+    |--------------------------------------------------------------------------
+    */
+
+        public function create()
+        {
+            return Inertia::render(
+                'Inventory/Issue/Create',
+                [
+
+                    'title' =>
+                        'Create Stock Issue',
+
+                ]
+            );
+        }
+    /*
+    |--------------------------------------------------------------------------
+    | Store
+    |--------------------------------------------------------------------------
+    */
+
+       public function store(
+            StoreStockIssueRequest $request
+        ) {
+
+            $data = $request->validated();
+
+            $branch = Branch::findOrFail(
+                $data['branch_id']
+            );
+
+            $data['company_id'] =
+                $branch->company_id;
+
+            $this->inventoryService
+                ->createStockIssue(
+                    $data
+                );
+
+            return redirect()
+                ->back()
+                ->with(
+                    'success',
+                    'Stock issue created successfully.'
+                );
+        }
+    /*
+    |--------------------------------------------------------------------------
+    | Show
+    |--------------------------------------------------------------------------
+    */
+
+   public function show(
+    StockIssueHeader $stockIssue
+) {
+
+    $stockIssue->load([
+
+        'company',
+
+        'branch',
 
         'warehouse',
 
-        'details.product',
-
         'creator',
+
+        'updater',
 
         'poster',
 
-        'completer',
+        'rejector',
 
-        'canceller'
+        'deleter',
 
-    );
+        'details.variant.product',
+
+        'details.unit',
+
+        'movements',
+
+        'activities',
+
+    ]);
+
 
     return Inertia::render(
-
         'Inventory/Issue/Show',
-
         [
 
             'issue' =>
-
                 $stockIssue,
 
         ]
-
     );
 }
-public function post(
-    StockIssue $stockIssue
-)
-{
-    if (
+    /*
+    |--------------------------------------------------------------------------
+    | Update
+    |--------------------------------------------------------------------------
+    */
 
-    $stockIssue->status
-
-    !==
-
-    'Draft'
-
-) {
-
-    return back();
-
-}
-
-DB::transaction(
-
-    function ()
-
-    use (
-
-        $stockIssue
-
-    ) {
-
-        foreach (
-
-            $stockIssue->details
-
-            as
-
-            $detail
-
+    public function update(
+    UpdateStockIssueRequest $request,
+    StockIssueHeader $stockIssue
         ) {
 
-            $stock =
+            abort_if(
+                $stockIssue->status === 'Posted',
+                422,
+                'Posted stock issue cannot be updated.'
+            );
 
-                ProductStock::where(
+            $data = $request->validated();
 
-                    'product_id',
+            $branch =
+                \App\Models\MasterData\Branch::findOrFail(
+                    $data['branch_id']
+                );
 
-                    $detail->product_id
+            $data['company_id'] =
+                $branch->company_id;
 
-                )
+            $this->inventoryService
+                ->updateStockIssue(
+                    $stockIssue,
+                    $data
+                );
 
-                ->where(
+            return redirect()
+                ->back()
+                ->with(
+                    'success',
+                    'Stock issue updated successfully.'
+                );
+        }
+    /*
+    |--------------------------------------------------------------------------
+    | Post
+    |--------------------------------------------------------------------------
+    */
 
-                    'warehouse_id',
+    public function post(
+        StockIssueHeader $stockIssue
+    ) {
 
-                    $stockIssue->warehouse_id
+        $this->inventoryService
+            ->postStockIssue(
+                $stockIssue
+            );
 
-                )
 
-                ->lockForUpdate()
+        return redirect()
+            ->route(
+                'stock-issues.index',
+                $stockIssue
+            )
+            ->with(
+                'success',
+                'Stock issue posted successfully.'
+            );
+    }
 
-                ->first();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cancel
+    |--------------------------------------------------------------------------
+    */
+
+    public function cancel(
+    CancelStockIssueRequest $request,
+    StockIssueHeader $stockIssue
+        ) {
+
+            $data = $request->validated();
+
+            $branch =
+                \App\Models\MasterData\Branch::findOrFail(
+                    $stockIssue->branch_id
+                );
+
+            $data['company_id'] =
+                $branch->company_id;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Ensure Company ID
+            |--------------------------------------------------------------------------
+            */
 
             if (
-
-                !$stock ||
-
-                $stock->qty
-
-                <
-
-                $detail->qty
-
+                $stockIssue->company_id === null
             ) {
 
-                throw new \Exception(
+                $stockIssue->company_id =
+                    $data['company_id'];
 
-                    'Insufficient stock.'
-
-                );
+                $stockIssue->save();
 
             }
 
-            $stock->decrement(
 
-                'qty',
+            $this->inventoryService
+                ->cancelStockIssue(
+                    $stockIssue,
+                    $data['reason']
+                );
 
-                $detail->qty
 
-            );
-
-            InventoryMovement::create([
-
-                'product_id' =>
-
-                    $detail->product_id,
-
-                'warehouse_id' =>
-
-                    $stockIssue->warehouse_id,
-
-                'reference_type' =>
-
-                    'ISSUE',
-
-                'reference_id' =>
-
-                    $stockIssue->id,
-
-                'reference_number' =>
-
-                    $stockIssue->issue_number,
-
-                'qty_in' =>
-
-                    0,
-
-                'qty_out' =>
-
-                    $detail->qty,
-
-                'balance_qty' =>
-
-                    $stock
-
-                    ->fresh()
-
-                    ->qty,
-
-                'unit_cost' =>
-
-                    $detail->unit_cost,
-
-                'total_cost' =>
-
-                    $detail->total_cost,
-
-                'transaction_date' =>
-
-                    now(),
-
-                'created_by' =>
-
-                    auth()->id(),
-
-            ]);
-
+            return redirect()
+                ->back()
+                ->with(
+                    'success',
+                    'Stock issue rejected successfully.'
+                );
         }
 
-        $stockIssue->update([
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Stocks
+    |--------------------------------------------------------------------------
+    */
 
-            'status' =>
+    public function getWarehouseStocks(
+    Warehouse $warehouse
+) {
 
-                'Posted',
+    $stocks = ProductStock::query()
+        ->with([
+            'variant.product',
+            'unit',
+        ])
+        ->where(
+            'warehouse_id',
+            $warehouse->id
+        )
+        ->orderBy(
+            'product_variant_id'
+        )
+        ->get();
 
-            'posted_by' =>
+    return response()->json([
+        'data' => $stocks,
+    ]);
+}
+    /*
+|--------------------------------------------------------------------------
+| Duplicate
+|--------------------------------------------------------------------------
+*/
 
-                auth()->id(),
+public function data(
+    StockIssueHeader $stockIssue
+) {
 
-            'posted_at' =>
+   $stockIssue->load([
 
-                now(),
+    'branch',
+
+    'warehouse',
+
+    'creator',
+
+    'updater',
+
+    'poster',
+
+    'rejector',
+
+    'deleter',
+
+    'details.variant.product',
+
+    'details.unit',
+
+    'movements.productVariant.product',
+
+    'movements.unit',
+
+    'activities.performer',
+
+]);
+
+    return response()->json([
+        'data' => $stockIssue,
+    ]);
+}
+public function duplicate(
+    StockIssueHeader $stockIssue
+) {
+
+    $this->inventoryService
+        ->duplicateStockIssue(
+            $stockIssue
+        );
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock issue duplicated successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Destroy
+|--------------------------------------------------------------------------
+*/
+
+public function destroy(
+    StockIssueHeader $stockIssue
+) {
+
+    $this->inventoryService
+        ->deleteStockIssues([
+            $stockIssue->id,
+        ]);
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock issue deleted successfully.'
+        );
+}
+public function bulkDelete(
+    Request $request
+) {
+
+    $validated =
+        $request->validate([
+
+            'ids' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'ids.*' => [
+                'required',
+                'integer',
+                'exists:stock_issue_headers,id',
+            ],
 
         ]);
 
-    }
 
-);
-
-return redirect()
-
-->route(
-
-    'stock-issues.show',
-
-    $stockIssue
-
-)
-
-->with(
-
-    'success',
-
-    'Stock Issue posted successfully.'
-
-);
-
-
-
-}
-public function complete(
-    StockIssue $stockIssue
-)
-{
-    if (
-
-        $stockIssue->status
-
-        !==
-
-        'Posted'
-
-    ) {
-
-        return back()
-
-            ->with(
-
-                'error',
-
-                'Only posted documents can be completed.'
-
-            );
-
-    }
-
-    $stockIssue->update([
-
-        'status' =>
-
-            'Completed',
-
-        'completed_by' =>
-
-            auth()->id(),
-
-        'completed_at' =>
-
-            now(),
-
-    ]);
-
-    return back()
-
-        ->with(
-
-            'success',
-
-            'Stock Issue completed successfully.'
-
+    $this->inventoryService
+        ->bulkDeleteStockIssues(
+            $validated['ids']
         );
 
-}
-public function cancel(
-    Request $request,
-    StockIssue $stockIssue
-)
-{
-    if (
 
-        $stockIssue->status
-
-        !==
-
-        'Draft'
-
-    ) {
-
-        return back()
-
-            ->with(
-
-                'error',
-
-                'Only draft documents can be cancelled.'
-
-            );
-
-    }
-
-    $request->validate([
-
-        'cancel_reason' =>
-
-            'required|string|max:1000',
-
-    ]);
-
-    $stockIssue->update([
-
-        'status' =>
-
-            'Cancelled',
-
-        'cancel_reason' =>
-
-            $request->cancel_reason,
-
-        'cancelled_by' =>
-
-            auth()->id(),
-
-        'cancelled_at' =>
-
-            now(),
-
-    ]);
-
-   return redirect()
-
-->route(
-
-    'stock-issues.show',
-
-    $stockIssue
-
-)
-
-->with(
-
-    'success',
-
-    'Stock Issue cancelled successfully.'
-
-);
-
-}
-public function getWarehouseStocks(
-    Warehouse $warehouse
-)
-{
-    $products =
-
-        ProductStock::with(
-
-            'product'
-
-        )
-
-        ->where(
-
-            'warehouse_id',
-
-            $warehouse->id
-
-        )
-
-        ->where(
-
-            'qty',
-
-            '>',
-
-            0
-
-        )
-
-        ->get()
-
-        ->map(
-
-            function (
-
-                $stock
-
-            ) {
-
-                return [
-
-                    'id' =>
-
-                        $stock
-
-                        ->product_id,
-
-                    'sku' =>
-
-                        $stock
-
-                        ->product
-
-                        ?->sku,
-
-                    'name' =>
-
-                        $stock
-
-                        ->product
-
-                        ?->name,
-
-                    'qty' =>
-
-                        $stock->qty,
-
-                    'unit_cost' =>
-
-                        InventoryMovement::where(
-
-                            'product_id',
-
-                            $stock->product_id
-
-                        )
-
-                        ->where(
-
-                            'warehouse_id',
-
-                            $stock->warehouse_id
-
-                        )
-
-                        ->latest(
-
-                            'id'
-
-                        )
-
-                        ->value(
-
-                            'unit_cost'
-
-                        )
-
-                        ??
-
-                        0,
-
-                ];
-
-            }
-
-        )
-
-        ->values();
-
-    return response()->json(
-
-        $products
-
-    );
-
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock issues deleted successfully.'
+        );
 }
 }
-
-   

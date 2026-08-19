@@ -6,13 +6,12 @@ import FormInput from '@/Components/Form/FormInput.vue'
 import FormTextarea from '@/Components/Form/FormTextarea.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+import { DatePicker } from '@/Components/Form'
+import { ref, computed, watch } from 'vue'
+import { formatCurrency } from '@/Utils/currency'
+import { error } from '@/Utils'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-import {DatePicker,CurrencyInput,} from '@/Components/Form'
-import { ref,computed,watch } from 'vue'
-import { formatCurrency } from '@/Utils/currency'
-import { success, error, currency,formatDate,} from '@/Utils'
-
 const props = defineProps({
 
     form: {
@@ -35,6 +34,11 @@ const props = defineProps({
         default: () => [],
     },
 
+    issueTypeOptions: {
+        type: Array,
+        default: () => [],
+    },
+
     mode: {
         type: String,
         default: 'create',
@@ -42,36 +46,12 @@ const props = defineProps({
 
 })
 
-
 const form = props.form
-console.log(
-    '========== STOCK TRANSFER FORM INIT =========='
-)
-
 console.log(
     'PROPS FORM:',
     props.form
 )
 
-console.log(
-    'PROPS FROM BRANCH:',
-    props.form?.from_branch_id
-)
-
-console.log(
-    'PROPS FROM WAREHOUSE:',
-    props.form?.from_warehouse_id
-)
-
-console.log(
-    'PROPS TO BRANCH:',
-    props.form?.to_branch_id
-)
-
-console.log(
-    'PROPS TO WAREHOUSE:',
-    props.form?.to_warehouse_id
-)
 
 console.log(
     'LOCAL FORM:',
@@ -167,6 +147,7 @@ const validateQty = (detail, index) => {
 
 const createEmptyDetail = () => ({
     product_variant_id: null,
+
     unit_id: null,
 
     available_qty: 0,
@@ -174,6 +155,7 @@ const createEmptyDetail = () => ({
     qty: 0,
 
     unit_cost: 0,
+
     total_cost: 0,
 
     description: null,
@@ -327,7 +309,7 @@ const loadWarehouseStocks = async (warehouseId) => {
 
         const response = await fetch(
             route(
-                'stock-transfers.warehouse-stocks',
+                'stock-issues.warehouse-stocks',
                 warehouseId
             ),
             {
@@ -356,7 +338,7 @@ const loadWarehouseStocks = async (warehouseId) => {
             result.data ?? []
 
         console.log(
-            'STOCK TRANSFER WAREHOUSE STOCKS:',
+            'STOCK Issue WAREHOUSE STOCKS:',
             warehouseStocks.value
         )
 
@@ -383,7 +365,7 @@ const loadWarehouseStocks = async (warehouseId) => {
     } catch (error) {
 
         console.error(
-            'Failed to load stock transfer warehouse stocks:',
+            'Failed to load stock issue warehouse stocks:',
             error
         )
 
@@ -401,7 +383,7 @@ const getStock = (
 ) => {
 
     if (
-        !form.from_warehouse_id ||
+        !form.warehouse_id ||
         !productVariantId ||
         !unitId
     ) {
@@ -435,65 +417,47 @@ const getStock = (
 }
 const updateStockInfo = (detail) => {
 
-    console.log(
-        '========== UPDATE STOCK TRANSFER =========='
-    )
-
-    console.log(
-        'WAREHOUSE:',
-        form.from_warehouse_id
-    )
-
-    console.log(
-        'VARIANT:',
-        detail.product_variant_id
-    )
-
-    console.log(
-        'UNIT:',
-        detail.unit_id
-    )
-
-    console.log(
-        'WAREHOUSE STOCKS BEFORE GET:',
-        JSON.parse(
-            JSON.stringify(
-                warehouseStocks.value
-            )
+    const stock =
+        getStock(
+            detail.product_variant_id,
+            detail.unit_id
         )
-    )
-
-    const stock = getStock(
-        detail.product_variant_id,
-        detail.unit_id
-    )
-
-    console.log(
-        'MATCHED STOCK:',
-        stock
-    )
 
     if (!stock) {
 
         detail.available_qty = 0
+
         detail.unit_cost = 0
 
+        detail.total_cost = 0
+
         return
+
     }
 
     detail.available_qty =
         Number(
-            stock.on_hand_qty ?? 0
+            stock.available_qty
+            ?? 0
         )
 
     detail.unit_cost =
         Number(
-            stock.average_cost ?? 0
+            stock.average_cost
+            ?? 0
+        )
+
+    detail.total_cost =
+        Number(
+            detail.qty ?? 0
+        ) *
+        Number(
+            detail.unit_cost ?? 0
         )
 
 }
 watch(
-    () => form.from_warehouse_id,
+    () => form.warehouse_id,
     async (warehouseId) => {
 
         warehouseStocks.value = []
@@ -513,108 +477,24 @@ watch(
         immediate: true,
     }
 )
-watch(
-    () => props.mode,
-    async (mode) => {
 
-        if (
-            mode !== 'edit'
-        ) {
-            return
-        }
+const filteredWarehouses = computed(() => {
 
-        if (
-            !form.from_warehouse_id
-        ) {
-            return
-        }
+    if (!form.branch_id) {
 
-        if (
-            warehouseStocks.value.length
-        ) {
-            return
-        }
-
-        await loadWarehouseStocks(
-            form.from_warehouse_id
-        )
-
-    },
-    {
-        immediate: true,
-    }
-)
-
-/*
-|--------------------------------------------------------------------------
-| Warehouse Options
-|--------------------------------------------------------------------------
-*/
-
-const fromWarehouses = computed(() => {
-
-    console.log(
-        'FROM FILTER:',
-        {
-            branch_id: form.from_branch_id,
-            warehouses: props.warehouses,
-        }
-    )
-
-    if (!form.from_branch_id) {
         return []
+
     }
 
-    const result = props.warehouses.filter(
+    return props.warehouses.filter(
         warehouse =>
             Number(warehouse.branch_id) ===
-            Number(form.from_branch_id)
+            Number(form.branch_id)
     )
 
-    console.log(
-        'FROM FILTER RESULT:',
-        result
-    )
-
-    return result
 })
-
-const toWarehouses = computed(() => {
-
-    console.log(
-        'TO FILTER:',
-        {
-            branch_id: form.to_branch_id,
-            warehouses: props.warehouses,
-        }
-    )
-
-    if (!form.to_branch_id) {
-        return []
-    }
-
-    const result = props.warehouses.filter(
-        warehouse =>
-            Number(warehouse.branch_id) ===
-            Number(form.to_branch_id)
-    )
-
-    console.log(
-        'TO FILTER RESULT:',
-        result
-    )
-
-    return result
-})
-
-/*
-|--------------------------------------------------------------------------
-| Branch → Warehouse
-|--------------------------------------------------------------------------
-*/
-
 watch(
-    () => form.from_branch_id,
+    () => form.branch_id,
     (newBranch, oldBranch) => {
 
         /*
@@ -633,7 +513,6 @@ watch(
 
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | No Change
@@ -648,154 +527,16 @@ watch(
 
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | Branch Changed By User
         |--------------------------------------------------------------------------
         */
 
-        form.from_warehouse_id =
-            null
+        form.warehouse_id = null
 
-        warehouseStocks.value =
-            []
+        warehouseStocks.value = []
 
-    }
-)
-watch(
-    [
-        () => form.from_branch_id,
-        () => form.from_warehouse_id,
-    ],
-    async ([
-        branchId,
-        warehouseId,
-    ]) => {
-
-        if (
-            !branchId ||
-            !warehouseId
-        ) {
-
-            return
-
-        }
-
-
-        const warehouseExists =
-            fromWarehouses.value.some(
-                warehouse =>
-                    Number(warehouse.id) ===
-                    Number(warehouseId)
-            )
-
-
-        if (
-            !warehouseExists
-        ) {
-
-            return
-
-        }
-
-
-        await loadWarehouseStocks(
-            warehouseId
-        )
-
-    },
-    {
-        immediate: true,
-    }
-)
-
-
-watch(
-    () => form.to_branch_id,
-    (newBranch, oldBranch) => {
-
-        /*
-        |--------------------------------------------------------------------------
-        | Skip Initial Edit Hydration
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            props.mode === 'edit' &&
-            oldBranch === null &&
-            newBranch !== null
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | No Change
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            newBranch === oldBranch
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Branch Changed By User
-        |--------------------------------------------------------------------------
-        */
-
-        form.to_warehouse_id =
-            null
-
-    }
-)
-watch(
-    () => form.from_warehouse_id,
-    value => {
-
-        console.log(
-            'EDIT FROM WAREHOUSE:',
-            value,
-            typeof value
-        )
-
-        console.log(
-            'FROM WAREHOUSES:',
-            fromWarehouses.value
-        )
-
-    },
-    {
-        immediate: true,
-    }
-)
-watch(
-    () => form.to_warehouse_id,
-    value => {
-
-        console.log(
-            'EDIT TO WAREHOUSE:',
-            value,
-            typeof value
-        )
-
-        console.log(
-            'TO WAREHOUSES:',
-            toWarehouses.value
-        )
-
-    },
-    {
-        immediate: true,
     }
 )
 </script>
@@ -803,15 +544,14 @@ watch(
 <template>
 
     <form @submit.prevent="emit('submit')">
-
         <!-- ========================================================= -->
-        <!-- Stock Transfer Information -->
+        <!-- Stock Issue Information -->
         <!-- ========================================================= -->
 
         <FormSection
             icon="📦"
-            title="Stock Transfer Information"
-            description="Basic information about this Stock Transfer transaction."
+            title="Stock Issue Information"
+            description="Basic information about this Stock Issue transaction."
             :columns="2"
         >
 
@@ -839,7 +579,7 @@ watch(
                 :error="form.errors.transaction_date"
             >
 
-               <FlatPickr
+                <FlatPickr
                     v-model="form.transaction_date"
                     class="
                         w-full
@@ -863,77 +603,59 @@ watch(
             </FormField>
 
 
-            <!-- From Branch -->
+            <!-- Branch -->
 
             <FormField
-                label="From Branch"
+                label="Branch"
                 required
-                :error="form.errors.from_branch_id"
+                :error="form.errors.branch_id"
             >
 
                 <SearchableSelect
-                    v-model="form.from_branch_id"
+                    v-model="form.branch_id"
                     :options="branches"
                     label="label"
                     value-key="id"
-                    placeholder="Select Source Branch"
+                    placeholder="Select Branch"
                 />
 
             </FormField>
 
 
-            <!-- From Warehouse -->
+            <!-- Warehouse -->
 
             <FormField
-                label="From Warehouse"
+                label="Warehouse"
                 required
-                :error="form.errors.from_warehouse_id"
-            >
-
-            <SearchableSelect
-                v-model="form.from_warehouse_id"
-                :options="fromWarehouses"
-                label="label"
-                value-key="id"
-                placeholder="Select Source Warehouse"
-            />
-
-            </FormField>
-
-
-            <!-- To Branch -->
-
-            <FormField
-                label="To Branch"
-                required
-                :error="form.errors.to_branch_id"
+                :error="form.errors.warehouse_id"
             >
 
                 <SearchableSelect
-                    v-model="form.to_branch_id"
-                    :options="branches"
+                    v-model="form.warehouse_id"
+                    :options="filteredWarehouses"
                     label="label"
                     value-key="id"
-                    placeholder="Select Destination Branch"
+                    placeholder="Select Warehouse"
+                    :disabled="!form.branch_id"
                 />
 
             </FormField>
 
 
-            <!-- To Warehouse -->
+            <!-- Issue Type -->
 
             <FormField
-                label="To Warehouse"
+                label="Issue Type"
                 required
-                :error="form.errors.to_warehouse_id"
+                :error="form.errors.issue_type"
             >
 
                 <SearchableSelect
-                    v-model="form.to_warehouse_id"
-                    :options="toWarehouses"
+                    v-model="form.issue_type"
+                    :options="issueTypeOptions"
                     label="label"
-                    value-key="id"
-                    placeholder="Select Destination Warehouse"
+                    value-key="value"
+                    placeholder="Select Issue Type"
                 />
 
             </FormField>
@@ -946,7 +668,7 @@ watch(
         <FormSection
             icon="📋"
             title="Stock Details"
-            description="Select products and quantities to transfer from the source warehouse."
+            description="Select products and quantities to issue from the selected warehouse."
             :columns="1"
         >
 
@@ -982,7 +704,7 @@ watch(
                         </div>
 
                         <div>
-                            Qty
+                            Issue Qty
                         </div>
 
                         <div>
@@ -1035,7 +757,10 @@ watch(
                                 label="label"
                                 value-key="id"
                                 placeholder="Select Variant"
-                                :disabled="loadingStocks || !form.from_warehouse_id"
+                                :disabled="
+                                    loadingStocks ||
+                                    !form.warehouse_id
+                                "
                                 @update:modelValue="
                                     changeVariant(detail)
                                 "
@@ -1069,6 +794,9 @@ watch(
                                 :disabled="
                                     !detail.product_variant_id
                                 "
+                                @update:modelValue="
+                                    updateStockInfo(detail)
+                                "
                             />
 
                         </FormField>
@@ -1079,19 +807,23 @@ watch(
                         <FormField
                             label="Available"
                         >
-                        <FormInput
-                            :model-value="detail.available_qty"
-                            type="number"
-                            readonly
-                        />
+
+                            <FormInput
+                                :model-value="
+                                    formatCurrency(
+                                        detail.available_qty
+                                    )
+                                "
+                                readonly
+                            />
 
                         </FormField>
 
 
-                        <!-- Quantity -->
+                        <!-- Issue Qty -->
 
                         <FormField
-                            label="Qty"
+                            label="Issue Qty"
                             required
                             :error="
                                 form.errors[
@@ -1099,25 +831,24 @@ watch(
                                 ]
                             "
                         >
-                        
 
                             <FormInput
-                                    v-model="detail.qty"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    placeholder="0"
-                                    :class="{
-                                        'border-red-500 ring-1 ring-red-500':
-                                            qtyExceedingAvailable[index]
-                                    }"
-                                    @change="
-                                        validateQty(
-                                            detail,
-                                            index
-                                        )
-                                    "
-                                />
+                                v-model="detail.qty"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="0"
+                                :class="{
+                                    'border-red-500 ring-1 ring-red-500':
+                                        qtyExceedingAvailable[index]
+                                }"
+                                @change="
+                                    validateQty(
+                                        detail,
+                                        index
+                                    )
+                                "
+                            />
 
                         </FormField>
 
@@ -1127,14 +858,15 @@ watch(
                         <FormField
                             label="Unit Cost"
                         >
-                        <FormInput
-                            :model-value="
-                                formatCurrency(
-                                    detail.unit_cost
-                                )
-                            "
-                            readonly
-                        />
+
+                            <FormInput
+                                :model-value="
+                                    formatCurrency(
+                                        detail.unit_cost
+                                    )
+                                "
+                                readonly
+                            />
 
                         </FormField>
 
@@ -1148,16 +880,7 @@ watch(
                             <FormInput
                                 :model-value="
                                     formatCurrency(
-                                        (
-                                            Number(detail.qty ?? 0)
-                                            *
-                                            Number(
-                                                getStock(
-                                                    detail.product_variant_id,
-                                                    detail.unit_id
-                                                )?.average_cost ?? 0
-                                            )
-                                        )
+                                        detailTotal(detail)
                                     )
                                 "
                                 readonly
@@ -1178,10 +901,14 @@ watch(
                         >
 
                             <BaseButton
-                                v-if="form.details.length > 1"
+                                v-if="
+                                    form.details.length > 1
+                                "
                                 type="button"
                                 variant="danger"
-                                @click="removeDetail(index)"
+                                @click="
+                                    removeDetail(index)
+                                "
                             >
                                 Remove
                             </BaseButton>
@@ -1217,7 +944,7 @@ watch(
         <FormSection
             icon="📝"
             title="Description"
-            description="Additional information about this Stock Transfer transaction."
+            description="Additional information about this Stock Issue transaction."
             :columns="1"
         >
 

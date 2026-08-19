@@ -15,6 +15,8 @@ use App\Models\Inventory\StockTransferHeader;
 use App\Models\Inventory\StockTransferDetail;
 use App\Models\MasterData\Warehouse;
 use App\Models\MasterData\Branch;
+use App\Models\Inventory\StockIssueHeader;
+use App\Models\Inventory\StockIssueDetail;
 class InventoryService
 {
     public function __construct(
@@ -2752,6 +2754,1124 @@ public function createStockTransfer(
         return $transfer;
     });
 }
+/** create Stock Issue */
+/** post stock issue */
+public function postStockIssue(
+    StockIssueHeader $stockIssue
+): void {
+
+    DB::transaction(function () use ($stockIssue) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue =
+            StockIssueHeader::query()
+                ->with('details')
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockIssue->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockIssue->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock issue can be posted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $stockIssue->details
+            as $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $qty =
+                (float) $detail->qty;
+
+
+            if (
+                $qty <= 0
+            ) {
+
+                throw new \RuntimeException(
+                    'Stock issue quantity must be greater than zero.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Product Stock
+            |--------------------------------------------------------------------------
+            |
+            | Stock Issue selalu mengurangi stock.
+            |
+            */
+
+            $stock =
+                $this->updateCurrentStock([
+
+                    'company_id' =>
+                        $stockIssue
+                            ->company_id,
+
+                    'branch_id' =>
+                        $stockIssue
+                            ->branch_id,
+
+                    'warehouse_id' =>
+                        $stockIssue
+                            ->warehouse_id,
+
+                    'product_variant_id' =>
+                        $detail
+                            ->product_variant_id,
+
+                    'unit_id' =>
+                        $detail
+                            ->unit_id,
+
+                    'qty' =>
+                        -abs(
+                            $qty
+                        ),
+
+                    'average_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'transaction_date' =>
+                        $stockIssue
+                            ->transaction_date,
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory Movement
+            |--------------------------------------------------------------------------
+            */
+
+            $this->createMovement(
+
+                $stock,
+
+                [
+
+                    'reference_type' =>
+                        'STOCK_ISSUE',
+
+                    'reference_id' =>
+                        $stockIssue
+                            ->id,
+
+                    'reference_number' =>
+                        $stockIssue
+                            ->number,
+
+                    'qty_in' =>
+                        0,
+
+                    'qty_out' =>
+                        $qty,
+
+                    'unit_cost' =>
+                        $detail
+                            ->unit_cost,
+
+                    'total_cost' =>
+                        $detail
+                            ->total_cost,
+
+                    'transaction_date' =>
+                        $stockIssue
+                            ->transaction_date,
+
+                    'description' =>
+                        $detail
+                            ->description
+                        ??
+                        $stockIssue
+                            ->description
+                        ??
+                        null,
+
+                ]
+
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Mark Posted
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue->update([
+
+            'status' =>
+                'Posted',
+
+            'posted_at' =>
+                now(),
+
+            'posted_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+
+                $stockIssue,
+
+                'POSTED',
+
+                'Draft',
+
+                'Posted',
+
+                'Stock issue posted.'
+
+            );
+
+    });
+
+}
+/** end post stock issue */
+/** reject stock issue */
+public function cancelStockIssue(
+    StockIssueHeader $stockIssue,
+    string $reason
+): void {
+
+    DB::transaction(function () use (
+        $stockIssue,
+        $reason
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue =
+            StockIssueHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockIssue->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockIssue->status
+            !== 'Draft'
+        ) {
+
+            throw new \RuntimeException(
+                'Only Draft stock issue can be rejected.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Workflow State
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue->update([
+
+            'status' =>
+                'Rejected',
+
+            'rejected_reason' =>
+                $reason,
+
+            'rejected_at' =>
+                now(),
+
+            'rejected_by' =>
+                auth()->id(),
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $stockIssue,
+                'REJECTED',
+                'Draft',
+                'Rejected',
+                $reason
+            );
+
+    });
+
+}
+/** endreject stock issue */
+public function duplicateStockIssue(
+    StockIssueHeader $stockIssue
+): StockIssueHeader {
+
+    return DB::transaction(function () use (
+        $stockIssue
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Details
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue->load(
+            'details'
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Company
+        |--------------------------------------------------------------------------
+        */
+
+        $companyId =
+            Branch::findOrFail(
+                $stockIssue->branch_id
+            )->company_id;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
+        $duplicate =
+            StockIssueHeader::create([
+
+                'company_id' =>
+                    $companyId,
+
+                'branch_id' =>
+                    $stockIssue->branch_id,
+
+                'warehouse_id' =>
+                    $stockIssue->warehouse_id,
+
+                'issue_type' =>
+                    $stockIssue->issue_type,
+
+                'number' =>
+                    $this->codeGeneratorService
+                        ->next('stock_issue'),
+
+                'transaction_date' =>
+                    $stockIssue->transaction_date,
+
+                'status' =>
+                    'Draft',
+
+                'description' =>
+                    $stockIssue->description
+                        ? 'Copy - ' .
+                            $stockIssue->description
+                        : 'Copy Stock Issue',
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $stockIssue->details
+            as $detail
+        ) {
+
+            StockIssueDetail::create([
+
+                'stock_issue_header_id' =>
+                    $duplicate->id,
+
+                'product_variant_id' =>
+                    $detail->product_variant_id,
+
+                'unit_id' =>
+                    $detail->unit_id,
+
+                'qty' =>
+                    $detail->qty,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Cost
+                |--------------------------------------------------------------------------
+                */
+
+                'unit_cost' =>
+                    $detail->unit_cost,
+
+                'total_cost' =>
+                    $detail->total_cost,
+
+                'description' =>
+                    $detail->description,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        return $duplicate;
+
+    });
+
+}
+public function updateStockIssue(
+    StockIssueHeader $stockIssue,
+    array $data
+): StockIssueHeader {
+
+    return DB::transaction(function () use (
+        $stockIssue,
+        $data
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue =
+            StockIssueHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockIssue->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (! in_array(
+            $stockIssue->status,
+            [
+                'Draft',
+                'Rejected',
+            ],
+            true
+        )) {
+
+            throw new \RuntimeException(
+                'Only Draft or Rejected stock issue can be updated.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Location
+        |--------------------------------------------------------------------------
+        */
+
+        $this->validateStockIssueLocation(
+            $data
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue->update([
+
+            'company_id' =>
+                $data['company_id']
+                ?? $stockIssue->company_id,
+
+            'branch_id' =>
+                $data['branch_id'],
+
+            'warehouse_id' =>
+                $data['warehouse_id'],
+
+            'transaction_date' =>
+                $data['transaction_date'],
+
+            'issue_type' =>
+                $data['issue_type'],
+
+            'description' =>
+                $data['description']
+                ?? null,
+
+            'updated_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete Existing Details
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue
+            ->details()
+            ->delete();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create New Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $data['details']
+            as $index => $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Get Latest Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $sourceStock =
+                $this->getSourceStock(
+                    $data['branch_id'],
+                    $data['warehouse_id'],
+                    $detail['product_variant_id'],
+                    $detail['unit_id']
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (! $sourceStock) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+
+                    "details.{$index}.qty" =>
+                        'Source stock is not available for this product and unit.',
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Available Stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                (float) $sourceStock->available_qty
+                <
+                (float) $detail['qty']
+            ) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+
+                    "details.{$index}.qty" =>
+                        'Issue quantity cannot exceed available stock. Available: '
+                        . $sourceStock->available_qty
+                        . '.',
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Unit Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost =
+                (float) $sourceStock->average_cost;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Total Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost =
+                $unitCost *
+                (float) $detail['qty'];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Detail
+            |--------------------------------------------------------------------------
+            */
+
+            StockIssueDetail::create([
+
+                'stock_issue_header_id' =>
+                    $stockIssue->id,
+
+                'product_variant_id' =>
+                    $detail['product_variant_id'],
+
+                'unit_id' =>
+                    $detail['unit_id'],
+
+                'qty' =>
+                    $detail['qty'],
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'description' =>
+                    $detail['description']
+                    ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resubmit Rejected → Draft
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $stockIssue->status
+            === 'Rejected'
+        ) {
+
+            $stockIssue->update([
+
+                'status' =>
+                    'Draft',
+
+                'rejected_at' =>
+                    null,
+
+                'rejected_by' =>
+                    null,
+
+                'rejected_reason' =>
+                    null,
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $stockIssue,
+                'UPDATED'
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return Fresh Data
+        |--------------------------------------------------------------------------
+        */
+
+        return $stockIssue->fresh([
+            'details',
+        ]);
+
+    });
+
+}
+/** end issue update */
+public function deleteStockIssue(
+    StockIssueHeader $stockIssue
+): void {
+
+    DB::transaction(function () use ($stockIssue) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lock Header
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue =
+            StockIssueHeader::query()
+                ->lockForUpdate()
+                ->findOrFail(
+                    $stockIssue->id
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (! in_array(
+            $stockIssue->status,
+            [
+                'Draft',
+                'Rejected',
+            ],
+            true
+        )) {
+
+            throw new \RuntimeException(
+                'Only Draft or Rejected stock issue can be deleted.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete
+        |--------------------------------------------------------------------------
+        */
+
+        $stockIssue->update([
+
+            'deleted_by' =>
+                auth()->id(),
+
+        ]);
+
+
+        $stockIssue->delete();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService
+            ->record(
+                $stockIssue,
+                'DELETED'
+            );
+
+    });
+
+}
+/** end delete stock issue */
+public function bulkDeleteStockIssues(
+    array $ids
+): void {
+
+    DB::transaction(function () use ($ids) {
+
+        $stockIssues =
+            StockIssueHeader::query()
+                ->whereIn(
+                    'id',
+                    $ids
+                )
+                ->lockForUpdate()
+                ->get();
+
+
+        foreach (
+            $stockIssues
+            as $stockIssue
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (! in_array(
+                $stockIssue->status,
+                [
+                    'Draft',
+                    'Rejected',
+                ],
+                true
+            )) {
+
+                throw new \RuntimeException(
+                    'Only Draft or Rejected stock issues can be deleted.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Delete
+            |--------------------------------------------------------------------------
+            */
+
+            $stockIssue->update([
+
+                'deleted_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            $stockIssue->delete();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this->documentActivityService
+                ->record(
+                    $stockIssue,
+                    'DELETED'
+                );
+
+        }
+
+    });
+
+}
+/** end bulk delete issue */
+private function validateStockIssueLocation(
+    array $data
+): void {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find Warehouse
+    |--------------------------------------------------------------------------
+    */
+
+    $warehouse =
+        Warehouse::query()
+            ->findOrFail(
+                $data['warehouse_id']
+            );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Warehouse → Branch
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        (int) $warehouse->branch_id
+        !==
+        (int) $data['branch_id']
+    ) {
+
+        throw new \RuntimeException(
+            'Warehouse does not belong to the selected branch.'
+        );
+
+    }
+
+}
+/** end validate location */
+public function createStockIssue(
+    array $data
+): StockIssueHeader {
+
+    return DB::transaction(function () use ($data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Location
+        |--------------------------------------------------------------------------
+        */
+
+        $this->validateStockIssueLocation(
+            $data
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
+        $issue =
+            StockIssueHeader::create([
+
+                'company_id' =>
+                    Branch::findOrFail(
+                        $data['branch_id']
+                    )->company_id,
+
+                'branch_id' =>
+                    $data['branch_id'],
+
+                'warehouse_id' =>
+                    $data['warehouse_id'],
+
+                'number' =>
+                    $this->codeGeneratorService
+                        ->next('stock_issue'),
+
+                'transaction_date' =>
+                    $data['transaction_date'],
+
+                'issue_type' =>
+                    $data['issue_type'],
+
+                'status' =>
+                    'Draft',
+
+                'description' =>
+                    $data['description']
+                    ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $data['details']
+            as $index => $detail
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $sourceStock =
+                $this->getSourceStock(
+                    $data['branch_id'],
+                    $data['warehouse_id'],
+                    $detail['product_variant_id'],
+                    $detail['unit_id']
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Source Stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (! $sourceStock) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+
+                    "details.{$index}.qty" =>
+                        'Source stock is not available for this product and unit.',
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Available Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                (float) $sourceStock->available_qty
+                <
+                (float) $detail['qty']
+            ) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+
+                    "details.{$index}.qty" =>
+                        'Issue quantity cannot exceed available stock. Available: '
+                        . $sourceStock->available_qty
+                        . '.',
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Unit Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost =
+                (float) $sourceStock->average_cost;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Total Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost =
+                $unitCost *
+                (float) $detail['qty'];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Detail
+            |--------------------------------------------------------------------------
+            */
+
+            StockIssueDetail::create([
+
+                'stock_issue_header_id' =>
+                    $issue->id,
+
+                'product_variant_id' =>
+                    $detail['product_variant_id'],
+
+                'unit_id' =>
+                    $detail['unit_id'],
+
+                'qty' =>
+                    $detail['qty'],
+
+                'unit_cost' =>
+                    $unitCost,
+
+                'total_cost' =>
+                    $totalCost,
+
+                'description' =>
+                    $detail['description']
+                    ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+            ]);
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return
+        |--------------------------------------------------------------------------
+        */
+
+        return $issue;
+
+    });
+}
+/** end stock issue */
 private function validateTransferLocations(
     array $data
 ): void {
@@ -3515,16 +4635,40 @@ public function duplicateStockTransfer(
         $stockTransfer
     ) {
 
+        /*
+        |--------------------------------------------------------------------------
+        | Load Details
+        |--------------------------------------------------------------------------
+        */
+
         $stockTransfer->load(
             'details'
         );
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Company
+        |--------------------------------------------------------------------------
+        */
+
+        $companyId =
+            Branch::findOrFail(
+                $stockTransfer->from_branch_id
+            )->company_id;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
         $duplicate =
             StockTransferHeader::create([
 
-                'company_id' => null,
-                   // $stockTransfer->company_id,
+                'company_id' =>
+                    $companyId,
 
                 'from_branch_id' =>
                     $stockTransfer->from_branch_id,
@@ -3550,15 +4694,21 @@ public function duplicateStockTransfer(
 
                 'description' =>
                     $stockTransfer->description
-                    ? 'Copy - ' .
-                        $stockTransfer->description
-                    : 'Copy Stock Transfer',
+                        ? 'Copy - ' .
+                            $stockTransfer->description
+                        : 'Copy Stock Transfer',
 
                 'created_by' =>
                     auth()->id(),
 
             ]);
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
 
         foreach (
             $stockTransfer->details
@@ -3580,10 +4730,10 @@ public function duplicateStockTransfer(
                     $detail->qty,
 
                 'unit_cost' =>
-                    0,
+                    $detail->unit_cost,
 
                 'total_cost' =>
-                    0,
+                    $detail->total_cost,
 
                 'description' =>
                     $detail->description,
@@ -3597,8 +4747,11 @@ public function duplicateStockTransfer(
 
 
         return $duplicate;
+
     });
+
 }
+
 public function deleteStockTransfers(
     array $ids
 ): void {
@@ -3658,7 +4811,16 @@ private function getSourceStock(
     int $unitId
 ): ?ProductStock {
 
+    $companyId =
+        Branch::findOrFail(
+            $branchId
+        )->company_id;
+
     return ProductStock::query()
+        ->where(
+            'company_id',
+            $companyId
+        )
         ->where(
             'branch_id',
             $branchId

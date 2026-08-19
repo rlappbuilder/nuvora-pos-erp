@@ -179,6 +179,13 @@ const modules = {
                 route: 'stock-balance.index',
                 permission: 'stock-balance.view',
                  },
+                       stockOpname: {
+                key: 'stockOpname',
+                title: 'Stock Opname',
+                icon: UsersIcon,
+                route: 'stock-balance.index',
+                permission: 'stock-balance.view',
+                 },
 
                    stockTransfers: {
                 key: 'stockTransfers',
@@ -193,7 +200,7 @@ const modules = {
                 key: 'stockIssues',
                 title: 'Stock Issues',
                 icon: UsersIcon,
-                route: 'stock-transfers.index',
+                route: 'stock-issues.index',
                 permission: 'stock-issues.view',
                 },
 

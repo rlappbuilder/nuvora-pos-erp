@@ -37,33 +37,9 @@ $modules = [
     ['module' => 'stock_adjustment',  'prefix' => 'ADJ', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'stock_transfer',    'prefix' => 'TRF', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'stock_opname',      'prefix' => 'OPN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
-    [
-        'module' => 'opening_stock',
-        'prefix' => 'OS',
-        'format' => '{PREFIX}-{YYYY}-{SEQ}',
-        'digit'  => 6,
-    ],
-
-    [
-        'module' => 'stock_adjustment',
-        'prefix' => 'ADJ',
-        'format' => '{PREFIX}-{YYYY}-{SEQ}',
-        'digit'  => 6,
-    ],
-
-    [
-        'module' => 'stock_transfer',
-        'prefix' => 'TRF',
-        'format' => '{PREFIX}-{YYYY}-{SEQ}',
-        'digit'  => 6,
-    ],
-
-    [
-        'module' => 'stock_opname',
-        'prefix' => 'OPN',
-        'format' => '{PREFIX}-{YYYY}-{SEQ}',
-        'digit'  => 6,
-    ],
+    ['module' => 'opening_stock',     'prefix' => 'OS','format' => '{PREFIX}-{YYYY}-{SEQ}','       digit'  => 6, ],
+    ['module' => 'stock_issue',       'prefix' => 'SI','format' => '{PREFIX}-{YYYY}-{SEQ}',       'digit'  => 6, ],
+ 
 
     // ==========================
     // Purchasing
@@ -94,9 +70,9 @@ $modules = [
 
 ];
 
-        foreach ($modules as $module) {
+       foreach ($modules as $module) {
 
-            CodeGenerator::updateOrCreate(
+            CodeGenerator::firstOrCreate(
 
                 [
                     'company_id' => null,
