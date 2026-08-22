@@ -1500,7 +1500,7 @@ function formatDateForFilter(date)
                     border-gray-300
                     px-4
                     py-2.5
-                    lg:w-80
+                    lg:w-90
                 "
             />
 
@@ -1524,7 +1524,7 @@ function formatDateForFilter(date)
                 placeholder="Date Range"
                 class="
                     w-full
-                    lg:w-77
+                    lg:w-60
                     rounded-xl
                     border
                     border-gray-300

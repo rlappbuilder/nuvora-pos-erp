@@ -178,35 +178,36 @@ public function postOpeningStock(
 
         foreach ($openingStock->details as $detail) {
 
-            $stock = $this->updateCurrentStock([
+           $stock = $this->updateCurrentStock([
 
-                'company_id' =>
-                    $openingStock->company_id,
+            'company_id' =>
+                $openingStock->company_id,
 
-                'branch_id' =>
-                    $openingStock->branch_id,
+            'branch_id' =>
+                $openingStock->branch_id,
 
-                'warehouse_id' =>
-                    $openingStock->warehouse_id,
+            'warehouse_id' =>
+                $openingStock->warehouse_id,
 
-                'product_variant_id' =>
-                    $detail->product_variant_id,
+            'product_variant_id' =>
+                $detail->product_variant_id,
 
-                'unit_id' =>
-                    $detail->unit_id,
+            'unit_id' =>
+                $detail->unit_id,
 
-                'qty' =>
-                    $detail->qty,
+            'qty' =>
+                $detail->qty,
 
-                'average_cost' =>
-                    $detail->unit_cost,
+            'average_cost' =>
+                $detail->unit_cost,
 
-                'transaction_date' =>
-                    $openingStock->transaction_date,
+            'update_average_cost' =>
+                true,
 
-            ]);
+            'transaction_date' =>
+                $openingStock->transaction_date,
 
-
+        ]);
             /*
             |--------------------------------------------------------------------------
             | Inventory Movement

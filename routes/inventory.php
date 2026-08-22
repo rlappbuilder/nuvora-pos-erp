@@ -95,24 +95,14 @@ Route::middleware(
         | Stock Balance
         |--------------------------------------------------------------------------
         */
+        Route::get('/stock-balance/movements',[StockBalanceController::class,'movements']
+        )->name('stock-balance.movements');
+        
+        Route::get('/stock-balance', [StockBalanceController::class, 'index']
+        )->name('stock-balance.index');
 
-        Route::get(
-
-            '/stock-balance',
-
-            [
-
-                StockBalanceController::class,
-
-                'index'
-
-            ]
-
-        )->name(
-
-            'stock-balance.index'
-
-        );
+        Route::get('/stock-balance',[StockBalanceController::class,'index']
+        )->name('stock-balance.index');
 
         /*
         |--------------------------------------------------------------------------

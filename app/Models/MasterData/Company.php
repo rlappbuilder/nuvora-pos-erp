@@ -43,10 +43,13 @@ class Company extends Model
 
         'status',
 
+         'inventory_costing_method',
+
         'created_by',
 
         'updated_by',
 
+       
     ];
 
     protected $casts = [
