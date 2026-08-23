@@ -47,7 +47,7 @@ const navigation = [
     {
         title: 'Purchasing',
         children: [
-            // modules.purchaseRequests,
+             modules.purchaseRequests,
              modules.purchaseOrders,
              modules.GoodReceipts,
              modules.purchaseInvoice,

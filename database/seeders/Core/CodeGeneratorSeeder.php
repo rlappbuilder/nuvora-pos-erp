@@ -37,17 +37,18 @@ $modules = [
     ['module' => 'stock_adjustment',  'prefix' => 'ADJ', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'stock_transfer',    'prefix' => 'TRF', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'stock_opname',      'prefix' => 'OPN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
-    ['module' => 'opening_stock',     'prefix' => 'OS','format' => '{PREFIX}-{YYYY}-{SEQ}','       digit'  => 6, ],
+    ['module' => 'opening_stock',     'prefix' => 'OS','format' => '{PREFIX}-{YYYY}-{SEQ}',       'digit'  => 6, ],
     ['module' => 'stock_issue',       'prefix' => 'SI','format' => '{PREFIX}-{YYYY}-{SEQ}',       'digit'  => 6, ],
  
 
     // ==========================
     // Purchasing
     // ==========================
-    ['module' => 'purchase_order',    'prefix' => 'PO',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
+    ['module' => 'purchase_order',    'prefix' => 'POD',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
+    ['module' => 'purchase_request',  'prefix' => 'PRQ', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'purchase_receive',  'prefix' => 'GRN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'purchase_invoice',  'prefix' => 'PIN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
-    ['module' => 'purchase_return',   'prefix' => 'PR',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
+    ['module' => 'purchase_return',   'prefix' => 'PRT',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
 
     // ==========================
     // Sales

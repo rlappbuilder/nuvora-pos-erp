@@ -55,14 +55,29 @@ function actionLabel(action)
         UPDATED:
             'Updated',
 
+        SUBMITTED:
+            'Submitted',
+
+        APPROVED:
+            'Approved',
+
         REJECTED:
             'Rejected',
 
         RESUBMITTED:
             'Resubmitted',
 
+        PARTIAL_RECEIVED:
+            'Partial Received',
+
+        FULLY_RECEIVED:
+            'Fully Received',
+
         POSTED:
             'Posted',
+
+        CANCELLED:
+            'Cancelled',
 
         DELETED:
             'Deleted',
@@ -71,7 +86,6 @@ function actionLabel(action)
 
     return labels[action]
         ?? action
-
 }
 
 
@@ -85,14 +99,29 @@ function actionClass(action)
         UPDATED:
             'bg-indigo-50 text-indigo-700',
 
+        SUBMITTED:
+            'bg-blue-50 text-blue-700',
+
+        APPROVED:
+            'bg-emerald-50 text-emerald-700',
+
         REJECTED:
             'bg-red-50 text-red-700',
 
         RESUBMITTED:
             'bg-amber-50 text-amber-700',
 
+        PARTIAL_RECEIVED:
+            'bg-amber-50 text-amber-700',
+
+        FULLY_RECEIVED:
+            'bg-emerald-50 text-emerald-700',
+
         POSTED:
             'bg-emerald-50 text-emerald-700',
+
+        CANCELLED:
+            'bg-orange-50 text-orange-700',
 
         DELETED:
             'bg-gray-100 text-gray-700',
@@ -101,7 +130,6 @@ function actionClass(action)
 
     return classes[action]
         ?? 'bg-gray-100 text-gray-700'
-
 }
 
 

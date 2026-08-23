@@ -66,6 +66,15 @@ function actionLabel(action)
         DELETED:
             'Deleted',
 
+        SUBMITTED:
+        'Submitted',
+
+        APPROVED:
+            'Approved',
+
+        CANCELLED:
+            'Cancelled',
+
     }
 
     return labels[action]
@@ -95,6 +104,20 @@ function actionIcon(action)
         DELETED:
             '🗑',
 
+        SUBMITTED:
+            '➤',
+
+        APPROVED:
+            '✓',
+
+        CANCELLED:
+            '⊘',
+        PARTIAL_RECEIVED:
+        '◐',
+
+        FULLY_RECEIVED:
+        '✓',
+
     }
 
     return icons[action]
@@ -112,6 +135,12 @@ function actionColor(action)
         UPDATED:
             'bg-indigo-500',
 
+        SUBMITTED:
+            'bg-blue-500',
+
+        APPROVED:
+            'bg-emerald-500',
+
         REJECTED:
             'bg-red-500',
 
@@ -121,37 +150,60 @@ function actionColor(action)
         POSTED:
             'bg-emerald-500',
 
+        CANCELLED:
+            'bg-orange-500',
+
         DELETED:
             'bg-gray-500',
+
+         PARTIAL_RECEIVED:
+            'Partial Received',
+
+        FULLY_RECEIVED:
+            'Fully Received',
 
     }
 
     return colors[action]
         ?? 'bg-gray-400'
-
 }
 
 function actionBadge(action)
 {
     const colors = {
 
-        CREATED:
+            CREATED:
             'bg-sky-50 text-sky-700',
 
-        UPDATED:
-            'bg-indigo-50 text-indigo-700',
+            UPDATED:
+                'bg-indigo-50 text-indigo-700',
 
-        REJECTED:
-            'bg-red-50 text-red-700',
+            SUBMITTED:
+                'bg-blue-50 text-blue-700',
 
-        RESUBMITTED:
-            'bg-amber-50 text-amber-700',
+            APPROVED:
+                'bg-emerald-50 text-emerald-700',
 
-        POSTED:
-            'bg-emerald-50 text-emerald-700',
+            REJECTED:
+                'bg-red-50 text-red-700',
 
-        DELETED:
-            'bg-gray-100 text-gray-700',
+            RESUBMITTED:
+                'bg-amber-50 text-amber-700',
+
+            POSTED:
+                'bg-emerald-50 text-emerald-700',
+
+            CANCELLED:
+                'bg-orange-50 text-orange-700',
+
+            DELETED:
+                'bg-gray-100 text-gray-700',
+            
+            PARTIAL_RECEIVED:
+                'bg-amber-50 text-amber-700',
+
+            FULLY_RECEIVED:
+                'bg-emerald-50 text-emerald-700',
 
     }
 

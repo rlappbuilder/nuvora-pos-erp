@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::rename(
+            'purchase_requests',
+            'purchase_request_headers'
+        );
+    }
+
+    public function down(): void
+    {
+        Schema::rename(
+            'purchase_request_headers',
+            'purchase_requests'
+        );
+    }
+};

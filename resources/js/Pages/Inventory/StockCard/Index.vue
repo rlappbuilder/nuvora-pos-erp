@@ -1,598 +1,1329 @@
 <script setup>
 
-import { Head, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
-import FlatPickr
-from 'vue-flatpickr-component'
-
-import 'flatpickr/dist/flatpickr.css'
-
-import SearchableSelect
-from '@/Components/Form/SearchableSelect.vue'
+import { ref, reactive, computed,watch,toRefs,} from 'vue'
+import {router,} from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/Layout/PageHeader.vue'
+import Card from '@/Components/Layout/Card.vue'
+import StatsCard from '@/Components/Card/StatsCard.vue'
+import BaseButton from '@/Components/Button/BaseButton.vue'
+import DataTable from '@/Components/Table/DataTable.vue'
+import DataTableHead from '@/Components/Table/DataTableHead.vue'
+import DataTableBody from '@/Components/Table/DataTableBody.vue'
+import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
+import DataTableRow from '@/Components/Table/DataTableRow.vue'
+import DataTableCell from '@/Components/Table/DataTableCell.vue'
+import TablePagination from '@/Components/Table/TablePagination.vue'
+import TableEmpty from '@/Components/Table/TableEmpty.vue'
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+import { currency, formatDate,} from '@/Utils'
+import FlatPickr from 'vue-flatpickr-component'
+import 'flatpickr/dist/flatpickr.css'
+import { LoadingOverlay,} from '@/Components/Feedback'
+
+/*
+|--------------------------------------------------------------------------
+| Props
+|--------------------------------------------------------------------------
+*/
+
 const props = defineProps({
 
-    movements: Object,
+    stockCard: {
 
-    products: Array,
+        type: Object,
 
-    warehouses: Array,
+        default: () => ({
 
-    filters: Object,
+            summary: {
 
-     summary: Object,
+                opening_qty: 0,
 
-})
+                total_qty_in: 0,
 
-const selectedProduct = ref(
-    props.filters.product_id || null
-    
-)
-const selectedWarehouse = ref(
-    props.filters.warehouse_id || null
-)
-const dateFrom = ref(
-    props.filters.date_from || null
-)
+                total_qty_out: 0,
 
-const dateTo = ref(
-    props.filters.date_to || null
-)
-watch(
-
-    [
-
-        selectedProduct,
-
-        selectedWarehouse,
-
-        dateFrom,
-
-        dateTo
-
-    ],
-
-    () => {
-
-        router.get(
-
-            route(
-                'stock-card.index'
-            ),
-
-            {
-
-                product_id:
-                    selectedProduct.value,
-
-                warehouse_id:
-                    selectedWarehouse.value,
-
-                date_from:
-                    dateFrom.value,
-
-                date_to:
-                    dateTo.value,
+                closing_qty: 0,
 
             },
 
-            {
+            rows: [],
 
-                preserveState: true,
+        }),
 
-                replace: true,
+    },
 
-            }
 
-        )
+    branches: {
+
+        type: Array,
+
+        default: () => [],
+
+    },
+
+
+    warehouses: {
+
+        type: Array,
+
+        default: () => [],
+
+    },
+
+
+    variants: {
+
+        type: Array,
+
+        default: () => [],
+
+    },
+
+
+    units: {
+
+        type: Array,
+
+        default: () => [],
+
+    },
+
+
+    filters: {
+
+        type: Object,
+
+        default: () => ({}),
+
+    },
+
+})
+
+
+const {
+    stockCard,
+} = toRefs(props)
+
+
+/*
+|--------------------------------------------------------------------------
+| Page
+|--------------------------------------------------------------------------
+*/
+
+const pageTitle =
+    computed(
+        () => 'Stock Card'
+    )
+
+
+/*
+|--------------------------------------------------------------------------
+| Loading
+|--------------------------------------------------------------------------
+*/
+
+const loading =
+    ref(false)
+
+
+/*
+|--------------------------------------------------------------------------
+| Filters
+|--------------------------------------------------------------------------
+*/
+
+const filters =
+    reactive({
+
+        date_from:
+            props.filters?.date_from
+            ?? '',
+
+        date_to:
+            props.filters?.date_to
+            ?? '',
+
+        branch_id:
+            props.filters?.branch_id
+            ?? '',
+
+        warehouse_id:
+            props.filters?.warehouse_id
+            ?? '',
+
+        product_variant_id:
+            props.filters?.product_variant_id
+            ?? '',
+
+        unit_id:
+            props.filters?.unit_id
+            ?? '',
+
+    })
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Range
+|--------------------------------------------------------------------------
+*/
+
+const dateRange =
+    ref('')
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Data
+|--------------------------------------------------------------------------
+*/
+
+function loadData()
+{
+
+    router.get(
+
+        route(
+            'stock-card.index'
+        ),
+
+        filters,
+
+        {
+
+            preserveState:
+                true,
+
+            preserveScroll:
+                true,
+
+            replace:
+                true,
+
+        }
+
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Branch
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () =>
+        filters.branch_id,
+
+    () => {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reset Warehouse
+        |--------------------------------------------------------------------------
+        */
+
+        filters.warehouse_id = ''
+
+        loadData()
 
     }
 
 )
 
 
+/*
+|--------------------------------------------------------------------------
+| Warehouse
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () =>
+        filters.warehouse_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Product Variant
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () =>
+        filters.product_variant_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Unit
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () =>
+        filters.unit_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Filtered Warehouses
+|--------------------------------------------------------------------------
+*/
+
+const filteredWarehouses =
+    computed(
+        () => {
+
+            if (
+                !filters.branch_id
+            ) {
+
+                return props.warehouses
+
+            }
+
+
+            return props.warehouses.filter(
+
+                warehouse =>
+
+                    Number(
+                        warehouse.branch_id
+                    )
+
+                    ===
+
+                    Number(
+                        filters.branch_id
+                    )
+
+            )
+
+        }
+    )
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatDateForFilter(
+    date
+) {
+
+    const year =
+        date.getFullYear()
+
+
+    const month =
+        String(
+            date.getMonth() + 1
+        )
+        .padStart(
+            2,
+            '0'
+        )
+
+
+    const day =
+        String(
+            date.getDate()
+        )
+        .padStart(
+            2,
+            '0'
+        )
+
+
+    return `${year}-${month}-${day}`
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Range Change
+|--------------------------------------------------------------------------
+*/
+
+function handleDateRangeChange(
+    selectedDates
+) {
+
+    if (
+        ! selectedDates.length
+    ) {
+
+        filters.date_from =
+            ''
+
+        filters.date_to =
+            ''
+
+        loadData()
+
+        return
+
+    }
+
+
+    filters.date_from =
+        formatDateForFilter(
+            selectedDates[0]
+        )
+
+
+    filters.date_to =
+        selectedDates.length > 1
+
+            ? formatDateForFilter(
+                selectedDates[1]
+            )
+
+            : formatDateForFilter(
+                selectedDates[0]
+            )
+
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Refresh
+|--------------------------------------------------------------------------
+*/
+
+function refresh()
+{
+
+    Object.assign(
+
+        filters,
+
+        {
+
+            date_from:
+                '',
+
+            date_to:
+                '',
+
+            branch_id:
+                '',
+
+            warehouse_id:
+                '',
+
+            product_variant_id:
+                '',
+
+            unit_id:
+                '',
+
+        }
+
+    )
+
+
+    dateRange.value =
+        ''
+
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Number Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatNumber(
+    value
+)
+{
+
+    return new Intl.NumberFormat(
+
+        'id-ID',
+
+        {
+
+            minimumFractionDigits:
+                0,
+
+            maximumFractionDigits:
+                2,
+
+        }
+
+    ).format(
+
+        Number(
+            value
+            ?? 0
+        )
+
+    )
+
+}
+
+
+function formatCurrency(
+    value
+)
+{
+
+    return currency(
+
+        Number(
+            value
+            ?? 0
+        )
+
+    )
+
+}
+
+
+const summary =
+    computed(
+        () =>
+
+            stockCard.value?.summary
+            ?? {
+
+                opening_qty: 0,
+
+                total_qty_in: 0,
+
+                total_qty_out: 0,
+
+                closing_qty: 0,
+
+            }
+
+    )
+
+
+const rows =
+    computed(
+        () =>
+            stockCard.value?.data
+            ?? []
+    )
+const hasData =
+    computed(
+        () =>
+            rows.value.length > 0
+    )
+
+const sort =
+    ref(
+        props.filters?.sort_by
+        ?? 'date'
+    )
+
+const direction =
+    ref(
+        props.filters?.sort_direction
+        ?? 'desc'
+    )
+function sortBy(column)
+{
+
+    if (
+        column !== 'date'
+    ) {
+
+        return
+
+    }
+
+
+    if (
+        sort.value === column
+    ) {
+
+        direction.value =
+            direction.value === 'asc'
+                ? 'desc'
+                : 'asc'
+
+    }
+    else {
+
+        sort.value =
+            column
+
+        direction.value =
+            'asc'
+
+    }
+
+
+    router.get(
+
+        route(
+            'stock-card.index'
+        ),
+
+        {
+
+            ...filters,
+
+            page: 1,
+
+            sort_by:
+                sort.value,
+
+            sort_direction:
+                direction.value,
+
+        },
+
+        {
+
+            preserveState:
+                true,
+
+            preserveScroll:
+                true,
+
+            replace:
+                true,
+
+        }
+
+    )
+
+}
 </script>
 <template>
+<AppLayout>
 
-    <Head title="Stock Card" />
+    <div class="space-y-6">
 
-    <AppLayout>
+           <!-- ===================================================== -->
+            <!-- Statistics -->
+            <!-- ===================================================== -->
 
-        <template #header>
+           
+            <div
+                class="
+                    grid
+                    grid-cols-1
+                    gap-4
+                    md:grid-cols-2
+                    xl:grid-cols-4
+                "
+            >
 
-            <div>
-
-                <h2
-                    class="text-3xl font-bold text-gray-800"
-                >
-                    Stock Card
-                </h2>
-
-                <p
-                    class="mt-1 text-sm text-gray-500"
-                >
-                    Inventory movement history.
-                </p>
-
-            </div>
-
-        </template>
-
-        <div
-            class="rounded-2xl bg-white p-6 shadow-sm"
-        >
-        <!-- summery card-->
-                            <div
-                        class="
-                            mb-6
-                            grid
-                            grid-cols-4
-                            gap-4
-                        "
-                    >
-
-                        <div
-                            class="
-                                rounded-xl
-                                bg-white
-                                p-4
-                                shadow
-                            "
-                        >
-
-                            <p
-                                class="
-                                    text-sm
-                                    text-gray-500
-                                "
-                            >
-
-                                Current Stock
-
-                            </p>
-
-                            <p
-                                class="
-                                    mt-2
-                                    text-2xl
-                                    font-bold
-                                    text-blue-600
-                                "
-                            >
-
-                                {{ summary.current_stock }}
-
-                            </p>
-
-                        </div>
-
-                        <div
-                            class="
-                                rounded-xl
-                                bg-white
-                                p-4
-                                shadow
-                            "
-                        >
-
-                            <p
-                                class="
-                                    text-sm
-                                    text-gray-500
-                                "
-                            >
-
-                                Total In
-
-                            </p>
-
-                            <p
-                                class="
-                                    mt-2
-                                    text-2xl
-                                    font-bold
-                                    text-green-600
-                                "
-                            >
-
-                                {{ summary.total_in }}
-
-                            </p>
-
-                        </div>
-
-                        <div
-                            class="
-                                rounded-xl
-                                bg-white
-                                p-4
-                                shadow
-                            "
-                        >
-
-                            <p
-                                class="
-                                    text-sm
-                                    text-gray-500
-                                "
-                            >
-
-                                Total Out
-
-                            </p>
-
-                            <p
-                                class="
-                                    mt-2
-                                    text-2xl
-                                    font-bold
-                                    text-red-600
-                                "
-                            >
-
-                                {{ summary.total_out }}
-
-                            </p>
-
-                        </div>
-
-                        <div
-                            class="
-                                rounded-xl
-                                bg-white
-                                p-4
-                                shadow
-                            "
-                        >
-
-                            <p
-                                class="
-                                    text-sm
-                                    text-gray-500
-                                "
-                            >
-
-                                Transactions
-
-                            </p>
-
-                            <p
-                                class="
-                                    mt-2
-                                    text-2xl
-                                    font-bold
-                                "
-                            >
-
-                                {{ summary.transactions }}
-
-                            </p>
-
-                        </div>
-
-                    </div>
-        <!-- end Summary Card -->
-        <!-- filter area-->
-          <div class="
-                        mb-6
-                        flex
-                        gap-4
-                    ">
-            <!-- div product-->
-            <div class="w-80">
-                <label
-                    class="
-                        mb-2
-                        block
-                        text-sm
-                        font-medium
+                <StatsCard
+                    title="Opening Balance"
+                    :value="
+                        formatNumber(
+                            summary?.opening_qty
+                            ?? 0
+                        )
                     "
-                >
+                    icon="↩️"
+                />
 
-                    Product
 
-                </label>
-
-                <SearchableSelect
-
-                    v-model="
-                        selectedProduct
+                <StatsCard
+                    title="Total In"
+                    :value="
+                        formatNumber(
+                            summary?.total_qty_in
+                            ?? 0
+                        )
                     "
+                    icon="📥"
+                />
 
-                    :options="
-                        products
+
+                <StatsCard
+                    title="Total Out"
+                    :value="
+                        formatNumber(
+                            summary?.total_qty_out
+                            ?? 0
+                        )
                     "
+                    icon="📤"
+                />
 
-                    label="name"
 
-                    value-key="id"
-
-                    placeholder="
-                        Cari Produk...
+                <StatsCard
+                    title="Closing Balance"
+                    :value="
+                        formatNumber(
+                            summary?.closing_qty
+                            ?? 0
+                        )
                     "
-
+                    icon="📦"
                 />
 
             </div>
-             <!-- filter warehous-->
-              <div class="w-80">
 
-                    <label
+        <Card class="mt-4">
+        <!-- ===================================================== -->
+            <!-- Toolbar -->
+            <!-- ===================================================== -->
+
+            <div
+                class="
+                    flex
+                    flex-col
+                    gap-3
+                "
+            >
+
+                <!-- ================================================= -->
+                <!-- Row 1 -->
+                <!-- ================================================= -->
+
+                <div
+                    class="
+                        flex
+                        flex-col
+                        gap-3
+                        lg:flex-row
+                        lg:items-center
+                        lg:justify-between
+                    "
+                >
+
+                    <!-- Left -->
+
+                    <div
                         class="
-                            mb-2
-                            block
-                            text-sm
-                            font-medium
+                            flex
+                            flex-1
+                            flex-col
+                            gap-3
+                            lg:flex-row
+                            lg:items-center
                         "
                     >
 
-                        Warehouse
+                        <!-- Date Range -->
 
-                    </label>
+                        <div
+                            class="
+                                w-full
+                                lg:w-72
+                            "
+                        >
 
-                    <SearchableSelect
+                            <FlatPickr
+                                v-model="dateRange"
+                                :config="{
+                                    mode: 'range',
+                                    dateFormat: 'Y-m-d',
+                                }"
+                                placeholder="Date Range"
+                                class="
+                                    w-full
+                                    rounded-xl
+                                    border
+                                    border-gray-300
+                                    px-4
+                                    py-2.5
+                                    text-sm
+                                "
+                                @on-change="
+                                    handleDateRangeChange
+                                "
+                            />
 
-                        v-model="
-                            selectedWarehouse
+                        </div>
+
+                    </div>
+
+
+                    <!-- Right -->
+
+                    <div
+                        class="
+                            flex
+                            w-full
+                            flex-col
+                            gap-2
+                            lg:w-auto
+                            lg:flex-row
+                            lg:items-center
                         "
+                    >
 
-                        :options="
-                            warehouses
-                        "
+                        <!-- Refresh -->
 
-                        label="name"
+                        <BaseButton
+                            variant="secondary"
+                            class="
+                                w-full
+                                shrink-0
+                                whitespace-nowrap
+                                lg:w-auto
+                            "
+                            @click="refresh"
+                        >
+                            Refresh
+                        </BaseButton>
 
-                        value-key="id"
-
-                        placeholder="
-                            Cari Warehouse...
-                        "
-
-                    />
+                    </div>
 
                 </div>
-              <!-- end filter warehouste-->
-               <!--  start filter date range-->
-                 <div class="w-52">
 
-                        <label
-                            class="
-                                mb-2
-                                block
-                                text-sm
-                                font-medium
-                            "
-                        >
 
-                            Date From
+                <!-- ================================================= -->
+                <!-- Row 2 -->
+                <!-- ================================================= -->
 
-                        </label>
+                <div
+                    class="
+                        flex
+                        flex-col
+                        gap-3
+                        lg:flex-row
+                        lg:items-center
+                        lg:justify-between
+                    "
+                >
 
-                        <FlatPickr
+                    <!-- Left Filters -->
 
+                    <div
+                        class="
+                            flex
+                            flex-1
+                            flex-col
+                            gap-3
+                            lg:flex-row
+                            lg:items-center
+                        "
+                    >
+
+                        <!-- Branch -->
+
+                        <SearchableSelect
+                            v-model="filters.branch_id"
+                            :options="branches"
+                            label="label"
+                            value-key="id"
+                            placeholder="All Branches"
+                        />
+
+
+                        <!-- Warehouse -->
+
+                        <SearchableSelect
+                            v-model="filters.warehouse_id"
+                            :options="filteredWarehouses"
+                            label="label"
+                            value-key="id"
+                            placeholder="All Warehouses"
+                        />
+
+
+                        <!-- Product / Variant -->
+
+                        <SearchableSelect
                             v-model="
-                                dateFrom
+                                filters.product_variant_id
                             "
+                            :options="variants"
+                            label="label"
+                            value-key="id"
+                            placeholder="All Products"
+                        />
 
-                            class="
-                                w-full
-                                rounded-lg
-                                border
-                                px-3
-                                py-2
-                            "
 
+                        <!-- Unit -->
+
+                        <SearchableSelect
+                            v-model="filters.unit_id"
+                            :options="units"
+                            label="label"
+                            value-key="id"
+                            placeholder="All Units"
                         />
 
                     </div>
 
-                    <div class="w-52">
+                </div>
 
-                        <label
-                            class="
-                                mb-2
-                                block
-                                text-sm
-                                font-medium
-                            "
-                        >
-
-                            Date To
-
-                        </label>
-
-                        <FlatPickr
-
-                            v-model="
-                                dateTo
-                            "
-
-                            class="
-                                w-full
-                                rounded-lg
-                                border
-                                px-3
-                                py-2
-                            "
-
-                        />
-
-                    </div>
-                <!-- end filter date range-->
             </div>
-         <!-- end filter area-->
-         
-            <table
-                class="min-w-full"
-            >
-                    <!-- table head-->
-                   <thead>
+            <!-- ===================================================== -->
+            <!-- Table -->
+            <!-- ===================================================== -->
 
-                    <tr class="border-b bg-gray-50">
+            <div class="mt-6">
 
-                        <th class="p-3 text-left">
+                <!-- Loading -->
+
+                <LoadingOverlay
+                    :show="loading"
+                    text="Loading Stock Card ..."
+                />
+               
+                <!-- ===================================================== -->
+                <!-- Stock Card DataTable -->
+                <!-- ===================================================== -->
+
+                <DataTable
+                    v-if="rows.length"
+                    sticky-header
+                    max-height="650px"
+                >
+
+                    <DataTableHead sticky>
+
+                        <!-- Date -->
+
+                        <DataTableHeaderCell
+                             sortable
+                            column="date"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                            width="120px"
+                            align="right"
+                        >
                             Date
-                        </th>
+                        </DataTableHeaderCell>
 
-                        <th class="p-3 text-left">
+
+                        <!-- Reference -->
+
+                        <DataTableHeaderCell
+                            width="220px"
+                        >
                             Reference
-                        </th>
+                        </DataTableHeaderCell>
 
-                        <th class="p-3 text-left">
-                            Type
-                        </th>
 
-                        <th class="p-3 text-left">
-                            Product
-                        </th>
+                        <!-- Description -->
 
-                        <th class="p-3 text-left">
-                            Warehouse
-                        </th>
+                        <DataTableHeaderCell
+                            width="280px"
+                        >
+                            Description
+                        </DataTableHeaderCell>
 
-                        <th class="p-3 text-right">
+
+                        <!-- Opening -->
+
+                        <DataTableHeaderCell
+                            width="140px"
+                            align="right"
+                        >
+                            Stock Awal
+                        </DataTableHeaderCell>
+
+
+                        <!-- Qty In -->
+
+                        <DataTableHeaderCell
+                            width="140px"
+                            align="right"
+                        >
                             Qty In
-                        </th>
+                        </DataTableHeaderCell>
 
-                        <th class="p-3 text-right">
+
+                        <!-- Qty Out -->
+
+                        <DataTableHeaderCell
+                            width="140px"
+                            align="right"
+                        >
                             Qty Out
-                        </th>
+                        </DataTableHeaderCell>
 
-                        <th class="p-3 text-right">
+
+                        <!-- Balance -->
+
+                        <DataTableHeaderCell
+                            width="140px"
+                            align="right"
+                        >
                             Balance
-                        </th>
+                        </DataTableHeaderCell>
 
-                    </tr>
 
-                    </thead>
-                    <!-- end table head-->
+                        <!-- Unit Cost -->
 
-                <tbody>
+                        <DataTableHeaderCell
+                            width="160px"
+                            align="right"
+                        >
+                            Unit Cost
+                        </DataTableHeaderCell>
 
-                        <tr
 
-                            v-for="
-                                movement
-                                in
-                                movements.data
-                            "
+                        <!-- Total Cost -->
 
+                        <DataTableHeaderCell
+                            width="180px"
+                            align="right"
+                        >
+                            Total Cost
+                        </DataTableHeaderCell>
+
+                    </DataTableHead>
+
+
+                    <DataTableBody>
+
+                        <DataTableRow
+                            v-for="row in rows"
                             :key="
-                                movement.id
+                                row.id
+                                ??
+                                `opening-${row.date}`
                             "
-
-                            class="
-                                border-b
-                                hover:bg-gray-50
-                            "
-
                         >
 
-                            <td class="p-3">
+                            <!-- ================================================= -->
+                            <!-- Date -->
+                            <!-- ================================================= -->
 
-                                {{
-                                    movement.transaction_date
-                                }}
-
-                            </td>
-
-                            <td class="p-3 font-medium">
-
-                                {{
-                                    movement.reference_number
-                                }}
-
-                            </td>
-
-                            <td class="p-3">
+                            <DataTableCell>
 
                                 <span
                                     class="
-                                        rounded-full
-                                        bg-blue-100
-                                        px-2
-                                        py-1
-                                        text-xs
+                                        whitespace-nowrap
+                                        text-gray-900
+                                    "
+                                >
+                                    {{
+                                        row.date
+                                        ?? '-'
+                                    }}
+                                </span>
+
+                            </DataTableCell>
+
+
+                            <!-- ================================================= -->
+                            <!-- Reference -->
+                            <!-- ================================================= -->
+
+                            <DataTableCell>
+
+                                <div
+                                    class="
                                         font-medium
-                                        text-blue-700
+                                        text-gray-900
                                     "
                                 >
 
                                     {{
-                                        movement.reference_type
+                                        row.reference_number
+                                        ??
+                                        'Opening Balance'
+                                    }}
+
+                                </div>
+
+
+                                <div
+                                    class="
+                                        mt-0.5
+                                        text-xs
+                                        text-gray-500
+                                    "
+                                >
+
+                                    {{
+                                        row.reference_type
+                                        ?? '-'
+                                    }}
+
+                                </div>
+
+                            </DataTableCell>
+
+
+                            <!-- ================================================= -->
+                            <!-- Description -->
+                            <!-- ================================================= -->
+
+                            <DataTableCell>
+
+                                <span
+                                    class="text-gray-600"
+                                >
+
+                                    {{
+                                        row.description
+                                        ?? '-'
                                     }}
 
                                 </span>
 
-                            </td>
+                            </DataTableCell>
 
-                            <td class="p-3">
 
-                                {{
-                                    movement.product?.name
-                                }}
+                            <!-- ================================================= -->
+                            <!-- Opening -->
+                            <!-- ================================================= -->
 
-                            </td>
+                            <DataTableCell align="right">
 
-                            <td class="p-3">
+                                <span
+                                    class="
+                                        font-medium
+                                        text-gray-700
+                                    "
+                                >
 
-                                {{
-                                    movement.warehouse?.name
-                                }}
+                                    {{
+                                        formatNumber(
+                                            row.opening_qty
+                                        )
+                                    }}
 
-                            </td>
+                                </span>
 
-                            <td
-                                class="
-                                    p-3
-                                    text-right
-                                    font-medium
-                                    text-green-600
-                                "
-                            >
+                            </DataTableCell>
 
-                                {{
-                                    movement.qty_in
-                                }}
 
-                            </td>
+                            <!-- ================================================= -->
+                            <!-- Qty In -->
+                            <!-- ================================================= -->
 
-                            <td
-                                class="
-                                    p-3
-                                    text-right
-                                    font-medium
-                                    text-red-600
-                                "
-                            >
+                            <DataTableCell align="right">
 
-                                {{
-                                    movement.qty_out
-                                }}
+                                <span
+                                    v-if="
+                                        Number(row.qty_in)
+                                        > 0
+                                    "
+                                    class="
+                                        font-semibold
+                                        text-green-600
+                                    "
+                                >
 
-                            </td>
+                                    +{{
+                                        formatNumber(
+                                            row.qty_in
+                                        )
+                                    }}
 
-                            <td
-                                class="
-                                    p-3
-                                    text-right
-                                    font-bold
-                                "
-                            >
+                                </span>
 
-                                {{
-                                    movement.balance_qty
-                                }}
+                                <span
+                                    v-else
+                                    class="text-gray-400"
+                                >
+                                    -
+                                </span>
 
-                            </td>
+                            </DataTableCell>
 
-                        </tr>
 
-                 </tbody>
-            </table>
+                            <!-- ================================================= -->
+                            <!-- Qty Out -->
+                            <!-- ================================================= -->
 
-        </div>
+                            <DataTableCell align="right">
 
-    </AppLayout>
+                                <span
+                                    v-if="
+                                        Number(row.qty_out)
+                                        > 0
+                                    "
+                                    class="
+                                        font-semibold
+                                        text-red-600
+                                    "
+                                >
 
+                                    -{{
+                                        formatNumber(
+                                            row.qty_out
+                                        )
+                                    }}
+
+                                </span>
+
+                                <span
+                                    v-else
+                                    class="text-gray-400"
+                                >
+                                    -
+                                </span>
+
+                            </DataTableCell>
+
+
+                            <!-- ================================================= -->
+                            <!-- Balance -->
+                            <!-- ================================================= -->
+
+                            <DataTableCell align="right">
+
+                                <span
+                                    class="
+                                        font-bold
+                                        text-gray-900
+                                    "
+                                >
+
+                                    {{
+                                        formatNumber(
+                                            row.balance_qty
+                                        )
+                                    }}
+
+                                </span>
+
+                            </DataTableCell>
+
+
+                            <!-- ================================================= -->
+                            <!-- Unit Cost -->
+                            <!-- ================================================= -->
+
+                            <DataTableCell align="right">
+
+                                <span
+                                    v-if="
+                                        Number(row.unit_cost)
+                                        > 0
+                                    "
+                                >
+
+                                    {{
+                                        formatCurrency(
+                                            row.unit_cost
+                                        )
+                                    }}
+
+                                </span>
+
+                                <span
+                                    v-else
+                                    class="text-gray-400"
+                                >
+                                    -
+                                </span>
+
+                            </DataTableCell>
+
+
+                            <!-- ================================================= -->
+                            <!-- Total Cost -->
+                            <!-- ================================================= -->
+
+                            <DataTableCell align="right">
+
+                                <span
+                                    v-if="
+                                        Number(row.total_cost)
+                                        > 0
+                                    "
+                                    class="
+                                        font-semibold
+                                        text-gray-900
+                                    "
+                                >
+
+                                    {{
+                                        formatCurrency(
+                                            row.total_cost
+                                        )
+                                    }}
+
+                                </span>
+
+                                <span
+                                    v-else
+                                    class="text-gray-400"
+                                >
+                                    -
+                                </span>
+
+                            </DataTableCell>
+
+                        </DataTableRow>
+
+                    </DataTableBody>
+
+                </DataTable>
+                <!-- Empty -->
+
+              <TableEmpty
+                    v-else
+                    icon="📋 Stock Card "
+                    title="No Stock Card Transaction Found"
+                    description="
+                        Select Product, Branch, Warehouse and Unit
+                        to view stock card transactions.
+                    "
+                />
+
+                </div>
+
+            <!-- ===================================================== -->
+            <!-- 
+              Pagination -->
+            <!-- ===================================================== -->
+
+            <div class="mt-6">
+
+               <TablePagination
+                :data="stockCard"
+                label="Stock Card"
+                />
+            </div>
+
+        </Card>
+    </div>    
+</AppLayout>
 </template>

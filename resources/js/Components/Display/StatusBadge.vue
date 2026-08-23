@@ -56,12 +56,22 @@ const variants = Object.freeze({
         text: 'Draft',
     },
 
+    submitted: {
+    badge: 'bg-blue-100 text-blue-700',
+    dot: 'bg-blue-500',
+    text: 'Submitted',
+    },
+
     rejected: {
         badge: 'bg-red-100 text-red-700',
         dot: 'bg-red-500',
         text: 'Rejected',
     },
-
+    cancelled: {
+        badge: 'bg-red-100 text-red-700',
+        dot: 'bg-red-500',
+        text: 'Cancelled',
+    },
     posted: {
         badge: 'bg-emerald-100 text-emerald-700',
         dot: 'bg-emerald-500',
@@ -75,7 +85,7 @@ const variants = Object.freeze({
     },
 
     approved: {
-        badge: 'bg-indigo-100 text-indigo-700',
+        badge: 'bg-green-300 text-black-700',
         dot: 'bg-indigo-500',
         text: 'Approved',
     },
@@ -141,6 +151,12 @@ const type = computed(() => {
 
             case 'draft':
                 return 'draft'
+
+            case 'submitted':
+            return 'submitted'
+
+            case 'cancelled':
+            return 'cancelled'
 
             case 'rejected':
                 return 'rejected'

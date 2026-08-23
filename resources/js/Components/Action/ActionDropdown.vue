@@ -20,6 +20,8 @@ import {
     ClockIcon,
     CheckCircleIcon,
     XCircleIcon,
+    PaperAirplaneIcon,
+    CheckBadgeIcon,
 } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits([
@@ -30,6 +32,9 @@ const emit = defineEmits([
     'delete',
     'history',
     'post',
+    'submit',
+    'cancel',
+    'approve',
     'reject',
 ])
 const props = defineProps({
@@ -40,6 +45,21 @@ const props = defineProps({
     },
 
     showReject: {
+        type: Boolean,
+        default: false,
+    },
+
+    showSubmit: {
+    type: Boolean,
+    default: false,
+    },
+
+    showApprove: {
+    type: Boolean,
+    default: false,
+    },
+
+    showCancel: {
         type: Boolean,
         default: false,
     },
@@ -352,7 +372,67 @@ onBeforeUnmount(() => {
 
                     </button>
 
+                    <!-- ================================================= -->
+                    <!-- Submit -->
+                    <!-- ================================================= -->
 
+                    <button
+                        v-if="showSubmit"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-blue-600
+                            transition-colors
+                            duration-150
+                            hover:bg-blue-50
+                        "
+                        @click="$emit('submit'); close()"
+                    >
+
+                        <PaperAirplaneIcon
+                            class="h-5 w-5"
+                        />
+
+                        Submit
+
+                    </button>
+
+                    <!-- ================================================= -->
+                    <!-- Approve -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showApprove"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-emerald-600
+                            transition-colors
+                            duration-150
+                            hover:bg-emerald-50
+                        "
+                        @click="$emit('approve'); close()"
+                    >
+
+                        <CheckBadgeIcon
+                            class="h-5 w-5"
+                        />
+
+                        Approve
+
+                    </button>
                     <!-- ================================================= -->
                     <!-- Post -->
                     <!-- ================================================= -->
@@ -416,7 +496,36 @@ onBeforeUnmount(() => {
 
                     </button>
 
+                    <!-- ================================================= -->
+                    <!-- Cancel -->
+                    <!-- ================================================= -->
 
+                    <button
+                        v-if="showCancel"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-orange-600
+                            transition-colors
+                            duration-150
+                            hover:bg-orange-50
+                        "
+                        @click="$emit('cancel'); close()"
+                    >
+
+                        <CheckBadgeIcon
+                            class="h-5 w-5"
+                        />
+
+                        Cancel
+
+                    </button>
                     <!-- ================================================= -->
                     <!-- Export -->
                     <!-- ================================================= -->

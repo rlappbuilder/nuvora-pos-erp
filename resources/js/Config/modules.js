@@ -233,6 +233,14 @@ const modules = {
         // End accounting //
 
            //purchasing //
+           
+            purchaseRequests: {
+                key: 'purchaseRequests',
+                title: 'Purchase Request',
+                icon: UsersIcon,
+                route: 'purchase-requests.index',
+                permission: 'purchase-requests.view',
+            },
             purchaseOrders: {
                 key: 'purchaseOrders',
                 title: 'Purchase order',

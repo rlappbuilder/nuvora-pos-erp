@@ -130,7 +130,6 @@ const dropdownStyle = ref({
     left: '0px',
     width: '0px',
 })
-const teleportTarget = ref('body')
 /*
 |--------------------------------------------------------------------------
 | Helper
@@ -571,18 +570,6 @@ function handleClickOutside(event)
 
 onMounted(() => {
 
-    const dialog =
-        inputRef.value?.closest(
-            'dialog'
-        )
-
-    if (dialog) {
-
-        teleportTarget.value =
-            dialog
-
-    }
-
     document.addEventListener(
         'mousedown',
         handleClickOutside
@@ -600,6 +587,7 @@ onMounted(() => {
     )
 
 })
+
 onBeforeUnmount(() => {
 
     document.removeEventListener(
@@ -649,7 +637,6 @@ const showClearButton = computed(
     }
 
 )
-
 </script>
 <template>
 
@@ -776,7 +763,7 @@ const showClearButton = computed(
         </button>
 
             </div>
-            <Teleport :to="teleportTarget">
+            <Teleport to="body">
 
                 <div
                     v-if="open"
