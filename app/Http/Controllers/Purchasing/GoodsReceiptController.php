@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Purchasing;
 
 
 use Inertia\Inertia;
-use App\Models\Purchasing\PurchaseOrder;
+use App\Models\Purchasing\PurchaseOrderHeader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Purchasing\GoodsReceipt;

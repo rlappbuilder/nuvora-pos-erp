@@ -67,10 +67,22 @@ function actionLabel(action)
             'Deleted',
 
         SUBMITTED:
-        'Submitted',
+            'Submitted',
 
         APPROVED:
             'Approved',
+
+        SENT:
+            'Sent',
+
+        CONFIRMED:
+            'Confirmed',
+
+        PARTIAL_RECEIVED:
+            'Partial Received',
+
+        FULLY_RECEIVED:
+            'Fully Received',
 
         CANCELLED:
             'Cancelled',
@@ -79,7 +91,6 @@ function actionLabel(action)
 
     return labels[action]
         ?? action
-
 }
 
 function actionIcon(action)
@@ -118,6 +129,12 @@ function actionIcon(action)
         FULLY_RECEIVED:
         '✓',
 
+        CONFIRMED:
+            '✓',
+
+         SENT:
+         '➤'
+
     }
 
     return icons[action]
@@ -141,6 +158,12 @@ function actionColor(action)
         APPROVED:
             'bg-emerald-500',
 
+        SENT:
+            'bg-blue-500',
+
+        CONFIRMED:
+            'bg-emerald-500',
+
         REJECTED:
             'bg-red-500',
 
@@ -150,24 +173,23 @@ function actionColor(action)
         POSTED:
             'bg-emerald-500',
 
+        PARTIAL_RECEIVED:
+            'bg-amber-500',
+
+        FULLY_RECEIVED:
+            'bg-emerald-500',
+
         CANCELLED:
             'bg-orange-500',
 
         DELETED:
             'bg-gray-500',
 
-         PARTIAL_RECEIVED:
-            'Partial Received',
-
-        FULLY_RECEIVED:
-            'Fully Received',
-
     }
 
     return colors[action]
         ?? 'bg-gray-400'
 }
-
 function actionBadge(action)
 {
     const colors = {

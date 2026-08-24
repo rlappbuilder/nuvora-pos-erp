@@ -36,6 +36,8 @@ const emit = defineEmits([
     'cancel',
     'approve',
     'reject',
+    'send',
+    'confirm',
 ])
 const props = defineProps({
 
@@ -58,7 +60,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
     },
+  showSend: {
+        type: Boolean,
+        default: false,
+    },
 
+    showConfirm: {
+        type: Boolean,
+        default: false,
+    },
     showCancel: {
         type: Boolean,
         default: false,
@@ -88,6 +98,8 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+
+  
 
 })
 const EVENT_NAME = 'nuvora-action-dropdown-close'
@@ -431,6 +443,66 @@ onBeforeUnmount(() => {
                         />
 
                         Approve
+
+                    </button>
+                    <!-- ================================================= -->
+                    <!-- Send -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showSend"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-blue-600
+                            transition-colors
+                            duration-150
+                            hover:bg-blue-50
+                        "
+                        @click="$emit('send'); close()"
+                    >
+
+                        <PaperAirplaneIcon
+                            class="h-5 w-5"
+                        />
+
+                        Send
+
+                    </button>   
+                    <!-- ================================================= -->
+                    <!-- Confirm -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showConfirm"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-emerald-600
+                            transition-colors
+                            duration-150
+                            hover:bg-emerald-50
+                        "
+                        @click="$emit('confirm'); close()"
+                    >
+
+                        <CheckCircleIcon
+                            class="h-5 w-5"
+                        />
+
+                        Confirm
 
                     </button>
                     <!-- ================================================= -->

@@ -82,6 +82,12 @@ function actionLabel(action)
         DELETED:
             'Deleted',
 
+        SENT:
+            'Sent',
+
+        CONFIRMED:
+            'Confirmed',
+
     }
 
     return labels[action]
@@ -125,6 +131,12 @@ function actionClass(action)
 
         DELETED:
             'bg-gray-100 text-gray-700',
+
+        SENT:
+            'bg-blue-50 text-blue-700',
+
+        CONFIRMED:
+            'bg-emerald-50 text-emerald-700',
 
     }
 

@@ -1,14 +1,12 @@
 <?php
 
 namespace App\Models\Purchasing;
-use App\Models\MasterData\Product;
-use App\Models\MasterData\Supplier;
-
-use App\Models\MasterData\Warehouse;
-use App\Models\User;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+use App\Models\Product\ProductVariant;
+use App\Models\MasterData\Unit;
 
 class PurchaseOrderDetail extends Model
 {
@@ -16,33 +14,139 @@ class PurchaseOrderDetail extends Model
 
     protected $fillable = [
 
+        /*
+        |--------------------------------------------------------------------------
+        | Header
+        |--------------------------------------------------------------------------
+        */
+
         'purchase_order_id',
 
-        'product_id',
+        /*
+        |--------------------------------------------------------------------------
+        | Product
+        |--------------------------------------------------------------------------
+        */
+
+        'product_variant_id',
+
+        'unit_id',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Quantity
+        |--------------------------------------------------------------------------
+        */
 
         'qty',
 
-        'unit_cost',
+        'received_qty',
 
-        'discount',
+        'remaining_qty',
 
-        'tax',
+        /*
+        |--------------------------------------------------------------------------
+        | Pricing
+        |--------------------------------------------------------------------------
+        */
 
-        'line_total',
+        'unit_price',
+
+        'discount_rate',
+
+        'discount_amount',
+
+        'tax_rate',
+
+        'tax_amount',
+
+        'subtotal',
+
+        'total',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Information
+        |--------------------------------------------------------------------------
+        */
+
+        'description',
 
     ];
+
+    protected $casts = [
+
+        'qty' =>
+            'decimal:6',
+
+        'received_qty' =>
+            'decimal:6',
+
+        'remaining_qty' =>
+            'decimal:6',
+
+        'unit_price' =>
+            'decimal:2',
+
+        'discount_rate' =>
+            'decimal:4',
+
+        'discount_amount' =>
+            'decimal:2',
+
+        'tax_rate' =>
+            'decimal:4',
+
+        'tax_amount' =>
+            'decimal:2',
+
+        'subtotal' =>
+            'decimal:2',
+
+        'total' =>
+            'decimal:2',
+
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Purchase Order
+    |--------------------------------------------------------------------------
+    */
 
     public function purchaseOrder()
     {
         return $this->belongsTo(
-            PurchaseOrder::class
+            PurchaseOrderHeader::class,
+            'purchase_order_id'
         );
     }
 
-    public function product()
+    /*
+    |--------------------------------------------------------------------------
+    | Product Variant
+    |--------------------------------------------------------------------------
+    */
+
+    public function productVariant()
     {
         return $this->belongsTo(
-            Product::class
+            ProductVariant::class,
+            'product_variant_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unit
+    |--------------------------------------------------------------------------
+    */
+
+    public function unit()
+    {
+        return $this->belongsTo(
+            Unit::class,
+            'unit_id'
         );
     }
 }

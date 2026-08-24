@@ -101,16 +101,26 @@ Route::middleware('auth')
                 'purchase-requests',
                 PurchaseRequestController::class
             );
-            /*
+          /*
             |--------------------------------------------------------------------------
             | Purchase Order
             |--------------------------------------------------------------------------
             */
+        Route::post(
+            '/purchase-orders/{purchaseOrder}/cancel',
+            [
+                PurchaseOrderController::class,
+                'cancel',
+            ]
+        )->name(
+            'purchasing.purchase-orders.cancel'
+        );
+            
 
-            Route::resource(
-                'purchase-orders',
-                PurchaseOrderController::class
-            );
+         Route::post(
+            '/purchase-orders/{purchaseOrder}/submit',
+            [PurchaseOrderController::class, 'submit']
+        )->name('purchasing.purchase-orders.submit');
 
             Route::post(
                 '/purchase-orders/{purchaseOrder}/approve',
@@ -124,16 +134,78 @@ Route::middleware('auth')
                 );
 
             Route::post(
-                '/purchase-orders/{purchaseOrder}/cancel',
+                '/purchase-orders/{purchaseOrder}/reject',
                 [
                     PurchaseOrderController::class,
-                    'cancel',
+                    'reject',
                 ]
             )
                 ->name(
-                    'purchase-orders.cancel'
+                    'purchase-orders.reject'
                 );
 
+            Route::post(
+                '/purchase-orders/{purchaseOrder}/send',
+                [
+                    PurchaseOrderController::class,
+                    'send',
+                ]
+            )
+                ->name(
+                    'purchase-orders.send'
+                );
+
+            Route::post(
+                '/purchase-orders/{purchaseOrder}/confirm',
+                [
+                    PurchaseOrderController::class,
+                    'confirm',
+                ]
+            )
+                ->name(
+                    'purchase-orders.confirm'
+                );
+
+            Route::delete(
+                '/purchase-orders/bulk-delete',
+                [
+                    PurchaseOrderController::class,
+                    'bulkDelete',
+                ]
+            )
+                ->name(
+                    'purchase-orders.bulk-delete'
+                );
+
+            Route::get(
+                '/purchase-orders/{purchaseOrder}/data',
+                [
+                    PurchaseOrderController::class,
+                    'showData',
+                ]
+            )
+                ->name(
+                    'purchase-orders.data'
+                );
+
+            Route::post(
+                '/purchase-orders/{purchaseOrder}/duplicate',
+                [
+                    PurchaseOrderController::class,
+                    'duplicate',
+                ]
+            )
+                ->name(
+                    'purchase-orders.duplicate'
+                );
+
+              Route::resource(
+                    'purchase-orders',
+                    PurchaseOrderController::class
+                )
+                    ->parameters([
+                        'purchase-orders' => 'purchaseOrder',
+                    ]);
 
             /*
             |--------------------------------------------------------------------------

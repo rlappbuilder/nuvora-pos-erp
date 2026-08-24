@@ -84,11 +84,11 @@ const variants = Object.freeze({
         text: 'Processing',
     },
 
-    approved: {
-        badge: 'bg-green-300 text-black-700',
-        dot: 'bg-indigo-500',
-        text: 'Approved',
-    },
+   approved: {
+    badge: 'bg-emerald-100 text-emerald-700',
+    dot: 'bg-emerald-500',
+    text: 'Approved',
+},
 
     pending: {
         badge: 'bg-purple-100 text-purple-700',
@@ -114,6 +114,34 @@ const variants = Object.freeze({
         text: 'Unknown',
     },
 
+    sent: {
+    badge: 'bg-sky-100 text-sky-700',
+    dot: 'bg-sky-500',
+    text: 'Sent',
+    },
+
+    confirmed: {
+        badge: 'bg-indigo-100 text-indigo-700',
+        dot: 'bg-indigo-500',
+        text: 'Confirmed',
+    },
+
+    partially_received: {
+        badge: 'bg-orange-100 text-orange-700',
+        dot: 'bg-orange-500',
+        text: 'Partially Received',
+    },
+
+    fully_received: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Fully Received',
+    },
+     closed: {
+        badge: 'bg-red-100 text-orange-700',
+        dot: 'bg-orange-500',
+        text: 'closed',
+    },
 })
 
 /*
@@ -172,6 +200,21 @@ const type = computed(() => {
 
             case 'pending':
                 return 'pending'
+
+                case 'sent':
+                return 'sent'
+
+            case 'confirmed':
+                return 'confirmed'
+
+            case 'partially received':
+                return 'partially_received'
+
+            case 'fully received':
+                return 'fully_received'
+
+            case 'closed':
+                return 'closed'
 
             default:
                 break
