@@ -213,45 +213,87 @@ Route::middleware('auth')
             |--------------------------------------------------------------------------
             */
 
-            Route::resource(
-                'goods-receipts',
-                GoodsReceiptController::class
-            );
+          
 
-            Route::post(
-                '/goods-receipts/{goodsReceipt}/post',
-                [
-                    GoodsReceiptController::class,
-                    'post',
-                ]
-            )
-                ->name(
-                    'goods-receipts.post'
+                Route::post(
+                    '/goods-receipts/{goodsReceipt}/submit',
+                    [
+                        GoodsReceiptController::class,
+                        'submit',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.submit'
+                    );
+
+                Route::post(
+                    '/goods-receipts/{goodsReceipt}/approve',
+                    [
+                        GoodsReceiptController::class,
+                        'approve',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.approve'
+                    );
+
+                Route::post(
+                    '/goods-receipts/{goodsReceipt}/reject',
+                    [
+                        GoodsReceiptController::class,
+                        'reject',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.reject'
+                    );
+
+                Route::post(
+                    '/goods-receipts/{goodsReceipt}/post',
+                    [
+                        GoodsReceiptController::class,
+                        'post',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.post'
+                    );
+
+                Route::post(
+                    '/goods-receipts/{goodsReceipt}/cancel',
+                    [
+                        GoodsReceiptController::class,
+                        'cancel',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.cancel'
+                    );
+
+                Route::delete(
+                    '/goods-receipts-bulk-delete',
+                    [
+                        GoodsReceiptController::class,
+                        'bulkDelete',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.bulk-delete'
+                    );
+                Route::get(
+                    '/goods-receipts/{goodsReceipt}/data',
+                    [
+                        GoodsReceiptController::class,
+                        'showData',
+                    ]
+                )
+                    ->name(
+                        'goods-receipts.data'
+                    );
+                  Route::resource(
+                    'goods-receipts',
+                    GoodsReceiptController::class
                 );
-
-            Route::post(
-                '/goods-receipts/{goodsReceipt}/complete',
-                [
-                    GoodsReceiptController::class,
-                    'complete',
-                ]
-            )
-                ->name(
-                    'goods-receipts.complete'
-                );
-
-            Route::post(
-                '/goods-receipts/{goodsReceipt}/cancel',
-                [
-                    GoodsReceiptController::class,
-                    'cancel',
-                ]
-            )
-                ->name(
-                    'goods-receipts.cancel'
-                );
-
-
             /*
             |--------------------------------------------------------------------------
             | Purchase Invoice

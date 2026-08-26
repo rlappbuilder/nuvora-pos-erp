@@ -49,7 +49,7 @@ const navigation = [
         children: [
              modules.purchaseRequests,
              modules.purchaseOrders,
-             modules.GoodReceipts,
+             modules.GoodsReceipts,
              modules.purchaseInvoice,
              modules.purchasePayment,
              modules.purchaseReturns,

@@ -3,6 +3,8 @@
 namespace App\Services\Inventory;
 use App\Models\Inventory\InventoryAdjustmentHeader;
 use App\Models\Inventory\InventoryAdjustmentDetail;
+use App\Models\Purchasing\GoodsReceiptHeader;
+use App\Models\Purchasing\GoodsReceiptDetail;
 use App\Models\Inventory\ProductStock;
 use App\Models\Inventory\InventoryMovement;
 use Illuminate\Support\Facades\DB;
@@ -6025,5 +6027,118 @@ public function bulkDelete(
     });
 
 }
+public function receiveGoodsReceiptStock(
+    GoodsReceiptHeader $goodsReceipt,
+    GoodsReceiptDetail $detail,
+    float $unitCost
+): void {
 
+    $receivedQty =
+        (float) $detail->received_qty;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Skip Rejected / Zero Receipt
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $receivedQty <= 0
+    ) {
+
+        return;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Current Stock
+    |--------------------------------------------------------------------------
+    */
+
+    $stock =
+        $this->updateCurrentStock([
+
+            'company_id' =>
+                $goodsReceipt->company_id,
+
+            'branch_id' =>
+                $goodsReceipt->branch_id,
+
+            'warehouse_id' =>
+                $goodsReceipt->warehouse_id,
+
+            'product_variant_id' =>
+                $detail->product_variant_id,
+
+            'unit_id' =>
+                $detail->unit_id,
+
+            'qty' =>
+                $receivedQty,
+
+            'average_cost' =>
+                $unitCost,
+
+            'update_average_cost' =>
+                true,
+
+            'transaction_date' =>
+                $goodsReceipt->receipt_date,
+
+            'lock' =>
+                true,
+
+        ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Movement
+    |--------------------------------------------------------------------------
+    */
+
+    $this->createMovement(
+
+        $stock,
+
+        [
+
+            'reference_type' =>
+               'GOODS_RECEIPT',
+
+            'reference_id' =>
+                $goodsReceipt->id,
+
+            'reference_number' =>
+                $goodsReceipt->grn_number,
+
+            'qty_in' =>
+                $receivedQty,
+
+            'qty_out' =>
+                0,
+
+            'unit_cost' =>
+                $unitCost,
+
+            'total_cost' =>
+                $receivedQty *
+                $unitCost,
+
+            'transaction_date' =>
+                $goodsReceipt->receipt_date,
+
+            'description' =>
+                $detail->remarks
+                ??
+                'Goods receipt posted.',
+
+        ]
+
+    );
+
+}
 }

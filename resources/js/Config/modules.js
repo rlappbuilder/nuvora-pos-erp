@@ -249,8 +249,8 @@ const modules = {
                 permission: 'purchase-orders.view',
             },
             
-            GoodReceipts: {
-                key: 'GoodReceipts',
+            GoodsReceipts: {
+                key: 'GoodsReceipts',
                 title: 'Good Receipts',
                 icon: UsersIcon,
                 route: 'goods-receipts.index',

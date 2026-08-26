@@ -2,863 +2,1268 @@
 
 namespace App\Http\Controllers\Purchasing;
 
-
-use Inertia\Inertia;
-use App\Models\Purchasing\PurchaseOrderHeader;
 use App\Http\Controllers\Controller;
+
+use App\Http\Requests\Purchasing\GoodsReceive\StoreGoodsReceiptRequest;
+use App\Http\Requests\Purchasing\GoodsReceive\UpdateGoodsReceiptRequest;
+use App\Http\Requests\Purchasing\GoodsReceive\RejectGoodsReceiptRequest;
+
+use App\Models\Purchasing\GoodsReceiptHeader;
+use App\Models\Purchasing\PurchaseOrderHeader;
+
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Warehouse;
+use App\Models\MasterData\Supplier;
+use App\Models\MasterData\Unit;
+
+use App\Models\Product\ProductVariant;
+
+use App\Services\Purchasing\GoodsReceiptService;
+use App\Services\Core\CodeGeneratorService;
+
 use Illuminate\Http\Request;
-use App\Models\Purchasing\GoodsReceipt;
-use App\Models\Purchasing\GoodsReceiptDetail;
-use App\Models\Innventory\InventoryMovement;
-use App\Models\Inventory\ProductStock;
-use App\Models\User;
+use Inertia\Inertia;
+
 class GoodsReceiptController extends Controller
 {
-                public function create(
-                PurchaseOrder $purchaseOrder
-            )
-            {
-               
-            }
-                          public function index()
-                                {
-                                    $query = GoodsReceipt::with([
+    public function __construct(
+        protected GoodsReceiptService $goodsReceiptService,
+        protected CodeGeneratorService $codeGeneratorService
+    ) {
+    }
 
-                                        'supplier',
+    /*
+    |--------------------------------------------------------------------------
+    | Index
+    |--------------------------------------------------------------------------
+    */
 
-                                        'warehouse'
-
-                                    ]);
-
-                                    if (
-                                        request('search')
-                                    ) {
-
-                                        $query->where(
-
-                                            'grn_number',
-
-                                            'like',
-
-                                            '%' .
-                                            request('search')
-                                            . '%'
-
-                                        );
-
-                                    }
-
-                                    if (
-                                        request('status')
-                                    ) {
-
-                                        $query->where(
-
-                                            'status',
-
-                                            request('status')
-
-                                        );
-
-                                    }
-
-                                    $goodsReceipts =
-
-                                        $query
-
-                                        ->latest()
-
-                                        ->paginate(10)
-
-                                        ->withQueryString();
-
-                                    $totalGrn =
-
-                                        GoodsReceipt::count();
-
-                                    $totalDraft =
-
-                                        GoodsReceipt::where(
-
-                                            'status',
-
-                                            'Draft'
-
-                                        )->count();
-
-                                    $totalPosted =
-
-                                        GoodsReceipt::where(
-
-                                            'status',
-
-                                            'Posted'
-
-                                        )->count();
-
-                                    $totalCancelled =
-
-                                        GoodsReceipt::where(
-
-                                            'status',
-
-                                            'Cancelled'
-
-                                        )->count();
-
-                                    return Inertia::render(
-
-                                        'Purchasing/GoodsReceipts/Index',
-
-                                        [
-
-                                            'goodsReceipts' =>
-
-                                                $goodsReceipts,
-
-                                            'filters' => [
-
-                                                'search' =>
-
-                                                    request(
-                                                        'search'
-                                                    ),
-
-                                                'status' =>
-
-                                                    request(
-                                                        'status'
-                                                    ),
-
-                                            ],
-
-                                            'totalGrn' =>
-
-                                                $totalGrn,
-
-                                            'totalDraft' =>
-
-                                                $totalDraft,
-
-                                            'totalPosted' =>
-
-                                                $totalPosted,
-
-                                            'totalCancelled' =>
-
-                                                $totalCancelled,
-
-                                        ]
-
-                                    );
-                                }
-
-           
-
-public function createFromPurchaseOrder(
-    PurchaseOrder $purchaseOrder
-)
+public function index(Request $request)
 {
-    if (
+    $query =
+        GoodsReceiptHeader::query()
+            ->with([
+                'purchaseOrder',
+                'supplier',
+                'warehouse',
+                'details.productVariant.product',
+                'details.unit',
+                'inventoryMovements',
+            ])
 
-        ! in_array(
+            /*
+            |--------------------------------------------------------------------------
+            | Search
+            |--------------------------------------------------------------------------
+            */
 
-            $purchaseOrder->status,
+            ->when(
+                $request->filled('search'),
+                function ($query) use ($request) {
 
-            [
+                    $search =
+                        $request->search;
 
-                'Approved',
+                    $query->where(
+                        function ($query) use ($search) {
 
-                'Partially Received'
+                            $query
+                                ->where(
+                                    'grn_number',
+                                    'like',
+                                    "%{$search}%"
+                                )
 
-            ]
+                                ->orWhere(
+                                    'supplier_do_number',
+                                    'like',
+                                    "%{$search}%"
+                                )
 
-        )
+                                ->orWhereHas(
+                                    'purchaseOrder',
+                                    function ($purchaseOrder) use ($search) {
 
-    ) {
+                                        $purchaseOrder
+                                            ->where(
+                                                'number',
+                                                'like',
+                                                "%{$search}%"
+                                            );
 
-        return back()
+                                    }
+                                )
 
-            ->with(
+                                ->orWhereHas(
+                                    'supplier',
+                                    function ($supplier) use ($search) {
 
-                'error',
+                                        $supplier
+                                            ->where(
+                                                'name',
+                                                'like',
+                                                "%{$search}%"
+                                            )
 
-                'Purchase Order tidak dapat dibuatkan Goods Receipt.'
+                                            ->orWhere(
+                                                'supplier_code',
+                                                'like',
+                                                "%{$search}%"
+                                            );
 
-            );
+                                    }
+                                )
 
-    }
+                                ->orWhereHas(
+                                    'warehouse',
+                                    function ($warehouse) use ($search) {
 
-    $draftGrn = GoodsReceipt::where(
+                                        $warehouse->where(
+                                            'name',
+                                            'like',
+                                            "%{$search}%"
+                                        );
 
-        'purchase_order_id',
+                                    }
+                                )
 
-        $purchaseOrder->id
+                                ->orWhereHas(
+                                    'details.productVariant',
+                                    function ($variant) use ($search) {
 
-    )
+                                        $variant
+                                            ->where(
+                                                'sku',
+                                                'like',
+                                                "%{$search}%"
+                                            )
 
-    ->where(
+                                            ->orWhere(
+                                                'name',
+                                                'like',
+                                                "%{$search}%"
+                                            )
 
-        'status',
+                                            ->orWhereHas(
+                                                'product',
+                                                function ($product) use ($search) {
 
-        'Draft'
+                                                    $product->where(
+                                                        'name',
+                                                        'like',
+                                                        "%{$search}%"
+                                                    );
 
-    )
+                                                }
+                                            );
 
-    ->first();
+                                    }
+                                );
 
-    if (
+                        }
+                    );
 
-        $draftGrn
-
-    ) {
-
-        return redirect()
-
-            ->route(
-
-                'goods-receipts.show',
-
-                $draftGrn->id
-
+                }
             )
 
-            ->with(
 
-                'warning',
+            /*
+            |--------------------------------------------------------------------------
+            | Supplier Filter
+            |--------------------------------------------------------------------------
+            */
 
-                'Masih ada Draft Goods Receipt untuk Purchase Order ini. Silakan Post atau Cancel terlebih dahulu.'
+            ->when(
+                $request->filled('supplier_id'),
+                function ($query) use ($request) {
 
+                    $query->where(
+                        'supplier_id',
+                        $request->supplier_id
+                    );
+
+                }
+            )
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Warehouse Filter
+            |--------------------------------------------------------------------------
+            */
+
+            ->when(
+                $request->filled('warehouse_id'),
+                function ($query) use ($request) {
+
+                    $query->where(
+                        'warehouse_id',
+                        $request->warehouse_id
+                    );
+
+                }
+            )
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Status Filter
+            |--------------------------------------------------------------------------
+            */
+
+            ->when(
+                $request->filled('status'),
+                function ($query) use ($request) {
+
+                    $query->where(
+                        'status',
+                        $request->status
+                    );
+
+                }
+            )
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Receipt Date Filter
+            |--------------------------------------------------------------------------
+            */
+
+            ->when(
+                $request->filled('date_from'),
+                function ($query) use ($request) {
+
+                    $query->whereDate(
+                        'receipt_date',
+                        '>=',
+                        $request->date_from
+                    );
+
+                }
+            )
+
+            ->when(
+                $request->filled('date_to'),
+                function ($query) use ($request) {
+
+                    $query->whereDate(
+                        'receipt_date',
+                        '<=',
+                        $request->date_to
+                    );
+
+                }
             );
 
-    }
 
-    $purchaseOrder->load([
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+    $goodsReceipts =
+        $query
+            ->latest()
+            ->paginate(
+                $request->integer(
+                    'per_page',
+                    10
+                )
+            )
+            ->withQueryString();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Row Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    $goodsReceipts
+        ->getCollection()
+        ->transform(
+            function ($goodsReceipt) {
+
+                $goodsReceipt->total_items =
+                    $goodsReceipt
+                        ->details
+                        ->count();
+
+                $goodsReceipt->total_received =
+                    $goodsReceipt
+                        ->details
+                        ->sum(
+                            fn ($detail) =>
+                                (float)
+                                $detail->received_qty
+                        );
+
+                $goodsReceipt->total_rejected =
+                    $goodsReceipt
+                        ->details
+                        ->sum(
+                            fn ($detail) =>
+                                (float)
+                                $detail->rejected_qty
+                        );
+
+                return $goodsReceipt;
+
+            }
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    $statisticsQuery =
+        clone $query;
+
+
+    $statistics = [
+
+        'total' =>
+            (clone $statisticsQuery)
+                ->count(),
+
+        'draft' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Draft'
+                )
+                ->count(),
+
+        'submitted' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Submitted'
+                )
+                ->count(),
+
+        'approved' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Approved'
+                )
+                ->count(),
+
+        'rejected' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Rejected'
+                )
+                ->count(),
+
+        'posted' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Posted'
+                )
+                ->count(),
+
+        'cancelled' =>
+            (clone $statisticsQuery)
+                ->where(
+                    'status',
+                    'Cancelled'
+                )
+                ->count(),
+
+    ];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return
+    |--------------------------------------------------------------------------
+    */
+
+    return Inertia::render(
+        'Purchasing/GoodsReceipts/Index',
+
+        [
+
+            'title' =>
+                'Goods Receipt',
+
+            'goodsReceipts' =>
+                $goodsReceipts,
+
+            'statistics' =>
+                $statistics,
+
+            'previewNumber' =>
+                $this
+                    ->codeGeneratorService
+                    ->preview(
+                        'purchase_receive'
+                    ),
+
+            'filters' =>
+                $request->only([
+
+                    'search',
+
+                    'supplier_id',
+
+                    'warehouse_id',
+
+                    'status',
+
+                    'per_page',
+
+                    'date_from',
+
+                    'date_to',
+
+                ]),
+
+            ...$this->formData(),
+
+        ]
+    );
+}
+/*
+|--------------------------------------------------------------------------
+| Form Data
+|--------------------------------------------------------------------------
+*/
+
+private function formData(): array
+{
+    return [
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouses
+        |--------------------------------------------------------------------------
+        */
+
+        'warehouses' =>
+            Warehouse::query()
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'branch_id',
+                    'name',
+                ])
+                ->map(
+                    fn ($warehouse) => [
+
+                        'id' =>
+                            $warehouse->id,
+
+                        'branch_id' =>
+                            $warehouse->branch_id,
+
+                        'label' =>
+                            $warehouse->name,
+
+                    ]
+                )
+                ->values(),
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Suppliers
+        |--------------------------------------------------------------------------
+        */
+
+        'suppliers' =>
+            Supplier::query()
+                ->where(
+                    'status',
+                    true
+                )
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'supplier_code',
+                    'name',
+                ])
+                ->map(
+                    fn ($supplier) => [
+
+                        'id' =>
+                            $supplier->id,
+
+                        'code' =>
+                            $supplier->supplier_code,
+
+                        'label' =>
+                            implode(
+                                ' - ',
+                                array_filter([
+                                    $supplier->supplier_code,
+                                    $supplier->name,
+                                ])
+                            ),
+
+                    ]
+                )
+                ->values(),
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Purchase Orders
+        |--------------------------------------------------------------------------
+        */
+
+        'purchaseOrders' =>
+            PurchaseOrderHeader::query()
+                ->whereIn(
+                    'status',
+                    [
+                        'Confirmed',
+                        'Partially Received',
+                    ]
+                )
+                ->whereHas(
+                    'details',
+                    function ($query) {
+
+                        $query->where(
+                            'remaining_qty',
+                            '>',
+                            0
+                        );
+
+                    }
+                )
+                ->with([
+                    'supplier',
+                    'branch',
+                    'warehouse',
+                    'details' => function ($query) {
+
+                        $query
+                            ->where(
+                                'remaining_qty',
+                                '>',
+                                0
+                            )
+                            ->with([
+                                'productVariant.product',
+                                'unit',
+                            ]);
+
+                    },
+                ])
+                ->orderByDesc(
+                    'order_date'
+                )
+                ->orderByDesc(
+                    'id'
+                )
+                ->get()
+                ->map(
+                    function ($purchaseOrder) {
+
+                        return [
+
+                            'id' =>
+                                $purchaseOrder->id,
+
+                            'number' =>
+                                $purchaseOrder->number,
+
+                            'label' =>
+                                $purchaseOrder->number,
+
+                            'order_date' =>
+                                $purchaseOrder->order_date,
+
+                            'required_date' =>
+                                $purchaseOrder->required_date,
+
+                            'company_id' =>
+                                $purchaseOrder->company_id,
+
+                            'branch_id' =>
+                                $purchaseOrder->branch_id,
+
+                            'warehouse_id' =>
+                                $purchaseOrder->warehouse_id,
+
+                            'supplier_id' =>
+                                $purchaseOrder->supplier_id,
+
+                            'supplier' => [
+
+                                'id' =>
+                                    $purchaseOrder
+                                        ->supplier
+                                        ?->id,
+
+                                'code' =>
+                                    $purchaseOrder
+                                        ->supplier
+                                        ?->supplier_code,
+
+                                'name' =>
+                                    $purchaseOrder
+                                        ->supplier
+                                        ?->name,
+
+                            ],
+
+                            'branch' => [
+
+                                'id' =>
+                                    $purchaseOrder
+                                        ->branch
+                                        ?->id,
+
+                                'name' =>
+                                    $purchaseOrder
+                                        ->branch
+                                        ?->name,
+
+                            ],
+
+                            'warehouse' => [
+
+                                'id' =>
+                                    $purchaseOrder
+                                        ->warehouse
+                                        ?->id,
+
+                                'name' =>
+                                    $purchaseOrder
+                                        ->warehouse
+                                        ?->name,
+
+                            ],
+
+                            'details' =>
+                                $purchaseOrder
+                                    ->details
+                                    ->map(
+                                        function ($detail) {
+
+                                            return [
+
+                                                'id' =>
+                                                    $detail->id,
+
+                                                'product_variant_id' =>
+                                                    $detail
+                                                        ->product_variant_id,
+
+                                                'unit_id' =>
+                                                    $detail
+                                                        ->unit_id,
+
+                                                'qty' =>
+                                                    $detail->qty,
+
+                                                'received_qty' =>
+                                                    $detail
+                                                        ->received_qty,
+
+                                                'remaining_qty' =>
+                                                    $detail
+                                                        ->remaining_qty,
+
+                                                'unit_price' =>
+                                                    $detail
+                                                        ->unit_price,
+
+                                                'description' =>
+                                                    $detail
+                                                        ->description,
+
+                                                'product' => [
+
+                                                    'id' =>
+                                                        $detail
+                                                            ->productVariant
+                                                            ?->product_id,
+
+                                                    'name' =>
+                                                        $detail
+                                                            ->productVariant
+                                                            ?->product
+                                                            ?->name,
+
+                                                ],
+
+                                                'variant' => [
+
+                                                    'id' =>
+                                                        $detail
+                                                            ->productVariant
+                                                            ?->id,
+
+                                                    'sku' =>
+                                                        $detail
+                                                            ->productVariant
+                                                            ?->sku,
+
+                                                    'name' =>
+                                                        $detail
+                                                            ->productVariant
+                                                            ?->name,
+
+                                                ],
+
+                                                'unit' => [
+
+                                                    'id' =>
+                                                        $detail
+                                                            ->unit
+                                                            ?->id,
+
+                                                    'name' =>
+                                                        $detail
+                                                            ->unit
+                                                            ?->name,
+
+                                                ],
+
+
+     
+                                            ];
+
+                                        }
+                                    )
+
+
+                            ->values(),
+                           'inventory_movements' =>
+    $goodsReceipt
+        ->inventoryMovements
+        ->map(
+            function ($movement) {
+
+                return [
+
+                    'id' =>
+                        $movement->id,
+
+                    'product_variant_id' =>
+                        $movement->product_variant_id,
+
+                    'unit_id' =>
+                        $movement->unit_id,
+
+                    'reference_number' =>
+                        $movement->reference_number,
+
+                    'qty_in' =>
+                        (float)
+                        $movement->qty_in,
+
+                    'qty_out' =>
+                        (float)
+                        $movement->qty_out,
+
+                    'balance_qty' =>
+                        (float)
+                        $movement->balance_qty,
+
+                    'unit_cost' =>
+                        (float)
+                        $movement->unit_cost,
+
+                    'total_cost' =>
+                        (float)
+                        $movement->total_cost,
+
+                    'transaction_date' =>
+                        $movement
+                            ->transaction_date
+                            ?->format('Y-m-d'),
+
+                    'description' =>
+                        $movement->description,
+
+                ];
+
+            }
+        )
+        ->values(),
+                        ];
+
+                    }
+                )
+                ->values(),
+
+    ];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Create
+|--------------------------------------------------------------------------
+*/
+
+public function create()
+{
+    return Inertia::render(
+        'Purchasing/GoodsReceipts/Create',
+
+        [
+
+            'title' =>
+                'Create Goods Receipt',
+
+            'previewNumber' =>
+                $this
+                    ->codeGeneratorService
+                    ->preview(
+                        'purchase_receive'
+                    ),
+
+            ...$this->formData(),
+
+        ]
+    );
+}
+/*
+|--------------------------------------------------------------------------
+| Edit
+|--------------------------------------------------------------------------
+*/
+/*
+|--------------------------------------------------------------------------
+| Edit
+|--------------------------------------------------------------------------
+*/
+
+public function edit(
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    abort_if(
+        $goodsReceipt->status !== 'Draft',
+        422,
+        'Only Draft goods receipt can be edited.'
+    );
+
+
+    $goodsReceipt->load([
+
+        'purchaseOrder',
 
         'supplier',
 
         'warehouse',
 
-        'details.product',
+        'details.productVariant.product',
 
-        'goodsReceipts.details',
+        'details.unit',
 
     ]);
 
-    foreach (
-
-        $purchaseOrder->details
-
-        as $detail
-
-    ) {
-
-        $receivedQty = 0;
-
-        foreach (
-
-            $purchaseOrder->goodsReceipts
-
-                ->where(
-                    'status',
-                    'Posted'
-                )
-
-            as $grn
-
-        ) {
-
-            $grnDetail =
-
-                $grn->details
-
-                    ->where(
-
-                        'product_id',
-
-                        $detail->product_id
-
-                    )
-
-                    ->first();
-
-            if (
-
-                $grnDetail
-
-            ) {
-
-                $receivedQty +=
-
-                    $grnDetail
-                        ->qty_received;
-
-            }
-
-        }
-
-        $detail->received_qty =
-
-            $receivedQty;
-
-        $detail->remaining_qty =
-
-            max(
-
-                0,
-
-                $detail->qty
-                -
-                $receivedQty
-
-            );
-
-    }
 
     return Inertia::render(
-
-        'Purchasing/GoodsReceipts/Create',
+        'Purchasing/GoodsReceipts/Edit',
 
         [
 
-            'purchaseOrder' =>
+            'title' =>
+                'Edit Goods Receipt',
 
-                $purchaseOrder,
+            'goodsReceipt' =>
+                $goodsReceipt,
+
+            ...$this->formData(),
 
         ]
-
     );
 }
-    
-    
-       public function store(
-    Request $request
-)
-{
-    $request->validate([
+/*
+|--------------------------------------------------------------------------
+| Store
+|--------------------------------------------------------------------------
+*/
 
-        'purchase_order_id' =>
+public function store(
+    StoreGoodsReceiptRequest $request
+) {
 
-            'required|exists:purchase_orders,id',
+    $data =
+        $request->validated();
 
-        'supplier_id' =>
+    $this
+        ->goodsReceiptService
+        ->createGoodsReceipt(
+            $data
+        );
 
-            'required|exists:suppliers,id',
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt created successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Show
+|--------------------------------------------------------------------------
+*/
 
-        'warehouse_id' =>
+public function show(
+    GoodsReceiptHeader $goodsReceipt
+) {
 
-            'required|exists:warehouses,id',
+    $goodsReceipt->load([
 
-        'receipt_date' =>
+        'purchaseOrder',
 
-            'required|date',
+        'supplier',
 
-        'supplier_do_number' =>
+        'warehouse',
 
-            'required|string|max:100',
+        'creator',
 
-        'items' =>
+        'updater',
 
-            'required|array|min:1',
+        'poster',
+
+        'canceller',
+
+        'details.productVariant.product',
+
+        'details.unit',
+
+        'details.purchaseOrderDetail',
+
+        'activities.performer',
+
+        'inventoryMovements',
+
+        'inventoryMovements.productVariant.product',
+
+        'inventoryMovements.unit',
 
     ]);
 
-    foreach (
-
-        $request->items
-
-        as $item
-
-    ) {
-
-        if (
-
-            $item['remaining_qty']
-
-            <= 0
-
-        ) {
-
-            continue;
-
-        }
-
-        if (
-
-            $item['qty_received']
-
-            <= 0
-
-        ) {
-
-            return back()
-
-                ->withErrors([
-
-                    'items' =>
-
-                    'Qty Received harus lebih besar dari 0.'
-
-                ]);
-
-        }
-
-        if (
-
-            $item['qty_received']
-
-            >
-
-            $item['remaining_qty']
-
-        ) {
-
-            return back()
-
-                ->withErrors([
-
-                    'items' =>
-
-                    'Tidak dapat Menyimpan Data : Qty melebihi sisa penerimaan.'
-
-                ]);
-
-        }
-
-    }
-
-    $last = GoodsReceipt::withTrashed()
-
-        ->latest('id')
-
-        ->first();
-
-    $number =
-
-        $last
-
-        ? $last->id + 1
-
-        : 1;
-
-    $grnNumber =
-
-        'GRN'
-
-        .
-
-        str_pad(
-
-            $number,
-
-            5,
-
-            '0',
-
-            STR_PAD_LEFT
-
-        );
-
-    $goodsReceipt =
-
-        GoodsReceipt::create([
-
-            'grn_number' =>
-
-                $grnNumber,
-
-            'purchase_order_id' =>
-
-                $request->purchase_order_id,
-
-            'supplier_id' =>
-
-                $request->supplier_id,
-
-            'warehouse_id' =>
-
-                $request->warehouse_id,
-
-            'receipt_date' =>
-
-                $request->receipt_date,
-
-            'supplier_do_number' =>
-
-                $request->supplier_do_number,
-
-            'remarks' =>
-
-                $request->remarks,
-
-            'status' =>
-
-                'Draft',
-
-            'created_by' =>
-
-                auth()->id(),
-
-        ]);
-
-    foreach (
-
-        $request->items
-
-        as $item
-
-    ) {
-
-        if (
-
-            $item['qty_received']
-
-            <= 0
-
-        ) {
-
-            continue;
-
-        }
-
-        GoodsReceiptDetail::create([
-
-            'goods_receipt_id' =>
-
-                $goodsReceipt->id,
-
-            'product_id' =>
-
-                $item['product_id'],
-
-            'qty_received' =>
-
-                $item['qty_received'],
-
-            'unit_cost' =>
-
-                $item['unit_cost'],
-
-            'line_total' =>
-
-                $item['qty_received']
-
-                *
-
-                $item['unit_cost'],
-
-        ]);
-
-    }
-
-    return redirect()
-
-        ->route(
-
-            'goods-receipts.show',
-
-            $goodsReceipt->id
-
-        )
-
-        ->with(
-
-            'success',
-
-            'Goods Receipt berhasil dibuat.'
-
-        );
-}
-
-        public function show(
-    GoodsReceipt $goodsReceipt
-)
-{
-
-   $goodsReceipt->load([
-
-    'supplier',
-
-    'warehouse',
-
-    'purchaseOrder',
-
-    'details.product',
-
-    'creator',
-
-    'poster',
-
-    'canceller',
-
-]);
 
     return Inertia::render(
-
         'Purchasing/GoodsReceipts/Show',
 
         [
 
             'goodsReceipt' =>
-
-                $goodsReceipt
+                $goodsReceipt,
 
         ]
-
     );
 }
+/*
+|--------------------------------------------------------------------------
+| Show Data
+|--------------------------------------------------------------------------
+*/
+/*
+|--------------------------------------------------------------------------
+| Show Data
+|--------------------------------------------------------------------------
+*/
+
+public function showData(
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    $goodsReceipt->load([
+
+        'purchaseOrder',
+
+        'supplier',
+
+        'warehouse',
+
+        'creator',
+
+        'updater',
+
+        'poster',
+
+        'canceller',
+
+        'details.productVariant.product',
+
+        'details.unit',
+
+        'details.purchaseOrderDetail',
+
+        'activities.performer',
+
+        'inventoryMovements',
+        'inventoryMovements.productVariant.product',
+
+        'inventoryMovements.unit',
+
+    ]);
+
+
+    return response()->json([
+
+        'data' =>
+            $goodsReceipt,
+
+    ]);
+
+}
+/*
+|--------------------------------------------------------------------------
+| Update
+|--------------------------------------------------------------------------
+*/
+public function update(
+    UpdateGoodsReceiptRequest $request,
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    abort_if(
+        ! in_array(
+            $goodsReceipt->status,
+            [
+                'Draft',
+                'Rejected',
+            ],
+            true
+        ),
+        422,
+        'Only Draft or Rejected goods receipt can be updated.'
+    );
+
+
+    $data =
+        $request->validated();
+
+
+    $this
+        ->goodsReceiptService
+        ->updateGoodsReceipt(
+            $goodsReceipt,
+            $data
+        );
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt updated successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Submit
+|--------------------------------------------------------------------------
+*/
+
+public function submit(
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    $this
+        ->goodsReceiptService
+        ->submitGoodsReceipt(
+            $goodsReceipt
+        );
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt submitted successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Approve
+|--------------------------------------------------------------------------
+*/
+
+public function approve(
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    $this
+        ->goodsReceiptService
+        ->approveGoodsReceipt(
+            $goodsReceipt
+        );
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt approved successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Reject
+|--------------------------------------------------------------------------
+*/
+
+public function reject(
+    RejectGoodsReceiptRequest $request,
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    $this
+        ->goodsReceiptService
+        ->rejectGoodsReceipt(
+            $goodsReceipt,
+            $request
+                ->validated()['reason']
+        );
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt rejected successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Post
+|--------------------------------------------------------------------------
+*/
+
 public function post(
-   
-GoodsReceipt $goodsReceipt
-)
-
-{
-if ( 
-$goodsReceipt->status
-!== 'Draft'
-) {
-   
-
-
-    return back();
-
-}
-
-$goodsReceipt->update([
-
-    'status' => 'Posted',
-
-    'posted_at' => now(),
-
-    'posted_by' => auth()->id(),
-
-]);
-
-$goodsReceipt->load('details');
-
-foreach (
-
-    $goodsReceipt->details
-
-    as $detail
-
+    GoodsReceiptHeader $goodsReceipt
 ) {
 
-    $lastMovement =
+    $this
+        ->goodsReceiptService
+        ->postGoodsReceipt(
+            $goodsReceipt
+        );
 
-        InventoryMovement::where(
-            'product_id',
-            $detail->product_id
-        )
-        ->where(
-            'warehouse_id',
-            $goodsReceipt->warehouse_id
-        )
-        ->latest('id')
-        ->first();
 
-    $currentBalance =
-
-        $lastMovement
-            ? $lastMovement->balance_qty
-            : 0;
-
-    InventoryMovement::create([
-
-        'product_id' =>
-            $detail->product_id,
-
-        'warehouse_id' =>
-            $goodsReceipt->warehouse_id,
-
-        'reference_type' =>
-            'GRN',
-
-        'reference_id' =>
-            $goodsReceipt->id,
-
-        'reference_number' =>
-            $goodsReceipt->grn_number,
-
-        'qty_in' =>
-            $detail->qty_received,
-
-        'qty_out' =>
-            0,
-
-        'balance_qty' =>
-            $currentBalance +
-            $detail->qty_received,
-            'unit_cost' =>
-
-                $detail->unit_cost,
-
-            'total_cost' =>
-
-                $detail->qty_received
-                *
-                $detail->unit_cost,
-
-        'transaction_date' =>
-            now(),
-
-        'created_by' =>
-            auth()->id(),
-
-    ]);
-                $stock = ProductStock::firstOrNew([
-
-                'product_id' =>
-                    $detail->product_id,
-
-                'warehouse_id' =>
-                    $goodsReceipt->warehouse_id,
-
-            ]);
-
-            $stock->qty = (
-
-                $stock->exists
-                    ? $stock->qty
-                    : 0
-
-            ) + $detail->qty_received;
-
-            $stock->created_by ??=
-                auth()->id();
-
-            $stock->updated_by =
-                auth()->id();
-
-            $stock->save();
-
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt posted successfully.'
+        );
 }
-
-
-$purchaseOrder =
-
-    $goodsReceipt
-        ->purchaseOrder;
-
-$totalOrderedQty =
-
-    $purchaseOrder
-        ->details
-        ->sum('qty');
-
-$totalReceivedQty =
-
-    GoodsReceipt::where(
-
-        'purchase_order_id',
-
-        $purchaseOrder->id
-
-    )
-    ->where(
-
-        'status',
-
-        'Posted'
-
-    )
-    ->with('details')
-    ->get()
-    ->sum(function (
-        $grn
-    ) {
-
-        return $grn
-            ->details
-            ->sum(
-                'qty_received'
-            );
-
-    });
-
-if (
-
-    $totalReceivedQty
-
-    >=
-
-    $totalOrderedQty
-
-) {
-
-    $purchaseOrder->update([
-
-        'status' =>
-
-            'Fully Received'
-
-    ]);
-
-} else {
-
-    $purchaseOrder->update([
-
-        'status' =>
-
-            'Partially Received'
-
-    ]);
-
-}
-
-return back()
-
-    ->with(
-
-        'success',
-
-        'Goods Receipt posted successfully.'
-
-    );
-
-
-}
+/*
+|--------------------------------------------------------------------------
+| Cancel
+|--------------------------------------------------------------------------
+*/
 
 public function cancel(
     Request $request,
-    GoodsReceipt $goodsReceipt
-)
-{
-    $request->validate([
+    GoodsReceiptHeader $goodsReceipt
+) {
 
-        'cancel_reason' =>
+    $validated =
+        $request->validate([
 
-            'required|string|max:500'
+            'reason' => [
+                'required',
+                'string',
+                'max:1000',
+            ],
 
-    ]);
+        ]);
 
-    $goodsReceipt->update([
 
-        'status' =>
+    $this
+        ->goodsReceiptService
+        ->cancelGoodsReceipt(
+            $goodsReceipt,
+            $validated['reason']
+        );
 
-            'Cancelled',
 
-        'cancel_reason' =>
-
-            $request->cancel_reason,
-
-        'cancelled_at' =>
-
-            now(),
-
-        'cancelled_by' =>
-
-            auth()->id(),
-
-    ]);
-
-    return back()->with(
-
-        'success',
-
-        'Goods Receipt berhasil dibatalkan.'
-
-    );
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt cancelled successfully.'
+        );
 }
+/*
+|--------------------------------------------------------------------------
+| Bulk Delete
+|--------------------------------------------------------------------------
+*/
 
+public function bulkDelete(
+    Request $request
+) {
+
+    $validated =
+        $request->validate([
+
+            'ids' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'ids.*' => [
+                'required',
+                'integer',
+                'exists:goods_receipts_headers,id',
+            ],
+
+        ]);
+
+
+    $this
+        ->goodsReceiptService
+        ->deleteGoodsReceipts(
+            $validated['ids']
+        );
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipts deleted successfully.'
+        );
+}
+/*
+|--------------------------------------------------------------------------
+| Destroy
+|--------------------------------------------------------------------------
+*/
+
+public function destroy(
+    GoodsReceiptHeader $goodsReceipt
+) {
+
+    $this
+        ->goodsReceiptService
+        ->deleteGoodsReceipts([
+            $goodsReceipt->id,
+        ]);
+
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Goods receipt deleted successfully.'
+        );
+}
 }
