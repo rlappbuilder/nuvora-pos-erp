@@ -742,59 +742,7 @@ private function formData(): array
 
 
                             ->values(),
-                           'inventory_movements' =>
-    $goodsReceipt
-        ->inventoryMovements
-        ->map(
-            function ($movement) {
-
-                return [
-
-                    'id' =>
-                        $movement->id,
-
-                    'product_variant_id' =>
-                        $movement->product_variant_id,
-
-                    'unit_id' =>
-                        $movement->unit_id,
-
-                    'reference_number' =>
-                        $movement->reference_number,
-
-                    'qty_in' =>
-                        (float)
-                        $movement->qty_in,
-
-                    'qty_out' =>
-                        (float)
-                        $movement->qty_out,
-
-                    'balance_qty' =>
-                        (float)
-                        $movement->balance_qty,
-
-                    'unit_cost' =>
-                        (float)
-                        $movement->unit_cost,
-
-                    'total_cost' =>
-                        (float)
-                        $movement->total_cost,
-
-                    'transaction_date' =>
-                        $movement
-                            ->transaction_date
-                            ?->format('Y-m-d'),
-
-                    'description' =>
-                        $movement->description,
-
-                ];
-
-            }
-        )
-        ->values(),
+                         
                         ];
 
                     }
@@ -1222,7 +1170,7 @@ public function bulkDelete(
             'ids.*' => [
                 'required',
                 'integer',
-                'exists:goods_receipts_headers,id',
+                'exists:goods_receipt_headers,id',
             ],
 
         ]);

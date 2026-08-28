@@ -21,6 +21,8 @@ use App\Models\Inventory\StockIssueHeader;
 use App\Models\Inventory\StockIssueDetail;
 use App\Models\Inventory\StockOpnameHeader;
 use App\Models\Inventory\StockOpnameDetail;
+use App\Models\Purchasing\PurchaseReturnHeader;
+use App\Models\Purchasing\PurchaseReturnDetail;
 class InventoryService
 {
     public function __construct(
@@ -6135,6 +6137,125 @@ public function receiveGoodsReceiptStock(
                 $detail->remarks
                 ??
                 'Goods receipt posted.',
+
+        ]
+
+    );
+
+}
+public function issuePurchaseReturnStock(
+    PurchaseReturnHeader $purchaseReturn,
+    PurchaseReturnDetail $detail
+): void {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $returnedQty =
+        (float) $detail->returned_qty;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Skip Zero Return
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $returnedQty <= 0
+    ) {
+
+        return;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Current Stock
+    |--------------------------------------------------------------------------
+    |
+    | Purchase Return selalu mengurangi stock.
+    |
+    */
+
+    $stock =
+        $this->updateCurrentStock([
+
+            'company_id' =>
+                $purchaseReturn->company_id,
+
+            'branch_id' =>
+                $purchaseReturn->branch_id,
+
+            'warehouse_id' =>
+                $purchaseReturn->warehouse_id,
+
+            'product_variant_id' =>
+                $detail->product_variant_id,
+
+            'unit_id' =>
+                $detail->unit_id,
+
+            'qty' =>
+                -abs(
+                    $returnedQty
+                ),
+
+            'transaction_date' =>
+                $purchaseReturn->return_date,
+
+            'lock' =>
+                true,
+
+        ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Movement
+    |--------------------------------------------------------------------------
+    */
+
+    $this->createMovement(
+
+        $stock,
+
+        [
+
+            'reference_type' =>
+                'PURCHASE_RETURN',
+
+            'reference_id' =>
+                $purchaseReturn->id,
+
+            'reference_number' =>
+                $purchaseReturn->return_number,
+
+            'qty_in' =>
+                0,
+
+            'qty_out' =>
+                $returnedQty,
+
+            'unit_cost' =>
+                (float)
+                $detail->unit_cost,
+
+            'total_cost' =>
+                (float)
+                $detail->total_cost,
+
+            'transaction_date' =>
+                $purchaseReturn->return_date,
+
+            'description' =>
+                $detail->remarks
+                ??
+                'Purchase return posted.',
 
         ]
 

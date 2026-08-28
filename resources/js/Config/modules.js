@@ -257,6 +257,13 @@ const modules = {
                 permission: 'goods-receipts.view',
             },
 
+             purchaseReturns: {
+                key: 'purchaseReturns',
+                title: 'Purchase Return',
+                icon: UsersIcon,
+                route: 'purchase-returns.index',
+                permission: 'purchase-returns.view',
+            },
               purchaseInvoice: {
                 key: 'purchaseInvoice',
                 title: 'Purchase Invoice',
@@ -273,13 +280,7 @@ const modules = {
                 permission: 'goods-receipts.view',
             },
 
-            purchaseReturns: {
-                key: 'purchaseReturns',
-                title: 'Purchase Returns',
-                icon: UsersIcon,
-                route: 'goods-receipts.index',
-                permission: 'goods-receipts.view',
-            },
+        
         // End purchasing //
         // settings
             Settings: {

@@ -9,6 +9,7 @@ use App\Models\Purchasing\PurchaseOrderDetail;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use Illuminate\Support\Facades\DB;
+
 use App\Services\Inventory\InventoryService;
 class GoodsReceiptService
 {
@@ -280,6 +281,10 @@ class GoodsReceiptService
 
                         'received_qty' =>
                             $receivedQty,
+                            
+                        'unit_cost' =>
+                            (float)
+                            $purchaseOrderDetail->unit_price,
 
                         'rejected_qty' =>
                             $rejectedQty,

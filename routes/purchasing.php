@@ -6,6 +6,7 @@ use App\Http\Controllers\Purchasing\PurchaseRequestController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseInvoiceController;
+use App\Http\Controllers\Purchasing\PurchaseReturnController;
 
 Route::middleware('auth')
     ->prefix('purchasing')
@@ -293,6 +294,94 @@ Route::middleware('auth')
                   Route::resource(
                     'goods-receipts',
                     GoodsReceiptController::class
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Purchase Return
+                |--------------------------------------------------------------------------
+                */
+
+                Route::post(
+                    '/purchase-returns/{purchaseReturn}/submit',
+                    [
+                        PurchaseReturnController::class,
+                        'submit',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.submit'
+                    );
+
+                Route::post(
+                    '/purchase-returns/{purchaseReturn}/approve',
+                    [
+                        PurchaseReturnController::class,
+                        'approve',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.approve'
+                    );
+
+                Route::post(
+                    '/purchase-returns/{purchaseReturn}/reject',
+                    [
+                        PurchaseReturnController::class,
+                        'reject',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.reject'
+                    );
+
+                Route::post(
+                    '/purchase-returns/{purchaseReturn}/post',
+                    [
+                        PurchaseReturnController::class,
+                        'post',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.post'
+                    );
+
+                Route::post(
+                    '/purchase-returns/{purchaseReturn}/cancel',
+                    [
+                        PurchaseReturnController::class,
+                        'cancel',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.cancel'
+                    );
+
+                Route::delete(
+                    '/purchase-returns-bulk-delete',
+                    [
+                        PurchaseReturnController::class,
+                        'bulkDelete',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.bulk-delete'
+                    );
+
+                Route::get(
+                    '/purchase-returns/{purchaseReturn}/data',
+                    [
+                        PurchaseReturnController::class,
+                        'showData',
+                    ]
+                )
+                    ->name(
+                        'purchase-returns.data'
+                    );
+
+                Route::resource(
+                    'purchase-returns',
+                    PurchaseReturnController::class
                 );
             /*
             |--------------------------------------------------------------------------
