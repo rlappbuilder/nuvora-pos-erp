@@ -53,6 +53,10 @@ const navigation = [
              modules.purchaseInvoice,
              modules.purchasePayment,
              modules.purchaseReturns,
+             modules.apAginng,
+             modules.purchaseReport,
+             modules.supplierStatement,
+           
         ],
     },
 

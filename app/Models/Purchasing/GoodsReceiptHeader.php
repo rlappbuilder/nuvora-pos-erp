@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models\Purchasing;
-
+use App\Models\MasterData\Branch;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -218,6 +218,18 @@ public function inventoryMovements()
     )->where(
         'reference_type',
         'GOODS_RECEIPT'
+    );
+}
+/*
+|--------------------------------------------------------------------------
+| Branch
+|--------------------------------------------------------------------------
+*/
+
+public function branch()
+{
+    return $this->belongsTo(
+        Branch::class
     );
 }
 }

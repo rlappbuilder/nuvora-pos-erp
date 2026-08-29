@@ -383,13 +383,44 @@ Route::middleware('auth')
                     'purchase-returns',
                     PurchaseReturnController::class
                 );
-            /*
+           /*
             |--------------------------------------------------------------------------
             | Purchase Invoice
-             Route::resource(
-                'purchase-invoices',
-                PurchaseInvoiceController::class
-            );
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '/purchase-invoices/{purchaseInvoice}/submit',
+                [
+                    PurchaseInvoiceController::class,
+                    'submit',
+                ]
+            )
+                ->name(
+                    'purchase-invoices.submit'
+                );
+
+            Route::post(
+                '/purchase-invoices/{purchaseInvoice}/approve',
+                [
+                    PurchaseInvoiceController::class,
+                    'approve',
+                ]
+            )
+                ->name(
+                    'purchase-invoices.approve'
+                );
+
+            Route::post(
+                '/purchase-invoices/{purchaseInvoice}/reject',
+                [
+                    PurchaseInvoiceController::class,
+                    'reject',
+                ]
+            )
+                ->name(
+                    'purchase-invoices.reject'
+                );
 
             Route::post(
                 '/purchase-invoices/{purchaseInvoice}/post',
@@ -403,17 +434,6 @@ Route::middleware('auth')
                 );
 
             Route::post(
-                '/purchase-invoices/{purchaseInvoice}/complete',
-                [
-                    PurchaseInvoiceController::class,
-                    'complete',
-                ]
-            )
-                ->name(
-                    'purchase-invoices.complete'
-                );
-
-            Route::post(
                 '/purchase-invoices/{purchaseInvoice}/cancel',
                 [
                     PurchaseInvoiceController::class,
@@ -424,9 +444,32 @@ Route::middleware('auth')
                     'purchase-invoices.cancel'
                 );
 
-    
-            |--------------------------------------------------------------------------
-            */
+            Route::delete(
+                '/purchase-invoices-bulk-delete',
+                [
+                    PurchaseInvoiceController::class,
+                    'bulkDelete',
+                ]
+            )
+                ->name(
+                    'purchase-invoices.bulk-delete'
+                );
+
+            Route::get(
+                '/purchase-invoices/{purchaseInvoice}/data',
+                [
+                    PurchaseInvoiceController::class,
+                    'showData',
+                ]
+            )
+                ->name(
+                    'purchase-invoices.data'
+                );
+
+            Route::resource(
+                'purchase-invoices',
+                PurchaseInvoiceController::class
+            );
 
        }
     );        
