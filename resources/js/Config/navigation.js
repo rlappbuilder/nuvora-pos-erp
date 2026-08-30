@@ -86,9 +86,11 @@ const navigation = [
         title: 'Accounting',
         children: [
             modules.cashBanks,
-             modules.chartOfAccounts,
+            modules.chartOfAccounts,
+            modules.accountingPeriod,
+            modules.fiscalYears,
+            modules.journals,
             
-            // modules.journals,
             // modules.generalLedgers,
             // modules.trialBalances,
             // modules.profitLosses,

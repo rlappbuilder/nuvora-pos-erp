@@ -230,6 +230,30 @@ const modules = {
                 permission: 'chart-of-accounts.view',
             },
 
+             accountingPeriod: {
+                key: 'accountingPeriod',
+                title: 'Accounting Period',
+                icon: UsersIcon,
+                route: 'accounting-periods.index',
+                permission: 'accounting-periods.view',
+            },
+
+            fiscalYears: {
+                key: 'fiscalYears',
+                title: 'Fiscal Years',
+                icon: UsersIcon,
+                route: 'fiscal-years.index',
+                permission: 'fiscal-years.view',
+            },
+             journals: {
+                key: 'journals',
+                title: 'Journal Entry',
+                icon: UsersIcon,
+                route: 'chart-of-accounts.index',
+                permission: 'chart-of-accounts.view',
+            },
+
+
         // End accounting //
 
            //purchasing //

@@ -38,6 +38,8 @@ const emit = defineEmits([
     'reject',
     'send',
     'confirm',
+    'close',
+    'reopen',
 ])
 const props = defineProps({
 
@@ -99,6 +101,15 @@ const props = defineProps({
         default: true,
     },
 
+    showClose: {
+        type: Boolean,
+        default: false,
+    },
+
+    showReopen: {
+        type: Boolean,
+        default: false,
+    },
   
 
 })
@@ -596,6 +607,68 @@ onBeforeUnmount(() => {
                         />
 
                         Cancel
+
+                    </button>
+
+                    <!-- ========================================================= -->
+                    <!-- Close -->
+                    <!-- ========================================================= -->
+
+                    <button
+                        v-if="showClose"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-orange-600
+                            transition-colors
+                            duration-150
+                            hover:bg-orange-50
+                        "
+                        @click="$emit('close'); close()"
+                    >
+
+                        <XCircleIcon
+                            class="h-5 w-5"
+                        />
+
+                        Close
+
+                    </button>
+
+                    <!-- ========================================================= -->
+                    <!-- Reopen -->
+                    <!-- ========================================================= -->
+
+                    <button
+                        v-if="showReopen"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-emerald-600
+                            transition-colors
+                            duration-150
+                            hover:bg-emerald-50
+                        "
+                        @click="$emit('reopen'); close()"
+                    >
+
+                        <CheckCircleIcon
+                            class="h-5 w-5"
+                        />
+
+                        Reopen
 
                     </button>
                     <!-- ================================================= -->

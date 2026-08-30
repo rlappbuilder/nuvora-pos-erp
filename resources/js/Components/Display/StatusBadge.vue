@@ -28,6 +28,24 @@ const variants = Object.freeze({
 
     /*
     |--------------------------------------------------------------------------
+    | Fiscal Year
+    |--------------------------------------------------------------------------
+    */
+
+    open: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Open',
+    },
+
+    closed: {
+        badge: 'bg-slate-100 text-slate-700',
+        dot: 'bg-slate-500',
+        text: 'Closed',
+    },
+
+    /*
+    |--------------------------------------------------------------------------
     | Master Data
     |--------------------------------------------------------------------------
     */
@@ -137,11 +155,7 @@ const variants = Object.freeze({
         dot: 'bg-emerald-500',
         text: 'Fully Received',
     },
-     closed: {
-        badge: 'bg-red-100 text-orange-700',
-        dot: 'bg-orange-500',
-        text: 'closed',
-    },
+  
 })
 
 /*
@@ -213,9 +227,11 @@ const type = computed(() => {
             case 'fully received':
                 return 'fully_received'
 
+           case 'open':
+                return 'open'
+
             case 'closed':
                 return 'closed'
-
             default:
                 break
         }

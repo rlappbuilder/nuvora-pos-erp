@@ -12,7 +12,7 @@ use App\Models\Purchasing\PurchaseInvoiceHeader;
 use App\Models\Purchasing\PurchaseInvoiceDetail;
 use App\Models\Purchasing\PurchaseOrderHeader;
 use App\Models\Purchasing\GoodsReceiptHeader;
-
+use App\Http\Requests\Accounting\UpdateFiscalYearRequest;
 use App\Models\MasterData\Company;
 use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
@@ -1475,42 +1475,22 @@ public function showData(
 */
 
 public function update(
-    UpdatePurchaseInvoiceRequest $request,
-    PurchaseInvoiceHeader $purchaseInvoice
-) {
-
-    abort_if(
-        ! in_array(
-            $purchaseInvoice->status,
-            [
-                'Draft',
-                'Rejected',
-            ],
-            true
-        ),
-        422,
-        'Only Draft or Rejected purchase invoice can be updated.'
-    );
-
+    UpdateFiscalYearRequest $request,
+    FiscalYear $fiscalYear
+): RedirectResponse {
 
     $data =
         $request->validated();
 
 
-    $branch =
-        Branch::findOrFail(
-            $data['branch_id']
-        );
-
-
-    $data['company_id'] =
-        $branch->company_id;
+    $data['updated_by'] =
+        $request->user()->id;
 
 
     $this
-        ->purchaseInvoiceService
-        ->updatePurchaseInvoice(
-            $purchaseInvoice,
+        ->fiscalYearService
+        ->updateFiscalYear(
+            $fiscalYear,
             $data
         );
 
@@ -1519,11 +1499,10 @@ public function update(
         ->back()
         ->with(
             'success',
-            'Purchase invoice updated successfully.'
+            'Fiscal year updated successfully.'
         );
+
 }
-
-
 /*
 |--------------------------------------------------------------------------
 | Submit
@@ -1695,4 +1674,5 @@ public function bulkDelete(
             'Purchase invoices deleted successfully.'
         );
 }
+
 }

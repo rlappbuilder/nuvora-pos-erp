@@ -1,9 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Accounting\FiscalYearController;
 use App\Http\Controllers\Accounting\CashBankController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
+use App\Http\Controllers\Accounting\AccountingPeriodController;
 
 Route::middleware('auth')
 
@@ -46,7 +47,91 @@ Route::middleware('auth')
             '/cash-banks/{cashBank}/print',
             [CashBankController::class, 'print']
         )->name('cash-banks.print');
+            /*
+            |--------------------------------------------------------------------------
+            | fiscal years
+            |--------------------------------------------------------------------------
+            */
 
+            Route::get(
+                'fiscal-years/create',
+                [FiscalYearController::class, 'create']
+            )->name('fiscal-years.create');
+
+                            Route::get(
+                            '/fiscal-years',
+                            [
+                                FiscalYearController::class,
+                                'index',
+                            ]
+                        )->name('fiscal-years.index');
+
+
+                        Route::post(
+                            '/fiscal-years',
+                            [
+                                FiscalYearController::class,
+                                'store',
+                            ]
+                        )->name('fiscal-years.store');
+
+
+                        Route::get(
+                            '/fiscal-years/{fiscalYear}',
+                            [
+                                FiscalYearController::class,
+                                'show',
+                            ]
+                        )->name('fiscal-years.show');
+
+                        Route::put(
+                            '/fiscal-years/{fiscalYear}',
+                            [
+                                FiscalYearController::class,
+                                'update',
+                            ]
+                        )->name('fiscal-years.update');
+                        Route::post(
+                            '/fiscal-years/{fiscalYear}/close',
+                            [
+                                FiscalYearController::class,
+                                'close',
+                            ]
+                        )->name('fiscal-years.close');
+
+
+                        Route::post(
+                            '/fiscal-years/{fiscalYear}/reopen',
+                            [
+                                FiscalYearController::class,
+                                'reopen',
+                            ]
+                        )->name('fiscal-years.reopen');
+             /*
+            |--------------------------------------------------------------------------
+            | accounting period
+            |--------------------------------------------------------------------------
+            */
+
+                   Route::get(
+                    'accounting-periods',
+                    [AccountingPeriodController::class, 'index']
+                )->name('accounting-periods.index');
+
+                Route::get(
+                    'accounting-periods/{accountingPeriod}',
+                    [AccountingPeriodController::class, 'show']
+                )->name('accounting-periods.show');
+
+                Route::post(
+                    'accounting-periods/{accountingPeriod}/close',
+                    [AccountingPeriodController::class, 'close']
+                )->name('accounting-periods.close');
+
+                Route::post(
+                    'accounting-periods/{accountingPeriod}/reopen',
+                    [AccountingPeriodController::class, 'reopen']
+                )->name('accounting-periods.reopen');
                 /*
             |--------------------------------------------------------------------------
             | CHART OF ACCOUNTS
