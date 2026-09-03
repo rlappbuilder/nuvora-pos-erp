@@ -11,62 +11,58 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('accounting_journals', function (Blueprint $table) {
+        Schema::create('journal_entry_lines', function (Blueprint $table) {
 
             $table->id();
 
 
             /*
             |--------------------------------------------------------------------------
-            | Company
+            | Journal Entry
             |--------------------------------------------------------------------------
             */
 
-            $table->foreignId('company_id')
-                ->constrained()
+            $table->foreignId('journal_entry_id')
+                ->constrained('journal_entries')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Account
+            |--------------------------------------------------------------------------
+            */
+
+            $table->foreignId('account_id')
+                ->constrained('chart_of_accounts')
                 ->cascadeOnUpdate()
                 ->restrictOnDelete();
 
 
             /*
             |--------------------------------------------------------------------------
-            | Journal
+            | Line
             |--------------------------------------------------------------------------
             */
 
-            $table->string('code', 30);
-
-            $table->string('name', 100);
-
-            $table->enum('type', [
-                'General',
-                'Sales',
-                'Purchase',
-                'Cash',
-                'Bank',
-                'Adjustment',
-                'Opening',
-            ])->default('General');
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Status
-            |--------------------------------------------------------------------------
-            */
-
-            $table->boolean('is_active')
-                ->default(true);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Information
-            |--------------------------------------------------------------------------
-            */
+            $table->unsignedInteger('line_number');
 
             $table->text('description')
                 ->nullable();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Amount
+            |--------------------------------------------------------------------------
+            */
+
+            $table->decimal('debit', 18, 2)
+                ->default(0);
+
+            $table->decimal('credit', 18, 2)
+                ->default(0);
 
 
             /*
@@ -85,21 +81,14 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
 
-            $table->foreignId('deleted_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
 
             /*
             |--------------------------------------------------------------------------
-            | Timestamps / Soft Delete
+            | Timestamps
             |--------------------------------------------------------------------------
             */
 
             $table->timestamps();
-
-            $table->softDeletes();
 
 
             /*
@@ -108,10 +97,13 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
 
-            $table->unique([
-                'company_id',
-                'code',
-            ]);
+            $table->unique(
+                [
+                    'journal_entry_id',
+                    'line_number',
+                ],
+                'jel_entry_line_unique'
+            );
 
 
             /*
@@ -120,14 +112,18 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
 
-            $table->index('type');
+            $table->index(
+                'account_id',
+                'jel_account_idx'
+            );
 
-            $table->index('is_active');
-
-            $table->index([
-                'company_id',
-                'is_active',
-            ]);
+            $table->index(
+                [
+                    'journal_entry_id',
+                    'account_id',
+                ],
+                'jel_entry_account_idx'
+            );
 
         });
     }
@@ -138,6 +134,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('accounting_journals');
+        Schema::dropIfExists('journal_entry_lines');
     }
 };

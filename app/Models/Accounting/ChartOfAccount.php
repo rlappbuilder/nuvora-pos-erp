@@ -164,4 +164,15 @@ class ChartOfAccount extends Model
     {
         return $query->where('company_id', $companyId);
     }
+
+    /**
+ * General Ledger Entries.
+ */
+public function ledgerEntries(): HasMany
+{
+    return $this->hasMany(
+        GeneralLedger::class,
+        'account_id'
+    );
+}
 }

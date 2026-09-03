@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('accounting_journals', function (Blueprint $table) {
+        Schema::create('journal_entries', function (Blueprint $table) {
 
             $table->id();
 
 
             /*
             |--------------------------------------------------------------------------
-            | Company
+            | Organization
             |--------------------------------------------------------------------------
             */
 
@@ -27,26 +27,49 @@ return new class extends Migration
                 ->cascadeOnUpdate()
                 ->restrictOnDelete();
 
+            $table->foreignId('branch_id')
+                ->constrained()
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
+
 
             /*
             |--------------------------------------------------------------------------
-            | Journal
+            | Accounting Structure
             |--------------------------------------------------------------------------
             */
 
-            $table->string('code', 30);
+            $table->foreignId('accounting_journal_id')
+                ->constrained('accounting_journals')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
 
-            $table->string('name', 100);
+            $table->foreignId('fiscal_year_id')
+                ->constrained('fiscal_years')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
 
-            $table->enum('type', [
-                'General',
-                'Sales',
-                'Purchase',
-                'Cash',
-                'Bank',
-                'Adjustment',
-                'Opening',
-            ])->default('General');
+            $table->foreignId('accounting_period_id')
+                ->constrained('accounting_periods')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $table->string('code', 50);
+
+            $table->date('entry_date');
+
+            $table->string('reference', 100)
+                ->nullable();
+
+            $table->text('description')
+                ->nullable();
 
 
             /*
@@ -55,17 +78,25 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
 
-            $table->boolean('is_active')
-                ->default(true);
+            $table->enum('status', [
+                'Draft',
+                'Posted',
+                'Reversed',
+            ])->default('Draft');
 
 
             /*
             |--------------------------------------------------------------------------
-            | Information
+            | Posting
             |--------------------------------------------------------------------------
             */
 
-            $table->text('description')
+            $table->foreignId('posted_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->timestamp('posted_at')
                 ->nullable();
 
 
@@ -108,10 +139,13 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
 
-            $table->unique([
-                'company_id',
-                'code',
-            ]);
+            $table->unique(
+                [
+                    'company_id',
+                    'code',
+                ],
+                'je_company_code_unique'
+            );
 
 
             /*
@@ -120,14 +154,40 @@ return new class extends Migration
             |--------------------------------------------------------------------------
             */
 
-            $table->index('type');
+            $table->index(
+                'entry_date',
+                'je_entry_date_idx'
+            );
 
-            $table->index('is_active');
+            $table->index(
+                'status',
+                'je_status_idx'
+            );
 
-            $table->index([
-                'company_id',
-                'is_active',
-            ]);
+            $table->index(
+                [
+                    'company_id',
+                    'branch_id',
+                ],
+                'je_company_branch_idx'
+            );
+
+            $table->index(
+                [
+                    'company_id',
+                    'accounting_journal_id',
+                ],
+                'je_company_journal_idx'
+            );
+
+            $table->index(
+                [
+                    'company_id',
+                    'fiscal_year_id',
+                    'accounting_period_id',
+                ],
+                'je_company_period_idx'
+            );
 
         });
     }
@@ -138,6 +198,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('accounting_journals');
+        Schema::dropIfExists('journal_entries');
     }
 };

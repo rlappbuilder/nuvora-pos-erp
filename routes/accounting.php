@@ -5,7 +5,10 @@ use App\Http\Controllers\Accounting\FiscalYearController;
 use App\Http\Controllers\Accounting\CashBankController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
 use App\Http\Controllers\Accounting\AccountingPeriodController;
-
+use App\Http\Controllers\Accounting\JournalEntryController;
+use App\Http\Controllers\Accounting\GeneralLedgerController;
+use App\Http\Controllers\Accounting\TrialBalanceController;
+use App\Http\Controllers\Accounting\BalanceSheetController;
 Route::middleware('auth')
 
     ->prefix('accounting')
@@ -47,6 +50,55 @@ Route::middleware('auth')
             '/cash-banks/{cashBank}/print',
             [CashBankController::class, 'print']
         )->name('cash-banks.print');
+
+        Route::get(
+            'trial-balance',
+            [TrialBalanceController::class, 'index']
+        )->name('trial-balance.index');
+
+
+        Route::get(
+            'balance-sheet',
+            [BalanceSheetController::class, 'index']
+        )->name('balance-sheet.index');
+        /*
+        |--------------------------------------------------------------------------
+        | JOURNAL ENTRY
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            'journal-entries',
+            [JournalEntryController::class, 'index']
+        )->name('journal-entries.index');
+
+
+        Route::post(
+            'journal-entries',
+            [JournalEntryController::class, 'store']
+        )->name('journal-entries.store');
+
+        Route::put(
+            'journal-entries/{journalEntry}',
+            [JournalEntryController::class, 'update']
+        )->name('journal-entries.update');
+
+        Route::get(
+            'journal-entries/{journalEntry}',
+            [JournalEntryController::class, 'show']
+        )->name('journal-entries.show');
+
+
+        Route::get(
+            'journal-entries/{journalEntry}/data',
+            [JournalEntryController::class, 'showData']
+        )->name('journal-entries.data');
+
+
+        Route::post(
+            'journal-entries/{journalEntry}/post',
+            [JournalEntryController::class, 'post']
+        )->name('journal-entries.post');
             /*
             |--------------------------------------------------------------------------
             | fiscal years
@@ -132,6 +184,30 @@ Route::middleware('auth')
                     'accounting-periods/{accountingPeriod}/reopen',
                     [AccountingPeriodController::class, 'reopen']
                 )->name('accounting-periods.reopen');
+
+               /*
+                |--------------------------------------------------------------------------
+                | GENERAL LEDGER
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get(
+                    'general-ledgers',
+                    [GeneralLedgerController::class, 'index']
+                )->name('general-ledgers.index');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accounting Journal
+        |--------------------------------------------------------------------------
+        */
+
+                Route::resource(
+                    'accounting-journals',
+                    \App\Http\Controllers\Accounting\AccountingJournalController::class
+                );
+
+            
                 /*
             |--------------------------------------------------------------------------
             | CHART OF ACCOUNTS

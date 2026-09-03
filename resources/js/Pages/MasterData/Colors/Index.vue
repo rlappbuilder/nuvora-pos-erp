@@ -53,21 +53,10 @@ const props = defineProps({
 
 })
 const search = ref(props.filters.search ?? '')
-
 const status = ref(props.filters.is_active ?? '')
-
 const perPage = ref(props.filters.per_page ?? 10)
-
-
 const pageTitle = computed(() => 'Color')
 const loading = ref(false)
-//const {
-
- //   loading,
-   // showLoading,
-    // hideLoading,
-
-//} = useLoading()
 
 const filters = reactive({
 

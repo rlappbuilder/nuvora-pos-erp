@@ -238,6 +238,15 @@ const modules = {
                 permission: 'accounting-periods.view',
             },
 
+             accountingJournals: {
+                key: 'accountingJournals',
+                title: 'Accounting Journals',
+                icon: UsersIcon,
+                route: 'accounting-journals.index',
+                permission: 'accounting-journals.view',
+            },
+            
+
             fiscalYears: {
                 key: 'fiscalYears',
                 title: 'Fiscal Years',
@@ -245,14 +254,35 @@ const modules = {
                 route: 'fiscal-years.index',
                 permission: 'fiscal-years.view',
             },
-             journals: {
-                key: 'journals',
+             journalsEntries: {
+                key: 'journalsEntries',
                 title: 'Journal Entry',
                 icon: UsersIcon,
-                route: 'chart-of-accounts.index',
-                permission: 'chart-of-accounts.view',
+                route: 'journal-entries.index',
+                permission: 'journal-entries.view',
             },
 
+              generalLeders: {
+                key: 'generalLeders',
+                title: 'General Ledger',
+                icon: UsersIcon,
+                route: 'general-ledgers.index',
+                permission: 'general-ledgers.view',
+            },
+            trialBalances: {
+                key: 'trialBalances',
+                title: 'Trial Balance',
+                icon: UsersIcon,
+                route: 'trial-balance.index',
+                permission: 'trial-balance.view',
+            },
+            balanceSheets: {
+                key: 'balanceSheets',
+                title: 'Balance Sheet',
+                icon: UsersIcon,
+                route: 'balance-sheet.index',
+                permission: 'balance-sheet.view',
+            },
 
         // End accounting //
 

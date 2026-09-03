@@ -89,12 +89,14 @@ const navigation = [
             modules.chartOfAccounts,
             modules.accountingPeriod,
             modules.fiscalYears,
-            modules.journals,
+            modules.accountingJournals,
+            modules.journalsEntries,
+             modules.generalLeders,
             
-            // modules.generalLedgers,
-            // modules.trialBalances,
+            modules.trialBalances,
+             modules.balanceSheets,
             // modules.profitLosses,
-            // modules.balanceSheets,
+           
         ].filter(Boolean),
     },
 

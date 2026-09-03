@@ -1,99 +1,35 @@
 <script setup>
 
 import { ref, computed, watch } from 'vue'
-
 import { Head, Link, router } from '@inertiajs/vue3'
-
-import {
-
-    LoadingOverlay,
-
-} from '@/Components/Feedback'
-
-
+import { LoadingOverlay,} from '@/Components/Feedback'
 import PageHeader from '@/Components/Layout/PageHeader.vue'
-
 import Card from '@/Components/Layout/Card.vue'
-
 import DataTable from '@/Components/Table/DataTable.vue'
-
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
-
 import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
-
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
-
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
-
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
-
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
-
 import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
-
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import {   TablePagination, } from '@/Components/Table'
-
-/*
-|--------------------------------------------------------------------------
-| Utils
-|--------------------------------------------------------------------------
-*/
-
-import {
-
-    formatCurrency,
-
-} from '@/Utils/currency'
-import {
-
-    BulkSelectionBar,
-
-} from '@/Components/Bulk'
-/*
-|--------------------------------------------------------------------------
-| Icons
-|--------------------------------------------------------------------------
-*/
-
-
-import StatsCard
-
-from '@/Components/Card/StatsCard.vue'
+import {formatCurrency,} from '@/Utils/currency'
+import { BulkSelectionBar,} from '@/Components/Bulk'
+import StatsCard from '@/Components/Card/StatsCard.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
-
-import {
-    success,
-    error,
-} from '@/Utils'
+import {success, error,} from '@/Utils'
 import Swal from 'sweetalert2'
-
-import {
-
-    onMounted,
-
-} from 'vue'
-
-import {
-
-    usePage,
-
-} from '@inertiajs/vue3'
-
+import { onMounted,} from 'vue'
+import { usePage,} from '@inertiajs/vue3'
 import { PlusIcon } from '@heroicons/vue/24/outline'
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
-import {
+import {useLoading,} from '@/Composables/useLoading'
 
-    useLoading,
-
-} from '@/Composables/useLoading'
-const {
-
-    loading,
-
-} = useLoading()
+const {loading,} = useLoading()
 
 const page = usePage()
 
