@@ -12,64 +12,210 @@ class AccountCategorySeeder extends Seeder
     {
         $categories = [
 
-    // Current Assets
-    ['type' => '110000', 'code' => '110100', 'name' => 'Cash & Bank', 'sort_order' => 1],
-    ['type' => '110000', 'code' => '110200', 'name' => 'Accounts Receivable', 'sort_order' => 2],
-    ['type' => '110000', 'code' => '110300', 'name' => 'Inventory', 'sort_order' => 3],
-    ['type' => '110000', 'code' => '110400', 'name' => 'Prepaid Expense', 'sort_order' => 4],
+            // ==========================================================
+            // CURRENT ASSETS
+            // ==========================================================
 
-    // Fixed Assets
-    ['type' => '120000', 'code' => '120100', 'name' => 'Land', 'sort_order' => 1],
-    ['type' => '120000', 'code' => '120200', 'name' => 'Building', 'sort_order' => 2],
-    ['type' => '120000', 'code' => '120300', 'name' => 'Vehicle', 'sort_order' => 3],
-    ['type' => '120000', 'code' => '120400', 'name' => 'Equipment', 'sort_order' => 4],
+            [
+                'type' => '110000',
+                'code' => '110100',
+                'name' => 'Cash & Bank',
+                'sort_order' => 1,
+            ],
 
-    // Current Liabilities
-    ['type' => '210000', 'code' => '210100', 'name' => 'Accounts Payable', 'sort_order' => 1],
-    ['type' => '210000', 'code' => '210200', 'name' => 'Tax Payable', 'sort_order' => 2],
+            [
+                'type' => '110000',
+                'code' => '110200',
+                'name' => 'Accounts Receivable',
+                'sort_order' => 2,
+            ],
 
-    // Long Term Liabilities
-    ['type' => '220000', 'code' => '220100', 'name' => 'Bank Loan', 'sort_order' => 1],
+            [
+                'type' => '110000',
+                'code' => '110300',
+                'name' => 'Inventory',
+                'sort_order' => 3,
+            ],
 
-    // Equity
-    ['type' => '310000', 'code' => '310100', 'name' => 'Owner Capital', 'sort_order' => 1],
+            [
+                'type' => '110000',
+                'code' => '110400',
+                'name' => 'Prepaid Expense',
+                'sort_order' => 4,
+            ],
 
-    // Revenue
-    ['type' => '410000', 'code' => '410100', 'name' => 'Sales Revenue', 'sort_order' => 1],
 
-    // Cost of Goods Sold
-    ['type' => '510000', 'code' => '510100', 'name' => 'Cost of Goods Sold', 'sort_order' => 1],
+            // ==========================================================
+            // FIXED ASSETS
+            // ==========================================================
 
-    // Operating Expenses
-    ['type' => '610000', 'code' => '610100', 'name' => 'Operating Expense', 'sort_order' => 1],
+            [
+                'type' => '120000',
+                'code' => '120100',
+                'name' => 'Land',
+                'sort_order' => 1,
+            ],
 
-    // Other Income
-    ['type' => '710000', 'code' => '710100', 'name' => 'Other Income', 'sort_order' => 1],
+            [
+                'type' => '120000',
+                'code' => '120200',
+                'name' => 'Building',
+                'sort_order' => 2,
+            ],
 
-    // Other Expense
-    ['type' => '810000', 'code' => '810100', 'name' => 'Other Expense', 'sort_order' => 1],
+            [
+                'type' => '120000',
+                'code' => '120300',
+                'name' => 'Vehicle',
+                'sort_order' => 3,
+            ],
 
-];
+            [
+                'type' => '120000',
+                'code' => '120400',
+                'name' => 'Equipment',
+                'sort_order' => 4,
+            ],
+
+
+            // ==========================================================
+            // CURRENT LIABILITIES
+            // ==========================================================
+
+            [
+                'type' => '210000',
+                'code' => '210100',
+                'name' => 'Accounts Payable',
+                'sort_order' => 1,
+            ],
+
+            [
+                'type' => '210000',
+                'code' => '210200',
+                'name' => 'Tax Payable',
+                'sort_order' => 2,
+            ],
+
+
+            // ==========================================================
+            // LONG TERM LIABILITIES
+            // ==========================================================
+
+            [
+                'type' => '220000',
+                'code' => '220100',
+                'name' => 'Bank Loan',
+                'sort_order' => 1,
+            ],
+
+
+            // ==========================================================
+            // EQUITY
+            // ==========================================================
+
+            [
+                'type' => '310000',
+                'code' => '310100',
+                'name' => 'Owner Capital',
+                'sort_order' => 1,
+            ],
+
+            [
+                'type' => '310000',
+                'code' => '310200',
+                'name' => 'Retained Earnings',
+                'sort_order' => 2,
+            ],
+
+            [
+                'type' => '310000',
+                'code' => '310300',
+                'name' => 'Current Year Earnings',
+                'sort_order' => 3,
+            ],
+
+
+            // ==========================================================
+            // REVENUE
+            // ==========================================================
+
+            [
+                'type' => '410000',
+                'code' => '410100',
+                'name' => 'Sales Revenue',
+                'sort_order' => 1,
+            ],
+
+
+            // ==========================================================
+            // COST OF GOODS SOLD
+            // ==========================================================
+
+            [
+                'type' => '510000',
+                'code' => '510100',
+                'name' => 'Cost of Goods Sold',
+                'sort_order' => 1,
+            ],
+
+
+            // ==========================================================
+            // OPERATING EXPENSES
+            // ==========================================================
+
+            [
+                'type' => '610000',
+                'code' => '610100',
+                'name' => 'Operating Expense',
+                'sort_order' => 1,
+            ],
+
+
+            // ==========================================================
+            // OTHER INCOME
+            // ==========================================================
+
+            [
+                'type' => '710000',
+                'code' => '710100',
+                'name' => 'Other Income',
+                'sort_order' => 1,
+            ],
+
+
+            // ==========================================================
+            // OTHER EXPENSE
+            // ==========================================================
+
+            [
+                'type' => '810000',
+                'code' => '810100',
+                'name' => 'Other Expense',
+                'sort_order' => 1,
+            ],
+
+        ];
 
         foreach ($categories as $category) {
 
-            $type = AccountType::where('code', $category['type'])->first();
+            $type = AccountType::where(
+                'code',
+                $category['type']
+            )->first();
 
             if (!$type) {
                 continue;
             }
 
             AccountCategory::updateOrCreate(
-
                 [
                     'code' => $category['code'],
                 ],
-
                 [
                     'account_type_id' => $type->id,
                     'name'            => $category['name'],
-                    'sort_order'      => $category['sort_order'],
-                    'status'          => true,
+                    'sort_order'     => $category['sort_order'],
+                    'status'         => true,
                 ]
             );
         }

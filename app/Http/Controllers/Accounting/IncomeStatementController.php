@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Accounting\FiscalYear;
 use App\Models\Accounting\AccountingPeriod;
 use App\Models\MasterData\Branch;
-use App\Services\Accounting\BalanceSheetService;
+use App\Services\Accounting\IncomeStatementService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class BalanceSheetController extends Controller
+class IncomeStatementController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class BalanceSheetController extends Controller
 
     public function index(
         Request $request,
-        BalanceSheetService $balanceSheetService
+        IncomeStatementService $incomeStatementService
     ) {
         $branchId =
             $request->integer('branch_id');
@@ -31,9 +31,14 @@ class BalanceSheetController extends Controller
         $accountingPeriodId =
             $request->integer('accounting_period_id');
 
-        $asOfDate =
+        $dateFrom =
             $request->input(
-                'as_of_date'
+                'date_from'
+            );
+
+        $dateTo =
+            $request->input(
+                'date_to'
             ) ?: now()->toDateString();
 
 
@@ -44,11 +49,12 @@ class BalanceSheetController extends Controller
         */
 
         $result =
-            $balanceSheetService->generate(
+            $incomeStatementService->generate(
                 $branchId,
                 $fiscalYearId,
                 $accountingPeriodId,
-                $asOfDate
+                $dateFrom,
+                $dateTo
             );
 
 
@@ -59,11 +65,11 @@ class BalanceSheetController extends Controller
         */
 
         return Inertia::render(
-            'Accounting/BalanceSheet/Index',
+            'Accounting/IncomeStatement/Index',
             [
 
                 'title' =>
-                    'Balance Sheet',
+                    'Income Statement',
 
                 'report' =>
                     $result['report'],
@@ -82,8 +88,11 @@ class BalanceSheetController extends Controller
                     'accounting_period_id' =>
                         $accountingPeriodId ?: '',
 
-                    'as_of_date' =>
-                        $asOfDate,
+                    'date_from' =>
+                        $dateFrom ?: '',
+
+                    'date_to' =>
+                        $dateTo,
 
                 ],
 

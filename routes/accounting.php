@@ -9,6 +9,7 @@ use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\GeneralLedgerController;
 use App\Http\Controllers\Accounting\TrialBalanceController;
 use App\Http\Controllers\Accounting\BalanceSheetController;
+use App\Http\Controllers\Accounting\IncomeStatementController;
 Route::middleware('auth')
 
     ->prefix('accounting')
@@ -50,6 +51,11 @@ Route::middleware('auth')
             '/cash-banks/{cashBank}/print',
             [CashBankController::class, 'print']
         )->name('cash-banks.print');
+
+        Route::get(
+            'income-statement',
+            [IncomeStatementController::class, 'index']
+        )->name('income-statement.index');
 
         Route::get(
             'trial-balance',

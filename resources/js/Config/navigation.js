@@ -94,8 +94,8 @@ const navigation = [
              modules.generalLeders,
             
             modules.trialBalances,
-             modules.balanceSheets,
-            // modules.profitLosses,
+            modules.balanceSheets,
+            modules.profitLosses,
            
         ].filter(Boolean),
     },

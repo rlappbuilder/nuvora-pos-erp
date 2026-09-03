@@ -284,6 +284,14 @@ const modules = {
                 permission: 'balance-sheet.view',
             },
 
+              profitLosses: {
+                key: 'profitLosses',
+                title: 'Income Statement',
+                icon: UsersIcon,
+                route: 'income-statement.index',
+                permission: 'income-statement.view',
+            },
+
         // End accounting //
 
            //purchasing //
