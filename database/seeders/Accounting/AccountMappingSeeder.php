@@ -20,8 +20,9 @@ class AccountMappingSeeder extends Seeder
             'inventory_in_transit' => '110304',
             'inventory_provision' => '110306',
             'opening_balance_equity' => '310401',
-             'stock_issue_marketing_expense' => '610110',
-              'stock_issue_operating_expense' => '610113',
+            'stock_issue_marketing_expense' => '610110',
+            'stock_issue_operating_expense' => '610113',
+            'goods_received_not_invoiced' => '210103',
         ];
 
         foreach ($companies as $company) {

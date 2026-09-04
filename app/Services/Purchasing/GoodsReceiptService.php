@@ -9,18 +9,24 @@ use App\Models\Purchasing\PurchaseOrderDetail;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use Illuminate\Support\Facades\DB;
-
+use App\Services\Accounting\AccountMappingService;
+use App\Services\Accounting\JournalEntryService;
+use App\Models\Accounting\FiscalYear;
+use App\Models\Accounting\AccountingPeriod;
+use App\Models\Accounting\AccountingJournal;
 use App\Services\Inventory\InventoryService;
 class GoodsReceiptService
 {
     protected CodeGeneratorService $codeGeneratorService;
-
+    protected AccountMappingService $accountMappingService;
     protected DocumentActivityService $documentActivityService;
-
+    protected JournalEntryService $journalEntryService;
    public function __construct(
     CodeGeneratorService $codeGeneratorService,
     DocumentActivityService $documentActivityService,
-    InventoryService $inventoryService
+    InventoryService $inventoryService,
+    AccountMappingService $accountMappingService,
+     JournalEntryService $journalEntryService
         ) {
             $this->codeGeneratorService =
                 $codeGeneratorService;
@@ -30,6 +36,12 @@ class GoodsReceiptService
 
             $this->inventoryService =
                 $inventoryService;
+
+            $this->accountMappingService =
+            $accountMappingService;
+
+             $this->journalEntryService =
+            $journalEntryService;
         }
 
 
@@ -786,12 +798,6 @@ class GoodsReceiptService
             }
         );
     }
-/*
-|--------------------------------------------------------------------------
-| Post
-|--------------------------------------------------------------------------
-*/
-
 public function postGoodsReceipt(
     GoodsReceiptHeader $goodsReceipt
 ): void {
@@ -846,6 +852,124 @@ public function postGoodsReceipt(
                 );
 
             }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounting Context
+            |--------------------------------------------------------------------------
+            */
+
+            $fiscalYear =
+                FiscalYear::query()
+                    ->where(
+                        'company_id',
+                        $goodsReceipt->company_id
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $goodsReceipt->receipt_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $goodsReceipt->receipt_date
+                    )
+                    ->first();
+
+            if (! $fiscalYear) {
+
+                throw new \RuntimeException(
+                    'Open fiscal year not found for goods receipt date.'
+                );
+
+            }
+
+
+            $accountingPeriod =
+                AccountingPeriod::query()
+                    ->where(
+                        'company_id',
+                        $goodsReceipt->company_id
+                    )
+                    ->where(
+                        'fiscal_year_id',
+                        $fiscalYear->id
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->forDate(
+                        $goodsReceipt->receipt_date
+                    )
+                    ->first();
+
+            if (! $accountingPeriod) {
+
+                throw new \RuntimeException(
+                    'Open accounting period not found for goods receipt date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $accountingJournal =
+                AccountingJournal::query()
+                    ->where(
+                        'company_id',
+                        $goodsReceipt->company_id
+                    )
+                    ->where(
+                        'type',
+                        'Adjustment'
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+            if (! $accountingJournal) {
+
+                throw new \RuntimeException(
+                    'Adjustment accounting journal not found.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounts
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $goodsReceipt->company_id,
+                        'inventory_merchandise'
+                    );
+
+
+            $grniAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $goodsReceipt->company_id,
+                        'goods_received_not_invoiced'
+                    );
 
 
             /*
@@ -980,6 +1104,15 @@ public function postGoodsReceipt(
                 }
 
             }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Total
+            |--------------------------------------------------------------------------
+            */
+
+            $totalInventoryCost = 0;
 
 
             /*
@@ -1140,10 +1273,6 @@ public function postGoodsReceipt(
                 |--------------------------------------------------------------------------
                 | Unit Cost
                 |--------------------------------------------------------------------------
-                |
-                | GRN detail tidak menyimpan cost.
-                | Cost diambil dari Purchase Order Detail.
-                |
                 */
 
                 $unitCost =
@@ -1172,169 +1301,294 @@ public function postGoodsReceipt(
                 |
                 */
 
-                          if (
-                            $receivedQty > 0
-                        ) {
+                if (
+                    $receivedQty > 0
+                ) {
 
-                            $this->inventoryService
-                                ->receiveGoodsReceiptStock(
+                    $this->inventoryService
+                        ->receiveGoodsReceiptStock(
 
-                                    $goodsReceipt,
+                            $goodsReceipt,
 
-                                    $detail,
+                            $detail,
 
-                                    $unitCost
+                            $unitCost
 
-                                );
-
-                        }
-                   /*
-|--------------------------------------------------------------------------
-| Update Purchase Order Detail
-|--------------------------------------------------------------------------
-*/
-
-$newReceivedQty =
-    (float)
-    $purchaseOrderDetail
-        ->received_qty
-    +
-    $receivedQty;
+                        );
 
 
-$newRemainingQty =
-    max(
-        0,
-        (float)
-        $purchaseOrderDetail
-            ->remaining_qty
-        -
-        $processedQty
-    );
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Accumulate Inventory Cost
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $totalInventoryCost +=
+                        $receivedQty *
+                        $unitCost;
+
+                }
 
 
-$purchaseOrderDetail->update([
+                /*
+                |--------------------------------------------------------------------------
+                | Update Purchase Order Detail
+                |--------------------------------------------------------------------------
+                */
 
-    'received_qty' =>
-        $newReceivedQty,
-
-    'remaining_qty' =>
-        $newRemainingQty,
-
-]);
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Update Purchase Order Headers
-|--------------------------------------------------------------------------
-*/
-
-foreach (
-    $purchaseOrders
-    as $purchaseOrder
-) {
-
-    $purchaseOrder
-        ->load('details');
-
-
-    $totalQuantity =
-        $purchaseOrder
-            ->details
-            ->sum(
-                fn ($detail) =>
+                $newReceivedQty =
                     (float)
-                    $detail->qty
-            );
+                    $purchaseOrderDetail
+                        ->received_qty
+                    +
+                    $receivedQty;
 
 
-    $receivedQuantity =
-        $purchaseOrder
-            ->details
-            ->sum(
-                fn ($detail) =>
-                    (float)
-                    $detail->received_qty
-            );
+                $newRemainingQty =
+                    max(
+                        0,
+                        (float)
+                        $purchaseOrderDetail
+                            ->remaining_qty
+                        -
+                        $processedQty
+                    );
 
 
-    $remainingQuantity =
-        $purchaseOrder
-            ->details
-            ->sum(
-                fn ($detail) =>
-                    (float)
-                    $detail->remaining_qty
-            );
+                $purchaseOrderDetail->update([
+
+                    'received_qty' =>
+                        $newReceivedQty,
+
+                    'remaining_qty' =>
+                        $newRemainingQty,
+
+                ]);
+
+            }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Determine Status
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Inventory Value
+            |--------------------------------------------------------------------------
+            */
 
-    if (
-        $remainingQuantity <= 0
-    ) {
+            if (
+                $totalInventoryCost <= 0
+            ) {
 
-        $status =
-            'Fully Received';
+                throw new \RuntimeException(
+                    'Goods receipt inventory value must be greater than zero.'
+                );
 
-    } else {
-
-        $status =
-            'Partially Received';
-
-    }
+            }
 
 
-    $purchaseOrder->update([
+            /*
+            |--------------------------------------------------------------------------
+            | Update Purchase Order Headers
+            |--------------------------------------------------------------------------
+            */
 
-        'total_quantity' =>
-            $totalQuantity,
+            foreach (
+                $purchaseOrders
+                as $purchaseOrder
+            ) {
 
-        'received_quantity' =>
-            $receivedQuantity,
-
-        'remaining_quantity' =>
-            $remainingQuantity,
-
-        'status' =>
-            $status,
-
-        'updated_by' =>
-            auth()->id(),
-
-    ]);
-
-}
+                $purchaseOrder
+                    ->load('details');
 
 
-/*
-|--------------------------------------------------------------------------
-| Post Goods Receipt
-|--------------------------------------------------------------------------
-*/
+                $totalQuantity =
+                    $purchaseOrder
+                        ->details
+                        ->sum(
+                            fn ($detail) =>
+                                (float)
+                                $detail->qty
+                        );
 
-$goodsReceipt->update([
 
-    'status' =>
-        'Posted',
+                $receivedQuantity =
+                    $purchaseOrder
+                        ->details
+                        ->sum(
+                            fn ($detail) =>
+                                (float)
+                                $detail->received_qty
+                        );
 
-    'posted_at' =>
-        now(),
 
-    'posted_by' =>
-        auth()->id(),
+                $remainingQuantity =
+                    $purchaseOrder
+                        ->details
+                        ->sum(
+                            fn ($detail) =>
+                                (float)
+                                $detail->remaining_qty
+                        );
 
-    'updated_by' =>
-        auth()->id(),
 
-]);
+                /*
+                |--------------------------------------------------------------------------
+                | Determine Status
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $remainingQuantity <= 0
+                ) {
+
+                    $status =
+                        'Fully Received';
+
+                } else {
+
+                    $status =
+                        'Partially Received';
+
+                }
+
+
+                $purchaseOrder->update([
+
+                    'total_quantity' =>
+                        $totalQuantity,
+
+                    'received_quantity' =>
+                        $receivedQuantity,
+
+                    'remaining_quantity' =>
+                        $remainingQuantity,
+
+                    'status' =>
+                        $status,
+
+                    'updated_by' =>
+                        auth()->id(),
+
+                ]);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry =
+                $this->journalEntryService
+                    ->create([
+
+                        'company_id' =>
+                            $goodsReceipt
+                                ->company_id,
+
+                        'branch_id' =>
+                            $goodsReceipt
+                                ->branch_id,
+
+                        'accounting_journal_id' =>
+                            $accountingJournal
+                                ->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear
+                                ->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod
+                                ->id,
+
+                        'entry_date' =>
+                            $goodsReceipt
+                                ->receipt_date,
+
+                        'reference' =>
+                            $goodsReceipt
+                                ->number,
+
+                        'description' =>
+                            'Goods receipt - '
+                            . $goodsReceipt->number,
+
+                        'lines' => [
+
+                            [
+
+                                'account_id' =>
+                                    $inventoryAccount
+                                        ->id,
+
+                                'description' =>
+                                    'Merchandise inventory received',
+
+                                'debit' =>
+                                    $totalInventoryCost,
+
+                                'credit' =>
+                                    0,
+
+                            ],
+
+                            [
+
+                                'account_id' =>
+                                    $grniAccount
+                                        ->id,
+
+                                'description' =>
+                                    'Goods received not invoiced',
+
+                                'debit' =>
+                                    0,
+
+                                'credit' =>
+                                    $totalInventoryCost,
+
+                            ],
+
+                        ],
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $this->journalEntryService
+                ->post(
+                    $journalEntry
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Goods Receipt
+            |--------------------------------------------------------------------------
+            */
+
+            $goodsReceipt->update([
+
+                'status' =>
+                    'Posted',
+
+                'posted_at' =>
+                    now(),
+
+                'posted_by' =>
+                    auth()->id(),
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
 
 
             /*

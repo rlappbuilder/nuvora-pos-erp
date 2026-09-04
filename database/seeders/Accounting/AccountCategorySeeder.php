@@ -96,7 +96,12 @@ class AccountCategorySeeder extends Seeder
                 'sort_order' => 2,
             ],
 
-
+            [
+                'type' => '210000',
+                'code' => '210300',
+                'name' => 'Goods Received Not Invoiced',
+                'sort_order' => 3,
+            ],
             // ==========================================================
             // LONG TERM LIABILITIES
             // ==========================================================
