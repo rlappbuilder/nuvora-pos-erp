@@ -17,6 +17,8 @@ class AccountingSeeder extends Seeder
             \Database\Seeders\Accounting\AccountCategorySeeder::class,
             
             \Database\Seeders\Accounting\ChartOfAccountSeeder::class,
+
+            \Database\Seeders\Accounting\AccountMappingSeeder::class,
             // ChartOfAccountSeeder nanti
 
         ]);

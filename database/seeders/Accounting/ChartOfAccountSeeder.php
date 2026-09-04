@@ -635,7 +635,26 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+            // Opening Balance Equity
+            [
+                'code' => '310400',
+                'name' => 'Opening Balance Equity',
+                'category' => 'Opening Balance Equity',
+                'parent' => null,
+                'normal_balance' => 'Credit',
+                'is_header' => true,
+                'is_posting' => false,
+            ],
 
+            [
+                'code' => '310401',
+                'name' => 'Opening Balance Equity',
+                'category' => 'Opening Balance Equity',
+                'parent' => '310400',
+                'normal_balance' => 'Credit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
 
             // ==========================================================
             // REVENUE

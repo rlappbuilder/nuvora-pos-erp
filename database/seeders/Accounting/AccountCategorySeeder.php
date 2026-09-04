@@ -134,6 +134,12 @@ class AccountCategorySeeder extends Seeder
                 'sort_order' => 3,
             ],
 
+            [
+                'type' => '310000',
+                'code' => '310400',
+                'name' => 'Opening Balance Equity',
+                'sort_order' => 4,
+            ],
 
             // ==========================================================
             // REVENUE

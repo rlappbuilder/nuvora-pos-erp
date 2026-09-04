@@ -313,13 +313,14 @@ class BalanceSheetService
                 ->values();
 
         $equity =
-            $rows
-                ->filter(
-                    fn ($row) =>
-                        $row['account_group_code']
-                        === '300000'
-                )
-                ->values();
+    $rows
+        ->filter(
+            fn ($row) =>
+                $row['account_group_code']
+                === '300000'
+                && $row['code'] !== '310301'
+        )
+        ->values();
 
 
         /*

@@ -18,7 +18,7 @@ class JournalEntryService
     protected CodeGeneratorService $codeGeneratorService;
 
     protected DocumentActivityService $documentActivityService;
-
+    protected GeneralLedgerService $generalLedgerService;
 
     public function __construct(
         CodeGeneratorService $codeGeneratorService,

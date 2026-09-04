@@ -23,18 +23,39 @@ use App\Models\Inventory\StockOpnameHeader;
 use App\Models\Inventory\StockOpnameDetail;
 use App\Models\Purchasing\PurchaseReturnHeader;
 use App\Models\Purchasing\PurchaseReturnDetail;
+use App\Services\Accounting\AccountMappingService;
+use App\Services\Accounting\JournalEntryService;
+use App\Models\Accounting\FiscalYear;
+use App\Models\Accounting\AccountingPeriod;
+use App\Models\Accounting\AccountingJournal;
 class InventoryService
 {
-    public function __construct(
-    CodeGeneratorService $codeGeneratorService,
-    DocumentActivityService $documentActivityService
-) {
-    $this->codeGeneratorService =
-        $codeGeneratorService;
+    protected CodeGeneratorService $codeGeneratorService;
 
-    $this->documentActivityService =
-        $documentActivityService;
-}
+    protected DocumentActivityService $documentActivityService;
+
+    protected AccountMappingService $accountMappingService;
+
+    protected JournalEntryService $journalEntryService;
+
+    public function __construct(
+        CodeGeneratorService $codeGeneratorService,
+        DocumentActivityService $documentActivityService,
+        AccountMappingService $accountMappingService,
+        JournalEntryService $journalEntryService
+    ) {
+        $this->codeGeneratorService =
+            $codeGeneratorService;
+
+        $this->documentActivityService =
+            $documentActivityService;
+
+        $this->accountMappingService =
+            $accountMappingService;
+
+        $this->journalEntryService =
+            $journalEntryService;
+    }
     /*
     |--------------------------------------------------------------------------
     | Public Methods
@@ -176,42 +197,120 @@ public function postOpeningStock(
 
         /*
         |--------------------------------------------------------------------------
+        | Resolve Accounting Context
+        |--------------------------------------------------------------------------
+        */
+
+        $fiscalYear = FiscalYear::query()
+            ->where('company_id', $openingStock->company_id)
+            ->where('status', 'Open')
+            ->whereDate(
+                'start_date',
+                '<=',
+                $openingStock->transaction_date
+            )
+            ->whereDate(
+                'end_date',
+                '>=',
+                $openingStock->transaction_date
+            )
+            ->first();
+
+        if (! $fiscalYear) {
+            throw new \RuntimeException(
+                'Open fiscal year not found for opening stock transaction date.'
+            );
+        }
+
+
+        $accountingPeriod = AccountingPeriod::query()
+            ->where('company_id', $openingStock->company_id)
+            ->where('fiscal_year_id', $fiscalYear->id)
+            ->where('status', 'Open')
+            ->forDate($openingStock->transaction_date)
+            ->first();
+
+        if (! $accountingPeriod) {
+            throw new \RuntimeException(
+                'Open accounting period not found for opening stock transaction date.'
+            );
+        }
+
+
+        $accountingJournal = AccountingJournal::query()
+            ->where('company_id', $openingStock->company_id)
+            ->where('type', 'Adjustment')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $accountingJournal) {
+            throw new \RuntimeException(
+                'Adjustment accounting journal not found.'
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounts
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAccount = $this->accountMappingService
+            ->getAccount(
+                $openingStock->company_id,
+                'inventory_merchandise'
+            );
+
+        $openingBalanceEquityAccount = $this->accountMappingService
+            ->getAccount(
+                $openingStock->company_id,
+                'opening_balance_equity'
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Post Details
         |--------------------------------------------------------------------------
         */
 
+        $totalOpeningStockValue = 0;
+
         foreach ($openingStock->details as $detail) {
 
-           $stock = $this->updateCurrentStock([
+            $stock = $this->updateCurrentStock([
 
-            'company_id' =>
-                $openingStock->company_id,
+                'company_id' =>
+                    $openingStock->company_id,
 
-            'branch_id' =>
-                $openingStock->branch_id,
+                'branch_id' =>
+                    $openingStock->branch_id,
 
-            'warehouse_id' =>
-                $openingStock->warehouse_id,
+                'warehouse_id' =>
+                    $openingStock->warehouse_id,
 
-            'product_variant_id' =>
-                $detail->product_variant_id,
+                'product_variant_id' =>
+                    $detail->product_variant_id,
 
-            'unit_id' =>
-                $detail->unit_id,
+                'unit_id' =>
+                    $detail->unit_id,
 
-            'qty' =>
-                $detail->qty,
+                'qty' =>
+                    $detail->qty,
 
-            'average_cost' =>
-                $detail->unit_cost,
+                'average_cost' =>
+                    $detail->unit_cost,
 
-            'update_average_cost' =>
-                true,
+                'update_average_cost' =>
+                    true,
 
-            'transaction_date' =>
-                $openingStock->transaction_date,
+                'transaction_date' =>
+                    $openingStock->transaction_date,
 
-        ]);
+            ]);
+
+
             /*
             |--------------------------------------------------------------------------
             | Inventory Movement
@@ -259,7 +358,108 @@ public function postOpeningStock(
 
             );
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accumulate Accounting Value
+            |--------------------------------------------------------------------------
+            */
+
+            $totalOpeningStockValue += (float) $detail->total_cost;
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Accounting Value
+        |--------------------------------------------------------------------------
+        */
+
+        if ($totalOpeningStockValue <= 0) {
+
+            throw new \RuntimeException(
+                'Opening stock total value must be greater than zero.'
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $journalEntry = $this->journalEntryService->create([
+
+            'company_id' =>
+                $openingStock->company_id,
+
+            'branch_id' =>
+                $openingStock->branch_id,
+
+            'accounting_journal_id' =>
+                $accountingJournal->id,
+
+            'fiscal_year_id' =>
+                $fiscalYear->id,
+
+            'accounting_period_id' =>
+                $accountingPeriod->id,
+
+            'entry_date' =>
+                $openingStock->transaction_date,
+
+            'reference' =>
+                $openingStock->number,
+
+            'description' =>
+                'Opening stock - '
+                . $openingStock->number,
+
+            'lines' => [
+
+                [
+                    'account_id' =>
+                        $inventoryAccount->id,
+
+                    'description' =>
+                        'Opening merchandise inventory',
+
+                    'debit' =>
+                        $totalOpeningStockValue,
+
+                    'credit' =>
+                        0,
+                ],
+
+                [
+                    'account_id' =>
+                        $openingBalanceEquityAccount->id,
+
+                    'description' =>
+                        'Opening balance equity',
+
+                    'debit' =>
+                        0,
+
+                    'credit' =>
+                        $totalOpeningStockValue,
+                ],
+
+            ],
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $this->journalEntryService->post(
+            $journalEntry
+        );
 
 
         /*
@@ -2218,6 +2418,137 @@ public function postInventoryAdjustment(
 
         /*
         |--------------------------------------------------------------------------
+        | Resolve Accounting Context
+        |--------------------------------------------------------------------------
+        */
+
+        $fiscalYear =
+            FiscalYear::query()
+                ->where(
+                    'company_id',
+                    $inventoryAdjustment->company_id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->whereDate(
+                    'start_date',
+                    '<=',
+                    $inventoryAdjustment->transaction_date
+                )
+                ->whereDate(
+                    'end_date',
+                    '>=',
+                    $inventoryAdjustment->transaction_date
+                )
+                ->first();
+
+        if (! $fiscalYear) {
+
+            throw new \RuntimeException(
+                'Open fiscal year not found for inventory adjustment transaction date.'
+            );
+
+        }
+
+
+        $accountingPeriod =
+            AccountingPeriod::query()
+                ->where(
+                    'company_id',
+                    $inventoryAdjustment->company_id
+                )
+                ->where(
+                    'fiscal_year_id',
+                    $fiscalYear->id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->forDate(
+                    $inventoryAdjustment->transaction_date
+                )
+                ->first();
+
+        if (! $accountingPeriod) {
+
+            throw new \RuntimeException(
+                'Open accounting period not found for inventory adjustment transaction date.'
+            );
+
+        }
+
+
+        $accountingJournal =
+            AccountingJournal::query()
+                ->where(
+                    'company_id',
+                    $inventoryAdjustment->company_id
+                )
+                ->where(
+                    'type',
+                    'Adjustment'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (! $accountingJournal) {
+
+            throw new \RuntimeException(
+                'Adjustment accounting journal not found.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounts
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $inventoryAdjustment->company_id,
+                    'inventory_merchandise'
+                );
+
+
+        $adjustmentExpenseAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $inventoryAdjustment->company_id,
+                    'inventory_adjustment_expense'
+                );
+
+
+        $adjustmentGainAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $inventoryAdjustment->company_id,
+                    'inventory_adjustment_gain'
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accounting Totals
+        |--------------------------------------------------------------------------
+        */
+
+        $totalIncrease = 0;
+
+        $totalDecrease = 0;
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Post Details
         |--------------------------------------------------------------------------
         */
@@ -2367,7 +2698,216 @@ public function postInventoryAdjustment(
 
             );
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accumulate Accounting Value
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost =
+                abs(
+                    (float) $detail->total_cost
+                );
+
+
+            if (
+                $differenceQty > 0
+            ) {
+
+                $totalIncrease += $totalCost;
+
+            } else {
+
+                $totalDecrease += $totalCost;
+
+            }
+
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Accounting Value
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $totalIncrease <= 0 &&
+            $totalDecrease <= 0
+        ) {
+
+            throw new \RuntimeException(
+                'Inventory adjustment total value must be greater than zero.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Build Journal Lines
+        |--------------------------------------------------------------------------
+        */
+
+        $journalLines = [];
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Increase
+        |--------------------------------------------------------------------------
+        |
+        | Dr Inventory
+        | Cr Inventory Adjustment Gain
+        |
+        */
+
+        if (
+            $totalIncrease > 0
+        ) {
+
+            $journalLines[] = [
+
+                'account_id' =>
+                    $inventoryAccount->id,
+
+                'description' =>
+                    'Inventory adjustment increase',
+
+                'debit' =>
+                    $totalIncrease,
+
+                'credit' =>
+                    0,
+
+            ];
+
+
+            $journalLines[] = [
+
+                'account_id' =>
+                    $adjustmentGainAccount->id,
+
+                'description' =>
+                    'Inventory adjustment gain',
+
+                'debit' =>
+                    0,
+
+                'credit' =>
+                    $totalIncrease,
+
+            ];
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Decrease
+        |--------------------------------------------------------------------------
+        |
+        | Dr Inventory Adjustment Expense
+        | Cr Inventory
+        |
+        */
+
+        if (
+            $totalDecrease > 0
+        ) {
+
+            $journalLines[] = [
+
+                'account_id' =>
+                    $adjustmentExpenseAccount->id,
+
+                'description' =>
+                    'Inventory adjustment expense',
+
+                'debit' =>
+                    $totalDecrease,
+
+                'credit' =>
+                    0,
+
+            ];
+
+
+            $journalLines[] = [
+
+                'account_id' =>
+                    $inventoryAccount->id,
+
+                'description' =>
+                    'Inventory adjustment decrease',
+
+                'debit' =>
+                    0,
+
+                'credit' =>
+                    $totalDecrease,
+
+            ];
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $journalEntry =
+            $this->journalEntryService
+                ->create([
+
+                    'company_id' =>
+                        $inventoryAdjustment
+                            ->company_id,
+
+                    'branch_id' =>
+                        $inventoryAdjustment
+                            ->branch_id,
+
+                    'accounting_journal_id' =>
+                        $accountingJournal->id,
+
+                    'fiscal_year_id' =>
+                        $fiscalYear->id,
+
+                    'accounting_period_id' =>
+                        $accountingPeriod->id,
+
+                    'entry_date' =>
+                        $inventoryAdjustment
+                            ->transaction_date,
+
+                    'reference' =>
+                        $inventoryAdjustment
+                            ->number,
+
+                    'description' =>
+                        'Inventory adjustment - '
+                        . $inventoryAdjustment->number,
+
+                    'lines' =>
+                        $journalLines,
+
+                ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $this->journalEntryService
+            ->post(
+                $journalEntry
+            );
 
 
         /*
@@ -2400,13 +2940,19 @@ public function postInventoryAdjustment(
         */
 
         $this->documentActivityService
-        ->record(
-            $inventoryAdjustment,
-            'POSTED',
-            'Draft',
-            'Posted',
-            'Inventory adjustment posted.'
-        );
+            ->record(
+
+                $inventoryAdjustment,
+
+                'POSTED',
+
+                'Draft',
+
+                'Posted',
+
+                'Inventory adjustment posted.'
+
+            );
 
     });
 
@@ -2804,6 +3350,202 @@ public function postStockIssue(
 
         /*
         |--------------------------------------------------------------------------
+        | Validate Issue Type
+        |--------------------------------------------------------------------------
+        */
+
+        $issueType =
+            strtolower(
+                trim(
+                    $stockIssue->issue_type
+                )
+            );
+
+
+        $allowedIssueTypes = [
+
+            'damage',
+            'expired',
+            'internal usage',
+            'sample',
+            'marketing',
+            'operational',
+            'other',
+
+        ];
+
+
+        if (
+            $issueType === 'production'
+        ) {
+
+            throw new \RuntimeException(
+                'Production stock issue cannot be posted until manufacturing accounting is implemented.'
+            );
+
+        }
+
+
+        if (
+            !in_array(
+                $issueType,
+                $allowedIssueTypes,
+                true
+            )
+        ) {
+
+            throw new \RuntimeException(
+                'Unsupported stock issue type.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounting Context
+        |--------------------------------------------------------------------------
+        */
+
+        $fiscalYear =
+            FiscalYear::query()
+                ->where(
+                    'company_id',
+                    $stockIssue->company_id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->whereDate(
+                    'start_date',
+                    '<=',
+                    $stockIssue->transaction_date
+                )
+                ->whereDate(
+                    'end_date',
+                    '>=',
+                    $stockIssue->transaction_date
+                )
+                ->first();
+
+        if (! $fiscalYear) {
+
+            throw new \RuntimeException(
+                'Open fiscal year not found for stock issue transaction date.'
+            );
+
+        }
+
+
+        $accountingPeriod =
+            AccountingPeriod::query()
+                ->where(
+                    'company_id',
+                    $stockIssue->company_id
+                )
+                ->where(
+                    'fiscal_year_id',
+                    $fiscalYear->id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->forDate(
+                    $stockIssue->transaction_date
+                )
+                ->first();
+
+        if (! $accountingPeriod) {
+
+            throw new \RuntimeException(
+                'Open accounting period not found for stock issue transaction date.'
+            );
+
+        }
+
+
+        $accountingJournal =
+            AccountingJournal::query()
+                ->where(
+                    'company_id',
+                    $stockIssue->company_id
+                )
+                ->where(
+                    'type',
+                    'Adjustment'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (! $accountingJournal) {
+
+            throw new \RuntimeException(
+                'Adjustment accounting journal not found.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounts
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockIssue->company_id,
+                    'inventory_merchandise'
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Expense Account
+        |--------------------------------------------------------------------------
+        */
+
+        $adjustmentExpenseAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockIssue->company_id,
+                    'inventory_adjustment_expense'
+                );
+
+
+        $marketingExpenseAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockIssue->company_id,
+                    'stock_issue_marketing_expense'
+                );
+
+
+        $operatingExpenseAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockIssue->company_id,
+                    'stock_issue_operating_expense'
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accounting Total
+        |--------------------------------------------------------------------------
+        */
+
+        $totalCost = 0;
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Post Details
         |--------------------------------------------------------------------------
         */
@@ -2838,9 +3580,6 @@ public function postStockIssue(
             |--------------------------------------------------------------------------
             | Update Product Stock
             |--------------------------------------------------------------------------
-            |
-            | Stock Issue selalu mengurangi stock.
-            |
             */
 
             $stock =
@@ -2936,7 +3675,181 @@ public function postStockIssue(
 
             );
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accumulate Accounting Value
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost +=
+                abs(
+                    (float) $detail->total_cost
+                );
+
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Total Cost
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $totalCost <= 0
+        ) {
+
+            throw new \RuntimeException(
+                'Stock issue total cost must be greater than zero.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Determine Debit Account
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            in_array(
+                $issueType,
+                [
+                    'damage',
+                    'expired',
+                ],
+                true
+            )
+        ) {
+
+            $expenseAccount =
+                $adjustmentExpenseAccount;
+
+        } elseif (
+            in_array(
+                $issueType,
+                [
+                    'marketing',
+                    'sample',
+                ],
+                true
+            )
+        ) {
+
+            $expenseAccount =
+                $marketingExpenseAccount;
+
+        } else {
+
+            $expenseAccount =
+                $operatingExpenseAccount;
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Journal Entry
+        |--------------------------------------------------------------------------
+        |
+        | Dr Expense
+        |    Cr Inventory
+        |
+        */
+
+        $journalEntry =
+            $this->journalEntryService
+                ->create([
+
+                    'company_id' =>
+                        $stockIssue
+                            ->company_id,
+
+                    'branch_id' =>
+                        $stockIssue
+                            ->branch_id,
+
+                    'accounting_journal_id' =>
+                        $accountingJournal
+                            ->id,
+
+                    'fiscal_year_id' =>
+                        $fiscalYear
+                            ->id,
+
+                    'accounting_period_id' =>
+                        $accountingPeriod
+                            ->id,
+
+                    'entry_date' =>
+                        $stockIssue
+                            ->transaction_date,
+
+                    'reference' =>
+                        $stockIssue
+                            ->number,
+
+                    'description' =>
+                        'Stock issue - '
+                        . $stockIssue->number,
+
+                    'lines' => [
+
+                        [
+
+                            'account_id' =>
+                                $expenseAccount
+                                    ->id,
+
+                            'description' =>
+                                'Stock issue - '
+                                . $stockIssue
+                                    ->issue_type,
+
+                            'debit' =>
+                                $totalCost,
+
+                            'credit' =>
+                                0,
+
+                        ],
+
+                        [
+
+                            'account_id' =>
+                                $inventoryAccount
+                                    ->id,
+
+                            'description' =>
+                                'Inventory issued - '
+                                . $stockIssue
+                                    ->issue_type,
+
+                            'debit' =>
+                                0,
+
+                            'credit' =>
+                                $totalCost,
+
+                        ],
+
+                    ],
+
+                ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $this->journalEntryService
+            ->post(
+                $journalEntry
+            );
 
 
         /*
@@ -5393,13 +6306,13 @@ public function createStockOpname(
         });
 
     }
-    /*
-    |--------------------------------------------------------------------------
-    | Post Stock Opname
-    |--------------------------------------------------------------------------
-    */
+ /*
+|--------------------------------------------------------------------------
+| Post Stock Opname
+|--------------------------------------------------------------------------
+*/
 
-   public function postStockOpname(
+public function postStockOpname(
     StockOpnameHeader $stockOpname
 ): void {
 
@@ -5440,6 +6353,149 @@ public function createStockOpname(
 
         /*
         |--------------------------------------------------------------------------
+        | Resolve Fiscal Year
+        |--------------------------------------------------------------------------
+        */
+
+        $fiscalYear =
+            FiscalYear::query()
+                ->where(
+                    'company_id',
+                    $stockOpname->company_id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->whereDate(
+                    'start_date',
+                    '<=',
+                    $stockOpname->transaction_date
+                )
+                ->whereDate(
+                    'end_date',
+                    '>=',
+                    $stockOpname->transaction_date
+                )
+                ->first();
+
+        if (! $fiscalYear) {
+
+            throw new \RuntimeException(
+                'No open fiscal year found for the stock opname transaction date.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounting Period
+        |--------------------------------------------------------------------------
+        */
+
+        $accountingPeriod =
+            AccountingPeriod::query()
+                ->where(
+                    'company_id',
+                    $stockOpname->company_id
+                )
+                ->where(
+                    'fiscal_year_id',
+                    $fiscalYear->id
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->forDate(
+                    $stockOpname->transaction_date
+                )
+                ->first();
+
+        if (! $accountingPeriod) {
+
+            throw new \RuntimeException(
+                'No open accounting period found for the stock opname transaction date.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Adjustment Journal
+        |--------------------------------------------------------------------------
+        */
+
+        $accountingJournal =
+            AccountingJournal::query()
+                ->where(
+                    'company_id',
+                    $stockOpname->company_id
+                )
+                ->where(
+                    'type',
+                    'Adjustment'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (! $accountingJournal) {
+
+            throw new \RuntimeException(
+                'No active Adjustment accounting journal found for this company.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Account Mapping
+        |--------------------------------------------------------------------------
+        */
+
+        $inventoryAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockOpname->company_id,
+                    'inventory_merchandise'
+                );
+
+
+        $adjustmentExpenseAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockOpname->company_id,
+                    'inventory_adjustment_expense'
+                );
+
+
+        $adjustmentGainAccount =
+            $this->accountMappingService
+                ->getAccount(
+                    $stockOpname->company_id,
+                    'inventory_adjustment_gain'
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Totals
+        |--------------------------------------------------------------------------
+        */
+
+        $totalIncrease = 0;
+
+        $totalDecrease = 0;
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Post Details
         |--------------------------------------------------------------------------
         */
@@ -5451,7 +6507,7 @@ public function createStockOpname(
 
             /*
             |--------------------------------------------------------------------------
-            | Validate Difference
+            | Difference Quantity
             |--------------------------------------------------------------------------
             */
 
@@ -5472,6 +6528,18 @@ public function createStockOpname(
                 continue;
 
             }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Difference Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $differenceCost =
+                abs(
+                    (float) $detail->difference_cost
+                );
 
 
             /*
@@ -5590,6 +6658,214 @@ public function createStockOpname(
                 ]
 
             );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accumulate Accounting Amount
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $differenceQty > 0
+            ) {
+
+                $totalIncrease +=
+                    $differenceCost;
+
+            } else {
+
+                $totalDecrease +=
+                    $differenceCost;
+
+            }
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Journal Lines
+        |--------------------------------------------------------------------------
+        */
+
+        $lines = [];
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Increase
+        |
+        | Dr Inventory
+        | Cr Inventory Adjustment Gain
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            round(
+                $totalIncrease,
+                2
+            ) > 0
+        ) {
+
+            $lines[] = [
+
+                'account_id' =>
+                    $inventoryAccount->id,
+
+                'description' =>
+                    'Inventory adjustment increase.',
+
+                'debit' =>
+                    round(
+                        $totalIncrease,
+                        2
+                    ),
+
+                'credit' =>
+                    0,
+
+            ];
+
+
+            $lines[] = [
+
+                'account_id' =>
+                    $adjustmentGainAccount->id,
+
+                'description' =>
+                    'Inventory adjustment gain.',
+
+                'debit' =>
+                    0,
+
+                'credit' =>
+                    round(
+                        $totalIncrease,
+                        2
+                    ),
+
+            ];
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Decrease
+        |
+        | Dr Inventory Adjustment Expense
+        | Cr Inventory
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            round(
+                $totalDecrease,
+                2
+            ) > 0
+        ) {
+
+            $lines[] = [
+
+                'account_id' =>
+                    $adjustmentExpenseAccount->id,
+
+                'description' =>
+                    'Inventory adjustment expense.',
+
+                'debit' =>
+                    round(
+                        $totalDecrease,
+                        2
+                    ),
+
+                'credit' =>
+                    0,
+
+            ];
+
+
+            $lines[] = [
+
+                'account_id' =>
+                    $inventoryAccount->id,
+
+                'description' =>
+                    'Inventory adjustment decrease.',
+
+                'debit' =>
+                    0,
+
+                'credit' =>
+                    round(
+                        $totalDecrease,
+                        2
+                    ),
+
+            ];
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create & Post Journal
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            ! empty($lines)
+        ) {
+
+            $journalEntry =
+                $this->journalEntryService
+                    ->create([
+
+                        'branch_id' =>
+                            $stockOpname
+                                ->branch_id,
+
+                        'accounting_journal_id' =>
+                            $accountingJournal
+                                ->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear
+                                ->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod
+                                ->id,
+
+                        'entry_date' =>
+                            $stockOpname
+                                ->transaction_date,
+
+                        'reference' =>
+                            $stockOpname
+                                ->number,
+
+                        'description' =>
+                            'Stock opname adjustment ' .
+                            $stockOpname->number,
+
+                        'lines' =>
+                            $lines,
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $this->journalEntryService
+                ->post(
+                    $journalEntry
+                );
 
         }
 
