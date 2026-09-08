@@ -6,7 +6,12 @@ use App\Models\Purchasing\GoodsReceiptHeader;
 use App\Models\Purchasing\PurchaseReturnHeader;
 use App\Models\Purchasing\PurchaseReturnDetail;
 use App\Models\Purchasing\GoodsReceiptDetail;
-
+use App\Services\Accounting\AccountMappingService;
+use App\Services\Accounting\JournalEntryService;
+use App\Models\Accounting\FiscalYear;
+use App\Models\Accounting\AccountingPeriod;
+use App\Models\Accounting\AccountingJournal;
+use App\Models\Purchasing\PurchaseInvoiceDetail;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use App\Services\Inventory\InventoryService;
@@ -20,12 +25,16 @@ class PurchaseReturnService
     protected DocumentActivityService $documentActivityService;
 
     protected InventoryService $inventoryService;
+    protected AccountMappingService $accountMappingService;
 
+    protected JournalEntryService $journalEntryService;
 
     public function __construct(
         CodeGeneratorService $codeGeneratorService,
         DocumentActivityService $documentActivityService,
-        InventoryService $inventoryService
+        InventoryService $inventoryService,
+        AccountMappingService $accountMappingService,
+        JournalEntryService $journalEntryService
     ) {
 
         $this->codeGeneratorService =
@@ -36,6 +45,12 @@ class PurchaseReturnService
 
         $this->inventoryService =
             $inventoryService;
+
+        $this->accountMappingService =
+            $accountMappingService;
+
+        $this->journalEntryService =
+            $journalEntryService;
 
     }
 
@@ -1023,162 +1038,1163 @@ public function reject(
     );
 
 }
+/*
+|--------------------------------------------------------------------------
+| Post
+|--------------------------------------------------------------------------
+*/
+
+public function postPurchaseReturn(
+    PurchaseReturnHeader $purchaseReturn
+): void {
+
+    DB::transaction(
+        function () use ($purchaseReturn) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Header
+            |--------------------------------------------------------------------------
+            */
+
+            $purchaseReturn =
+                PurchaseReturnHeader::query()
+                    ->with([
+                        'details.goodsReceiptDetail',
+                        'goodsReceipt',
+                    ])
+                    ->lockForUpdate()
+                    ->findOrFail(
+                        $purchaseReturn->id
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $purchaseReturn->status !== 'Approved'
+            ) {
+
+                throw new \RuntimeException(
+                    'Only Approved purchase return can be posted.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Details
+            |--------------------------------------------------------------------------
+            */
+
+            $details =
+                $purchaseReturn->details;
+
+            if (
+                $details->isEmpty()
+            ) {
+
+                throw new \RuntimeException(
+                    'Purchase return must have at least one detail.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Goods Receipt
+            |--------------------------------------------------------------------------
+            */
+
+            $goodsReceipt =
+                $purchaseReturn->goodsReceipt;
+
+            if (! $goodsReceipt) {
+
+                throw new \RuntimeException(
+                    'Purchase return must be linked to a goods receipt.'
+                );
+
+            }
+
+
+            if (
+                $goodsReceipt->status !== 'Posted'
+            ) {
+
+                throw new \RuntimeException(
+                    'Goods receipt must be posted before purchase return.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounting Period
+            |--------------------------------------------------------------------------
+            */
+
+            $fiscalYear =
+                FiscalYear::query()
+                    ->where(
+                        'company_id',
+                        $purchaseReturn->company_id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $purchaseReturn->return_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $purchaseReturn->return_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+
+            if (! $fiscalYear) {
+
+                throw new \RuntimeException(
+                    'No open fiscal year found for purchase return date.'
+                );
+
+            }
+
+
+            $accountingPeriod =
+                AccountingPeriod::query()
+                    ->where(
+                        'company_id',
+                        $purchaseReturn->company_id
+                    )
+                    ->where(
+                        'fiscal_year_id',
+                        $fiscalYear->id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $purchaseReturn->return_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $purchaseReturn->return_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+
+            if (! $accountingPeriod) {
+
+                throw new \RuntimeException(
+                    'No open accounting period found for purchase return date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $journal =
+                AccountingJournal::query()
+                    ->where(
+                        'company_id',
+                        $purchaseReturn->company_id
+                    )
+                    ->where(
+                        'code',
+                        'ADJ'
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+
+            if (! $journal) {
+
+                throw new \RuntimeException(
+                    'Adjustment accounting journal is not configured.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Account Mapping
+            |--------------------------------------------------------------------------
+            */
+
+            $grniAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseReturn->company_id,
+                        'goods_received_not_invoiced'
+                    );
+
+
+            $inventoryAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseReturn->company_id,
+                        'inventory_merchandise'
+                    );
+
+
+            $tradePayableAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseReturn->company_id,
+                        'trade_payable'
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Amount
+            |--------------------------------------------------------------------------
+            */
+
+            $tradePayableAmount =
+                0;
+
+            $grniAmount =
+                0;
+
+            $inventoryAmount =
+                0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Process Return Details
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $details
+                as $detail
+            ) {
+
+                $returnedQty =
+                    (float)
+                    $detail->returned_qty;
+
+
+                if (
+                    $returnedQty <= 0
+                ) {
+
+                    throw new \RuntimeException(
+                        'Returned quantity must be greater than zero.'
+                    );
+
+                }
+
+
+                $unitCost =
+                    (float)
+                    $detail->unit_cost;
+
+
+                $returnAmount =
+                    round(
+                        $returnedQty *
+                        $unitCost,
+                        2
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Stored Total
+                |--------------------------------------------------------------------------
+                */
+
+                $storedTotal =
+                    round(
+                        (float)
+                        $detail->total_cost,
+                        2
+                    );
+
+
+                if (
+                    abs(
+                        $returnAmount -
+                        $storedTotal
+                    ) > 0.01
+                ) {
+
+                    throw new \RuntimeException(
+                        'Purchase return detail total cost does not match returned quantity and unit cost.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | GRN Detail
+                |--------------------------------------------------------------------------
+                */
+
+                $goodsReceiptDetail =
+                    $detail
+                        ->goodsReceiptDetail;
+
+
+                if (! $goodsReceiptDetail) {
+
+                    throw new \RuntimeException(
+                        'Purchase return detail is missing goods receipt detail.'
+                    );
+
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Received Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $receivedQty =
+                    (float)
+                    $goodsReceiptDetail->received_qty;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Previous Posted Return Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $previousReturnedQty =
+                    (float)
+                    PurchaseReturnDetail::query()
+                        ->where(
+                            'goods_receipt_detail_id',
+                            $goodsReceiptDetail->id
+                        )
+                        ->where(
+                            'purchase_return_header_id',
+                            '!=',
+                            $purchaseReturn->id
+                        )
+                        ->whereHas(
+                            'purchaseReturn',
+                            function ($query) {
+
+                                $query->where(
+                                    'status',
+                                    'Posted'
+                                );
+
+                            }
+                        )
+                        ->sum(
+                            'returned_qty'
+                        );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Remaining Returnable Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $remainingReturnableQty =
+                    max(
+                        0,
+                        $receivedQty -
+                        $previousReturnedQty
+                    );
+
+
+                if (
+                    $returnedQty >
+                    $remainingReturnableQty
+                ) {
+
+                    throw new \RuntimeException(
+                        'Return quantity exceeds remaining returnable quantity.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Posted Invoice Quantity
+                |--------------------------------------------------------------------------
+                |
+                | Hanya Purchase Invoice yang sudah Posted
+                | yang dianggap sudah menjadi Trade Payable.
+                |
+                */
+
+                $postedInvoicedQty =
+                    (float)
+                    PurchaseInvoiceDetail::query()
+                        ->where(
+                            'goods_receipt_detail_id',
+                            $goodsReceiptDetail->id
+                        )
+                        ->whereHas(
+                            'purchaseInvoice',
+                            function ($query) {
+
+                                $query->where(
+                                    'status',
+                                    'Posted'
+                                );
+
+                            }
+                        )
+                        ->sum(
+                            'invoiced_qty'
+                        );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Normalize Posted Invoice Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $postedInvoicedQty =
+                    min(
+                        $postedInvoicedQty,
+                        $receivedQty
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Remaining Invoiced Quantity
+                |--------------------------------------------------------------------------
+                |
+                | Quantity yang masih tersedia untuk dialokasikan
+                | sebagai reversal Trade Payable.
+                |
+                */
+
+                $remainingInvoicedQty =
+                    max(
+                        0,
+                        $postedInvoicedQty -
+                        $previousReturnedQty
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Allocate Return Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $invoicedReturnQty =
+                    min(
+                        $returnedQty,
+                        $remainingInvoicedQty
+                    );
+
+
+                $grniReturnQty =
+                    $returnedQty -
+                    $invoicedReturnQty;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate GRNI Allocation
+                |--------------------------------------------------------------------------
+                */
+
+                $remainingGrniQty =
+                    max(
+                        0,
+                        $receivedQty -
+                        $postedInvoicedQty
+                    );
+
+
+                if (
+                    $grniReturnQty >
+                    $remainingGrniQty
+                ) {
+
+                    throw new \RuntimeException(
+                        'Return quantity exceeds available GRNI quantity.'
+                    );
+
+                }
+
+
+                /*
+|--------------------------------------------------------------------------
+| Accounting Amount
+|--------------------------------------------------------------------------
+*/
+
+$tradePayableAmount = 0;
+$grniAmount = 0;
+$inventoryAmount = 0;
+
+
+/*
+|--------------------------------------------------------------------------
+| Process Return Details
+|--------------------------------------------------------------------------
+*/
+
+foreach ($details as $detail) {
+
+    $returnedQty =
+        (float) $detail->returned_qty;
+
+    if ($returnedQty <= 0) {
+        throw new \RuntimeException(
+            'Returned quantity must be greater than zero.'
+        );
+    }
+
 
     /*
     |--------------------------------------------------------------------------
-    | Post
+    | Use Stored Return Value
     |--------------------------------------------------------------------------
     */
 
-    public function postPurchaseReturn(
-        PurchaseReturnHeader $purchaseReturn
-    ): void {
-
-        DB::transaction(
-            function () use ($purchaseReturn) {
-
-                $purchaseReturn =
-                    PurchaseReturnHeader::query()
-                        ->with('details')
-                        ->lockForUpdate()
-                        ->findOrFail(
-                            $purchaseReturn->id
-                        );
+    $returnAmount =
+        round(
+            (float) $detail->total_cost,
+            2
+        );
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Status
-                |--------------------------------------------------------------------------
-                */
+    if ($returnAmount <= 0) {
+        throw new \RuntimeException(
+            'Purchase return total cost must be greater than zero.'
+        );
+    }
 
-                if (
-                    $purchaseReturn->status !== 'Approved'
-                ) {
 
-                    throw new \RuntimeException(
-                        'Only Approved purchase return can be posted.'
+    /*
+    |--------------------------------------------------------------------------
+    | Goods Receipt Detail
+    |--------------------------------------------------------------------------
+    */
+
+    $goodsReceiptDetail =
+        $detail->goodsReceiptDetail;
+
+    if (! $goodsReceiptDetail) {
+        throw new \RuntimeException(
+            'Purchase return detail is missing goods receipt detail.'
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Received Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $receivedQty =
+        (float) $goodsReceiptDetail->received_qty;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Posted Returns
+    |--------------------------------------------------------------------------
+    */
+
+    $previousReturnedQty =
+        (float)
+        PurchaseReturnDetail::query()
+            ->where(
+                'goods_receipt_detail_id',
+                $goodsReceiptDetail->id
+            )
+            ->where(
+                'purchase_return_header_id',
+                '!=',
+                $purchaseReturn->id
+            )
+            ->whereHas(
+                'purchaseReturn',
+                function ($query) {
+
+                    $query->where(
+                        'status',
+                        'Posted'
                     );
 
                 }
+            )
+            ->sum('returned_qty');
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Details
-                |--------------------------------------------------------------------------
-                */
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Returnable Quantity
+    |--------------------------------------------------------------------------
+    */
 
-                if (
-                    $purchaseReturn
-                        ->details
-                        ->isEmpty()
-                ) {
-
-                    throw new \RuntimeException(
-                        'Purchase return must have at least one detail.'
-                    );
-
-                }
+    $remainingReturnableQty =
+        max(
+            0,
+            $receivedQty -
+            $previousReturnedQty
+        );
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Post Inventory
-                |--------------------------------------------------------------------------
-                */
+    if (
+        $returnedQty >
+        $remainingReturnableQty
+    ) {
 
-                foreach (
-                    $purchaseReturn->details
-                    as $detail
-                ) {
-
-                    $qty =
-                        (float)
-                        $detail->returned_qty;
-
-
-                    if (
-                        $qty <= 0
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Returned quantity must be greater than zero.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Inventory
-                    |--------------------------------------------------------------------------
-                    |
-                    | Purchase Return mengurangi stock.
-                    |
-                    */
-
-                    $this->inventoryService
-                        ->issuePurchaseReturnStock(
-
-                            $purchaseReturn,
-
-                            $detail
-
-                        );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Mark Posted
-                |--------------------------------------------------------------------------
-                */
-
-                $purchaseReturn->update([
-
-                    'status' =>
-                        'Posted',
-
-                    'posted_at' =>
-                        now(),
-
-                    'posted_by' =>
-                        auth()->id(),
-
-                    'updated_by' =>
-                        auth()->id(),
-
-                ]);
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Document Activity
-                |--------------------------------------------------------------------------
-                */
-
-                $this->documentActivityService
-                    ->record(
-
-                        $purchaseReturn,
-
-                        'POSTED',
-
-                        'Approved',
-
-                        'Posted',
-
-                        'Purchase return posted.'
-
-                    );
-
-            }
+        throw new \RuntimeException(
+            'Return quantity exceeds remaining returnable quantity.'
         );
 
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Posted Invoice Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $postedInvoicedQty =
+        (float)
+        PurchaseInvoiceDetail::query()
+            ->where(
+                'goods_receipt_detail_id',
+                $goodsReceiptDetail->id
+            )
+            ->whereHas(
+                'purchaseInvoice',
+                function ($query) {
+
+                    $query->where(
+                        'status',
+                        'Posted'
+                    );
+
+                }
+            )
+            ->sum('invoiced_qty');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Normalize Invoice Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $postedInvoicedQty =
+        min(
+            $postedInvoicedQty,
+            $receivedQty
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Remaining Invoiced Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $remainingInvoicedQty =
+        max(
+            0,
+            $postedInvoicedQty -
+            $previousReturnedQty
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allocate Current Return
+    |--------------------------------------------------------------------------
+    */
+
+    $invoicedReturnQty =
+        min(
+            $returnedQty,
+            $remainingInvoicedQty
+        );
+
+
+    $grniReturnQty =
+        $returnedQty -
+        $invoicedReturnQty;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allocate Amount
+    |--------------------------------------------------------------------------
+    |
+    | Gunakan unit cost detail yang sama dengan
+    | Inventory Movement.
+    |
+    */
+
+    $unitCost =
+        (float) $detail->unit_cost;
+
+
+    $tradePayableAmount +=
+        round(
+            $invoicedReturnQty *
+            $unitCost,
+            2
+        );
+
+
+    $grniAmount +=
+        round(
+            $grniReturnQty *
+            $unitCost,
+            2
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Amount
+    |--------------------------------------------------------------------------
+    */
+
+    $inventoryAmount +=
+        $returnAmount;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Normalize Accounting Totals
+|--------------------------------------------------------------------------
+*/
+
+$tradePayableAmount =
+    round(
+        $tradePayableAmount,
+        2
+    );
+
+$grniAmount =
+    round(
+        $grniAmount,
+        2
+    );
+
+$inventoryAmount =
+    round(
+        $inventoryAmount,
+        2
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| Purchase Return Total
+|--------------------------------------------------------------------------
+*/
+
+$purchaseReturnTotal =
+    round(
+        (float)
+        $details->sum('total_cost'),
+        2
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Inventory Amount
+|--------------------------------------------------------------------------
+*/
+
+if (
+    abs(
+        $inventoryAmount -
+        $purchaseReturnTotal
+    ) > 0.01
+) {
+
+    throw new \RuntimeException(
+        'Purchase return accounting amount does not match purchase return total cost.'
+    );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Normalize Debit to Inventory Value
+|--------------------------------------------------------------------------
+|
+| Karena pembagian AP / GRNI berdasarkan quantity,
+| pembulatan bisa menghasilkan selisih beberapa sen.
+|
+*/
+
+$debitAmount =
+    round(
+        $tradePayableAmount +
+        $grniAmount,
+        2
+    );
+
+
+$roundingDifference =
+    round(
+        $inventoryAmount -
+        $debitAmount,
+        2
+    );
+
+
+if (
+    abs($roundingDifference) > 0.01
+) {
+
+    throw new \RuntimeException(
+        'Purchase return accounting does not balance with inventory value.'
+    );
+
+}
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Round Totals
+            |--------------------------------------------------------------------------
+            */
+
+            $tradePayableAmount =
+                round(
+                    $tradePayableAmount,
+                    2
+                );
+
+            $grniAmount =
+                round(
+                    $grniAmount,
+                    2
+                );
+
+            $inventoryAmount =
+                round(
+                    $inventoryAmount,
+                    2
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Accounting Balance
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                abs(
+                    (
+                        $tradePayableAmount +
+                        $grniAmount
+                    )
+                    -
+                    $inventoryAmount
+                ) > 0.01
+            ) {
+
+                throw new \RuntimeException(
+                    'Purchase return accounting does not balance.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Journal Lines
+            |--------------------------------------------------------------------------
+            */
+
+            $lines = [];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Trade Payable
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $tradePayableAmount > 0
+            ) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $tradePayableAccount->id,
+
+                    'debit' =>
+                        $tradePayableAmount,
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'Trade payable reversal for purchase return ' .
+                        $purchaseReturn->return_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Goods Received Not Invoiced
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $grniAmount > 0
+            ) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $grniAccount->id,
+
+                    'debit' =>
+                        $grniAmount,
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'GRNI reversal for purchase return ' .
+                        $purchaseReturn->return_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $inventoryAmount > 0
+            ) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $inventoryAccount->id,
+
+                    'debit' =>
+                        0,
+
+                    'credit' =>
+                        $inventoryAmount,
+
+                    'description' =>
+                        'Inventory reduction for purchase return ' .
+                        $purchaseReturn->return_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Journal Lines
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                empty($lines)
+            ) {
+
+                throw new \RuntimeException(
+                    'Purchase return journal has no accounting lines.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry =
+                $this->journalEntryService
+                    ->create([
+
+                        'company_id' =>
+                            $purchaseReturn->company_id,
+
+                        'branch_id' =>
+                            $purchaseReturn->branch_id,
+
+                        'accounting_journal_id' =>
+                            $journal->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod->id,
+
+                        'entry_date' =>
+                            $purchaseReturn->return_date,
+
+                        'reference_type' =>
+                            'PURCHASE_RETURN',
+
+                        'reference_id' =>
+                            $purchaseReturn->id,
+
+                        'reference_number' =>
+                            $purchaseReturn->return_number,
+
+                        'description' =>
+                            'Purchase return ' .
+                            $purchaseReturn->return_number,
+
+                        'lines' =>
+                            $lines,
+
+                        'created_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->journalEntryService
+                ->post(
+                    $journalEntry
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Inventory
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $details
+                as $detail
+            ) {
+
+                $this
+                    ->inventoryService
+                    ->issuePurchaseReturnStock(
+                        $purchaseReturn,
+                        $detail
+                    );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mark Posted
+            |--------------------------------------------------------------------------
+            */
+
+            $purchaseReturn->update([
+
+                'status' =>
+                    'Posted',
+
+                'posted_at' =>
+                    now(),
+
+                'posted_by' =>
+                    auth()->id(),
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->documentActivityService
+                ->record(
+
+                    $purchaseReturn,
+
+                    'POSTED',
+
+                    'Approved',
+
+                    'Posted',
+
+                    'Purchase return posted.'
+
+                );
+
+        }
+    );
+}
 /*
 |--------------------------------------------------------------------------
 | Cancel
