@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 use App\Models\Product\ProductVariant;
 use App\Models\MasterData\Unit;
-
+use App\Models\Purchasing\PurchaseInvoiceDetail;
 class GoodsReceiptDetail extends Model
 {
     use HasFactory;
@@ -140,4 +140,12 @@ class GoodsReceiptDetail extends Model
             'unit_id'
         );
     }
+
+    public function purchaseInvoiceDetails()
+{
+    return $this->hasMany(
+        PurchaseInvoiceDetail::class,
+        'goods_receipt_detail_id'
+    );
+}
 }

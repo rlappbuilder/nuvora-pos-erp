@@ -23,6 +23,9 @@ class AccountMappingSeeder extends Seeder
             'stock_issue_marketing_expense' => '610110',
             'stock_issue_operating_expense' => '610113',
             'goods_received_not_invoiced' => '210103',
+            'input_vat' => '110501',
+            'trade_payable' => '210101',
+            
         ];
 
         foreach ($companies as $company) {

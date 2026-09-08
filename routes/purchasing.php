@@ -7,7 +7,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseInvoiceController;
 use App\Http\Controllers\Purchasing\PurchaseReturnController;
-
+use App\Http\Controllers\Purchasing\PurchasePaymentController;
 Route::middleware('auth')
     ->prefix('purchasing')
     ->group(
@@ -102,6 +102,80 @@ Route::middleware('auth')
                 'purchase-requests',
                 PurchaseRequestController::class
             );
+
+          /*
+            |--------------------------------------------------------------------------
+            | Purchase Payment
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '/purchase-payments/{purchasePayment}/submit',
+                [
+                    PurchasePaymentController::class,
+                    'submit',
+                ]
+            )->name(
+                'purchasing.purchase-payments.submit'
+            );
+
+            Route::post(
+                '/purchase-payments/{purchasePayment}/reject',
+                [
+                    PurchasePaymentController::class,
+                    'reject',
+                ]
+            )->name(
+                'purchasing.purchase-payments.reject'
+            );
+            
+            Route::post(
+                '/purchase-payments/{purchasePayment}/approve',
+                [
+                    PurchasePaymentController::class,
+                    'approve',
+                ]
+            )->name(
+                'purchasing.purchase-payments.approve'
+            );
+
+            Route::post(
+                '/purchase-payments/{purchasePayment}/post',
+                [
+                    PurchasePaymentController::class,
+                    'post',
+                ]
+            )->name(
+                'purchasing.purchase-payments.post'
+            );
+
+            Route::post(
+                '/purchase-payments/{purchasePayment}/cancel',
+                [
+                    PurchasePaymentController::class,
+                    'cancel',
+                ]
+            )->name(
+                'purchasing.purchase-payments.cancel'
+            );
+
+            Route::get(
+                '/purchase-payments/{purchasePayment}/data',
+                [
+                    PurchasePaymentController::class,
+                    'showData',
+                ]
+            )->name(
+                'purchasing.purchase-payments.data'
+            );
+
+            Route::resource(
+                'purchase-payments',
+                PurchasePaymentController::class
+            )->parameters([
+                'purchase-payments' => 'purchasePayment',
+            ]);
+
           /*
             |--------------------------------------------------------------------------
             | Purchase Order

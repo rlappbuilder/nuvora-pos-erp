@@ -338,8 +338,8 @@ const modules = {
                 key: 'purchasePayment',
                 title: 'Purchase Payment',
                 icon: UsersIcon,
-                route: 'goods-receipts.index',
-                permission: 'goods-receipts.view',
+                route: 'purchase-payments.index',
+                permission: 'purchase-payments.view',
             },
             purchaseReport: {
                 key: 'purchaseReport',

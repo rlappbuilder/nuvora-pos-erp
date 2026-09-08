@@ -1,4 +1,5 @@
 <script setup>
+import { PanelRightDashedIcon } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -155,6 +156,24 @@ const variants = Object.freeze({
         dot: 'bg-emerald-500',
         text: 'Fully Received',
     },
+
+    PanelRightDashedIcon: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Paid',
+    },
+
+    partially_paid: {
+        badge: 'bg-orange-100 text-orange-700',
+        dot: 'bg-orange-500',
+        text: 'Partially Paid',
+    },
+
+        paid: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Paid',
+    },
   
 })
 
@@ -227,13 +246,23 @@ const type = computed(() => {
             case 'fully received':
                 return 'fully_received'
 
+            case 'paid':
+                return 'paid'
+
+            case 'partially paid':
+                return 'partially_paid'
+
            case 'open':
                 return 'open'
 
             case 'closed':
                 return 'closed'
+
+
             default:
                 break
+
+    
         }
     }
 

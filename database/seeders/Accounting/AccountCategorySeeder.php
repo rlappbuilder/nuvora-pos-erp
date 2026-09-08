@@ -43,7 +43,12 @@ class AccountCategorySeeder extends Seeder
                 'name' => 'Prepaid Expense',
                 'sort_order' => 4,
             ],
-
+            [
+                'type' => '110000',
+                'code' => '110500',
+                'name' => 'Tax Receivable',
+                'sort_order' => 5,
+            ],
 
             // ==========================================================
             // FIXED ASSETS

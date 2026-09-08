@@ -830,22 +830,56 @@ private function formData(): array
         | sumber Purchase Invoice.
         |
         */
+            'goodsReceipts' =>
+                GoodsReceiptHeader::query()
+                    ->where(
+                        'status',
+                        'Posted'
+                    )
+                    ->whereHas(
+                        'details',
+                        function ($query) {
 
-        'goodsReceipts' =>
-            GoodsReceiptHeader::query()
-                ->where(
-                    'status',
-                    'Posted'
-                )
-                ->with([
-                    'supplier',
-                    'warehouse',
-                    'branch',
-                    'purchaseOrder',
-                    'details.productVariant.product',
-                    'details.unit',
-                    'details.purchaseOrderDetail',
-                ])
+                            $query->whereRaw(
+                                'received_qty > (
+                                    SELECT COALESCE(
+                                        SUM(pid.invoiced_qty),
+                                        0
+                                    )
+                                    FROM purchase_invoice_details pid
+                                    INNER JOIN purchase_invoice_headers pih
+                                        ON pih.id =
+                                            pid.purchase_invoice_header_id
+                                    WHERE pid.goods_receipt_detail_id =
+                                        goods_receipt_details.id
+                                    AND pih.status IN (
+                                        "Draft",
+                                        "Submitted",
+                                        "Approved",
+                                        "Posted",
+                                        "Partially Paid",
+                                        "Paid"
+                                    )
+                                )'
+                            );
+
+                        }
+                    )
+                    ->with([
+                        'supplier',
+                        'warehouse',
+                        'branch',
+                        'purchaseOrder',
+                        'details.productVariant.product',
+                        'details.unit',
+                        'details.purchaseOrderDetail',
+                    ])
+                    ->orderByDesc(
+                        'receipt_date'
+                    )
+                    ->orderByDesc(
+                        'id'
+                    )
                 ->orderByDesc(
                     'receipt_date'
                 )

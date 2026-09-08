@@ -9,23 +9,44 @@ use App\Models\Purchasing\GoodsReceiptHeader;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use Illuminate\Support\Facades\DB;
-
+use App\Services\Accounting\AccountMappingService;
+use App\Services\Accounting\JournalEntryService;
+use App\Services\Inventory\InventoryService;
+use App\Models\Accounting\FiscalYear;
+use App\Models\Accounting\AccountingPeriod;
+use App\Models\Accounting\AccountingJournal;
+use App\Models\Inventory\InventoryMovement;
 class PurchaseInvoiceService
 {
     protected CodeGeneratorService $codeGeneratorService;
 
     protected DocumentActivityService $documentActivityService;
+    protected AccountMappingService $accountMappingService;
+    protected JournalEntryService $journalEntryService;
+    protected InventoryService $inventoryService;
+  
+   public function __construct(
+    CodeGeneratorService $codeGeneratorService,
+    DocumentActivityService $documentActivityService,
+    AccountMappingService $accountMappingService,
+    JournalEntryService $journalEntryService,
+    InventoryService $inventoryService
+) {
+    $this->codeGeneratorService =
+        $codeGeneratorService;
 
-    public function __construct(
-        CodeGeneratorService $codeGeneratorService,
-        DocumentActivityService $documentActivityService
-    ) {
-        $this->codeGeneratorService =
-            $codeGeneratorService;
+    $this->documentActivityService =
+        $documentActivityService;
 
-        $this->documentActivityService =
-            $documentActivityService;
-    }
+    $this->accountMappingService =
+        $accountMappingService;
+
+    $this->journalEntryService =
+        $journalEntryService;
+
+    $this->inventoryService =
+        $inventoryService;
+}
 
     /*
 |--------------------------------------------------------------------------
@@ -1968,6 +1989,10 @@ public function postPurchaseInvoice(
 
             $purchaseInvoice =
                 PurchaseInvoiceHeader::query()
+                    ->with([
+                        'details.goodsReceiptDetail',
+                        'goodsReceipt',
+                    ])
                     ->lockForUpdate()
                     ->findOrFail(
                         $purchaseInvoice->id
@@ -1997,10 +2022,12 @@ public function postPurchaseInvoice(
             |--------------------------------------------------------------------------
             */
 
+            $details =
+                $purchaseInvoice
+                    ->details;
+
             if (
-                ! $purchaseInvoice
-                    ->details()
-                    ->exists()
+                $details->isEmpty()
             ) {
 
                 throw new \RuntimeException(
@@ -2008,6 +2035,497 @@ public function postPurchaseInvoice(
                 );
 
             }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Goods Receipt
+            |--------------------------------------------------------------------------
+            */
+
+            $goodsReceipt =
+                $purchaseInvoice
+                    ->goodsReceipt;
+
+            if (! $goodsReceipt) {
+
+                throw new \RuntimeException(
+                    'Purchase invoice must be linked to a goods receipt.'
+                );
+
+            }
+
+            if (
+                $goodsReceipt->status !== 'Posted'
+            ) {
+
+                throw new \RuntimeException(
+                    'Goods receipt must be posted before purchase invoice.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounting Period
+            |--------------------------------------------------------------------------
+            */
+
+            $fiscalYear =
+                FiscalYear::query()
+                    ->where(
+                        'company_id',
+                        $purchaseInvoice->company_id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $purchaseInvoice->invoice_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $purchaseInvoice->invoice_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+            if (! $fiscalYear) {
+
+                throw new \RuntimeException(
+                    'No open fiscal year found for purchase invoice date.'
+                );
+
+            }
+
+
+            $accountingPeriod =
+                AccountingPeriod::query()
+                    ->where(
+                        'company_id',
+                        $purchaseInvoice->company_id
+                    )
+                    ->where(
+                        'fiscal_year_id',
+                        $fiscalYear->id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $purchaseInvoice->invoice_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $purchaseInvoice->invoice_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+            if (! $accountingPeriod) {
+
+                throw new \RuntimeException(
+                    'No open accounting period found for purchase invoice date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $journal =
+                AccountingJournal::query()
+                    ->where(
+                        'company_id',
+                        $purchaseInvoice->company_id
+                    )
+                    ->where(
+                        'code',
+                        'ADJ'
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+            if (! $journal) {
+
+                throw new \RuntimeException(
+                    'Adjustment accounting journal is not configured.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Account Mapping
+            |--------------------------------------------------------------------------
+            */
+
+            $grniAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseInvoice->company_id,
+                        'goods_received_not_invoiced'
+                    );
+
+            $inventoryAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseInvoice->company_id,
+                        'inventory_merchandise'
+                    );
+
+            $inputVatAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseInvoice->company_id,
+                        'input_vat'
+                    );
+
+            $tradePayableAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $purchaseInvoice->company_id,
+                        'trade_payable'
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Calculate GRNI
+            |--------------------------------------------------------------------------
+            */
+
+            $grniAmount = 0;
+
+            foreach ($details as $detail) {
+
+                $grnDetail =
+                    $detail->goodsReceiptDetail;
+
+                if (! $grnDetail) {
+
+                    throw new \RuntimeException(
+                        'Purchase invoice detail is missing goods receipt detail.'
+                    );
+
+                }
+
+                $receivedQty =
+                    (float) $grnDetail->received_qty;
+
+                $unitCost =
+                    (float) $grnDetail->unit_cost;
+
+                $grniAmount +=
+                    $receivedQty * $unitCost;
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Invoice Amounts
+            |--------------------------------------------------------------------------
+            */
+
+            $subtotal =
+                (float) $purchaseInvoice->subtotal;
+
+            $discount =
+                (float) $purchaseInvoice->discount_amount;
+
+            $tax =
+                (float) $purchaseInvoice->tax_amount;
+
+            $grandTotal =
+                (float) $purchaseInvoice->grand_total;
+
+            $netPurchase =
+                $subtotal - $discount;
+
+
+            if ($netPurchase < 0) {
+
+                throw new \RuntimeException(
+                    'Purchase discount cannot exceed subtotal.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory Adjustment
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryAmount =
+                $grniAmount -
+                $netPurchase;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Grand Total
+            |--------------------------------------------------------------------------
+            */
+
+            $expectedGrandTotal =
+                $netPurchase + $tax;
+
+            if (
+                abs(
+                    $expectedGrandTotal -
+                    $grandTotal
+                ) > 0.01
+            ) {
+
+                throw new \RuntimeException(
+                    'Purchase invoice total does not match subtotal, discount and tax.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Journal Lines
+            |--------------------------------------------------------------------------
+            */
+
+            $lines = [];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | GRNI
+            |--------------------------------------------------------------------------
+            */
+
+            if ($grniAmount > 0) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $grniAccount->id,
+
+                    'debit' =>
+                        round(
+                            $grniAmount,
+                            2
+                        ),
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'Clear GRNI for purchase invoice ' .
+                        $purchaseInvoice->invoice_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Input VAT
+            |--------------------------------------------------------------------------
+            */
+
+            if ($tax > 0) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $inputVatAccount->id,
+
+                    'debit' =>
+                        round(
+                            $tax,
+                            2
+                        ),
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'Input VAT for purchase invoice ' .
+                        $purchaseInvoice->invoice_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                abs($inventoryAmount) > 0.01
+            ) {
+
+                if (
+                    $inventoryAmount > 0
+                ) {
+
+                    $lines[] = [
+
+                        'account_id' =>
+                            $inventoryAccount->id,
+
+                        'debit' =>
+                            0,
+
+                        'credit' =>
+                            round(
+                                $inventoryAmount,
+                                2
+                            ),
+
+                        'description' =>
+                            'Purchase price adjustment for invoice ' .
+                            $purchaseInvoice->invoice_number,
+
+                    ];
+
+                } else {
+
+                    $lines[] = [
+
+                        'account_id' =>
+                            $inventoryAccount->id,
+
+                        'debit' =>
+                            round(
+                                abs($inventoryAmount),
+                                2
+                            ),
+
+                        'credit' =>
+                            0,
+
+                        'description' =>
+                            'Purchase price adjustment for invoice ' .
+                            $purchaseInvoice->invoice_number,
+
+                    ];
+
+                }
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Trade Payable
+            |--------------------------------------------------------------------------
+            */
+
+            if ($grandTotal > 0) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $tradePayableAccount->id,
+
+                    'debit' =>
+                        0,
+
+                    'credit' =>
+                        round(
+                            $grandTotal,
+                            2
+                        ),
+
+                    'description' =>
+                        'Trade payable for purchase invoice ' .
+                        $purchaseInvoice->invoice_number,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry =
+                $this->journalEntryService
+                    ->create([
+
+                        'company_id' =>
+                            $purchaseInvoice->company_id,
+
+                        'branch_id' =>
+                            $purchaseInvoice->branch_id,
+
+                        'accounting_journal_id' =>
+                            $journal->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod->id,
+
+                        'entry_date' =>
+                            $purchaseInvoice->invoice_date,
+
+                        'reference_type' =>
+                            'PURCHASE_INVOICE',
+
+                        'reference_id' =>
+                            $purchaseInvoice->id,
+
+                        'reference_number' =>
+                            $purchaseInvoice->invoice_number,
+
+                        'description' =>
+                            'Purchase invoice ' .
+                            $purchaseInvoice->invoice_number,
+
+                        'lines' =>
+                            $lines,
+
+                        'created_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->journalEntryService
+                ->post(
+                    $journalEntry
+                );
 
 
             /*

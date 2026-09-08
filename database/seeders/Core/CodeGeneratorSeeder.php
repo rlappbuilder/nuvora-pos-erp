@@ -49,7 +49,7 @@ $modules = [
     ['module' => 'purchase_receive',  'prefix' => 'GRN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'purchase_invoice',  'prefix' => 'PIN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'purchase_return',   'prefix' => 'PRT',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
-
+    ['module' => 'purchase_payment',   'prefix' => 'PRP',  'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     // ==========================
     // Sales
     // ==========================
