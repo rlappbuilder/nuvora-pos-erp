@@ -355,12 +355,12 @@ const modules = {
                 route: 'goods-receipts.index',
                 permission: 'goods-receipts.view',
             },
-              apAginng: {
-                key: 'apAginng',
+              apAging: {
+                key: 'apAging',
                 title: 'AP Aging',
                 icon: UsersIcon,
-                route: 'goods-receipts.index',
-                permission: 'goods-receipts.view',
+                route: 'reports.ap-aging',
+                permission: 'reports.ap-aging.view',
             },
 
         

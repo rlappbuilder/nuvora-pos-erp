@@ -1,13 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Purchasing\Reports\APAging\APAgingController;
 use App\Http\Controllers\Purchasing\PurchaseRequestController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseInvoiceController;
 use App\Http\Controllers\Purchasing\PurchaseReturnController;
 use App\Http\Controllers\Purchasing\PurchasePaymentController;
+
 Route::middleware('auth')
     ->prefix('purchasing')
     ->group(
@@ -539,7 +540,40 @@ Route::middleware('auth')
                 ->name(
                     'purchase-invoices.data'
                 );
+            /*
+            |--------------------------------------------------------------------------
+            | Purchasing Reports
+            |--------------------------------------------------------------------------
+            */
 
+           Route::prefix('reports')
+                ->name('reports.')
+                ->group(function () {
+
+                    Route::get(
+                        '/ap-aging',
+                        [
+                            APAgingController::class,
+                            'index',
+                        ]
+                    )->name('ap-aging');
+
+                    Route::get(
+                        '/ap-aging/pdf',
+                        [
+                            APAgingController::class,
+                            'pdf',
+                        ]
+                    )->name('ap-aging.pdf');
+
+                    Route::get(
+                        '/ap-aging/excel',
+                        [
+                            APAgingController::class,
+                            'excel',
+                        ]
+                    )->name('ap-aging.excel');
+                });
             Route::resource(
                 'purchase-invoices',
                 PurchaseInvoiceController::class

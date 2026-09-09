@@ -13,29 +13,42 @@ const {
 
     <div class="min-h-screen bg-gray-100">
 
-        <Sidebar />
+        <div class="print:hidden">
+            <Sidebar />
+        </div>
 
         <div
             :class="[
-                'transition-all duration-300',
+                'transition-all duration-300 print:ml-0',
                 sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'
             ]"
         >
 
-            <Topbar />
+            <div class="print:hidden">
+                <Topbar />
+            </div>
 
             <main
-             class="min-h-[calc(100vh-64px)] overflow-x-auto p-4 md:p-6"
+                class="
+                    min-h-[calc(100vh-64px)]
+                    overflow-x-auto
+                    p-4
+                    md:p-6
+                    print:p-0
+                    print:overflow-visible
+                "
             >
 
                 <slot />
 
             </main>
 
-            <Footer />
+            <div class="print:hidden">
+                <Footer />
+            </div>
 
         </div>
-    
+
     </div>
 
 </template>
