@@ -8,6 +8,8 @@ use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseInvoiceController;
 use App\Http\Controllers\Purchasing\PurchaseReturnController;
 use App\Http\Controllers\Purchasing\PurchasePaymentController;
+use App\Http\Controllers\Purchasing\Reports\PurchaseReport\PurchaseReportController;
+use App\Http\Controllers\Purchasing\Reports\SupplierStatement\SupplierStatementController;
 
 Route::middleware('auth')
     ->prefix('purchasing')
@@ -573,6 +575,55 @@ Route::middleware('auth')
                             'excel',
                         ]
                     )->name('ap-aging.excel');
+
+                    // Purchase Report
+                    Route::get(
+                        '/purchase-report',
+                        [
+                            PurchaseReportController::class,
+                            'index',
+                        ]
+                    )->name('purchase-report');
+
+                    Route::get(
+                        '/purchase-report/pdf',
+                        [
+                            PurchaseReportController::class,
+                            'pdf',
+                        ]
+                    )->name('purchase-report.pdf');
+
+                    Route::get(
+                        '/purchase-report/excel',
+                        [
+                            PurchaseReportController::class,
+                            'excel',
+                        ]
+                    )->name('purchase-report.excel');
+
+                       Route::get(
+                        '/supplier-statement',
+                        [
+                            SupplierStatementController::class,
+                            'index',
+                        ]
+                    )->name('supplier-statement');
+
+                    Route::get(
+                        '/supplier-statement/pdf',
+                        [
+                            SupplierStatementController::class,
+                            'pdf',
+                        ]
+                    )->name('supplier-statement.pdf');
+
+                    Route::get(
+                        '/supplier-statement/excel',
+                        [
+                            SupplierStatementController::class,
+                            'excel',
+                        ]
+                    )->name('supplier-statement.excel');
                 });
             Route::resource(
                 'purchase-invoices',
