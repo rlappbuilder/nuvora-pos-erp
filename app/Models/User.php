@@ -9,6 +9,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\MasterData\Company;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -20,6 +22,8 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+
+        'company_id',
         'name',
         'email',
         'password',
@@ -46,5 +50,12 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+        public function company(): BelongsTo
+    {
+        return $this->belongsTo(
+            Company::class
+        );
     }
 }

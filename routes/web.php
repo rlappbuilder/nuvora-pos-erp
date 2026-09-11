@@ -110,3 +110,5 @@ require __DIR__.'/purchasing.php';
 require __DIR__.'/accounting.php';
 
 require __DIR__.'/auth.php';
+
+require __DIR__ . '/reseller.php';

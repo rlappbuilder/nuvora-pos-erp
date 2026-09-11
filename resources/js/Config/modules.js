@@ -365,6 +365,43 @@ const modules = {
 
         
         // End purchasing //
+           // settings
+            Resellers: {
+                key: 'Resellers',
+                title: 'Resellers',
+                icon: UsersIcon,
+                route: 'resellers.index',
+                permission: 'resellers.index.view',
+            },
+             ConsignmentOuts: {
+                key: 'ConsignmentOuts',
+                title: 'Consignment Out',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+             ConsignmentStocks: {
+                key: 'ConsignmentStocks',
+                title: 'Consignment Stock',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+             ConsignmentSettlements: {
+                key: 'ConsignmentSettlements',
+                title: 'Consignment Settlement',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+              ConsignmentReturns: {
+                key: 'ConsignmentReturns',
+                title: 'Consignment Returns',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+        // End Settings //
         // settings
             Settings: {
                 key: 'Settings',

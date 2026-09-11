@@ -74,11 +74,11 @@ const navigation = [
   {
         title: 'Resellers',
         children: [
-            // modules.quotations,
-            // modules.salesOrders,
-            // modules.deliveryOrders,
-            // modules.salesInvoices,
-            // modules.salesReturns,
+        modules.Resellers,
+        modules.ConsignmentOuts,
+        modules.ConsignmentStocks,
+         modules.ConsignmentSettlements,
+         modules.ConsignmentReturns,
         ],
     },
 

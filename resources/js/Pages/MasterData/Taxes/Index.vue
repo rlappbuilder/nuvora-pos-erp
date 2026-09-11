@@ -20,10 +20,7 @@ import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
 
 import {
-    FolderIcon,
-    DocumentTextIcon,
-    ChevronRightIcon,
-    ChevronDownIcon,
+ 
     PlusIcon,
     PencilSquareIcon,
 } from '@heroicons/vue/24/solid'
