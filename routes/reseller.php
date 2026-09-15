@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Reseller\ResellerController;
 use App\Http\Controllers\Consignment\ConsignmentOutController;
-
+use App\Http\Controllers\Reseller\ConsignmentStockController;
 /*
 |--------------------------------------------------------------------------
 | Reseller Routes
@@ -135,6 +135,35 @@ Route::middleware(['auth'])->group(function () {
                         [ConsignmentOutController::class, 'excel']
                     )->name('consignment-outs.excel');
 
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Consignment Stock
+                    |--------------------------------------------------------------------------
+                    */
+
+                    Route::get(
+                        '/consignment-stock/movements',
+                        [ConsignmentStockController::class, 'movements']
+                    )->name('consignment-stock.movements');
+
+                    Route::get(
+                        '/consignment-stock',
+                        [ConsignmentStockController::class, 'index']
+                    )->name('consignment-stock.index');
+                    Route::get(
+                        '/consignment-stock/print',
+                        [ConsignmentStockController::class, 'print']
+                    )->name('consignment-stock.print');
+
+                    Route::get(
+                        '/consignment-stock/pdf',
+                        [ConsignmentStockController::class, 'pdf']
+                    )->name('consignment-stock.pdf');
+
+                    Route::get(
+                        '/consignment-stock/excel',
+                        [ConsignmentStockController::class, 'excel']
+                    )->name('consignment-stock.excel');
     /*
     |--------------------------------------------------------------------------
     | Consignment Out Resource
