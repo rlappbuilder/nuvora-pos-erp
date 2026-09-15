@@ -10,7 +10,8 @@ use App\Models\MasterData\Warehouse;
 use App\Models\MasterData\Unit;
 use App\Models\Product\ProductVariant;
 use App\Models\User;
-
+use App\Models\Reseller\Reseller;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductStock extends Model
 {
     use HasFactory;
@@ -28,6 +29,8 @@ class ProductStock extends Model
         'branch_id',
 
         'warehouse_id',
+        
+        'reseller_id',
 
         /*
         |--------------------------------------------------------------------------
@@ -150,4 +153,8 @@ class ProductStock extends Model
             'updated_by'
         );
     }
+    public function reseller(): BelongsTo
+{
+    return $this->belongsTo(Reseller::class);
+}
 }

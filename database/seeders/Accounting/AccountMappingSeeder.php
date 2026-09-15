@@ -25,7 +25,7 @@ class AccountMappingSeeder extends Seeder
             'goods_received_not_invoiced' => '210103',
             'input_vat' => '110501',
             'trade_payable' => '210101',
-            
+            'inventory_consignment' => '110307',
         ];
 
         foreach ($companies as $company) {

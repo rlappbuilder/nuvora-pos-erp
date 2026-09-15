@@ -589,6 +589,7 @@ function openView(item)
 {
     selectedItem.value = item
     activeViewTab.value = 'overview'
+    movements.value = []
     showViewModal.value = true
 }
 
@@ -1796,7 +1797,9 @@ function handleDateRangeChange(
                                 <th class="px-4 py-3 text-left">
                                     Unit
                                 </th>
-
+                                <th class="px-4 py-3 text-left">
+                                    Reseller
+                                </th>
                                 <th class="px-4 py-3 text-right">
                                     On Hand
                                 </th>
@@ -1833,7 +1836,26 @@ function handleDateRangeChange(
                                 <td class="px-4 py-3 font-medium">
                                     {{ unit.unit_name }}
                                 </td>
+                                    <td class="px-4 py-3">
+                                    <template v-if="unit.reseller?.id">
 
+                                        <div class="font-medium text-gray-900">
+                                            {{ unit.reseller.code }}
+                                        </div>
+
+                                        <div class="text-xs text-gray-500">
+                                            {{ unit.reseller.name }}
+                                        </div>
+
+                                    </template>
+
+                                    <span
+                                        v-else
+                                        class="text-gray-500"
+                                    >
+                                        Warehouse
+                                    </span>
+                                </td>
                                 <td class="px-4 py-3 text-right">
                                     {{ formatNumber(unit.on_hand_qty) }}
                                 </td>

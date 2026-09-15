@@ -22,6 +22,9 @@ import {
     XCircleIcon,
     PaperAirplaneIcon,
     CheckBadgeIcon,
+    PrinterIcon,
+    DocumentArrowDownIcon,
+    TableCellsIcon,
 } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits([
@@ -40,6 +43,9 @@ const emit = defineEmits([
     'confirm',
     'close',
     'reopen',
+    'print',
+    'pdf',
+    'excel',
 ])
 const props = defineProps({
 
@@ -111,7 +117,20 @@ const props = defineProps({
         default: false,
     },
   
+    showPrint: {
+        type: Boolean,
+        default: false,
+    },
 
+    showPdf: {
+        type: Boolean,
+        default: false,
+    },
+
+    showExcel: {
+        type: Boolean,
+        default: false,
+    },
 })
 const EVENT_NAME = 'nuvora-action-dropdown-close'
 const open = ref(false)
@@ -703,7 +722,97 @@ onBeforeUnmount(() => {
 
                     </button>
 
+                    <!-- ================================================= -->
+                    <!-- Print Preview -->
+                    <!-- ================================================= -->
 
+                    <button
+                        v-if="showPrint"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-gray-50
+                            hover:text-gray-900
+                        "
+                        @click="$emit('print'); close()"
+                    >
+                        <PrinterIcon
+                            class="h-5 w-5 text-gray-600"
+                        />
+
+                        Print Preview
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- PDF -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showPdf"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-red-50
+                            hover:text-red-600
+                        "
+                        @click="$emit('pdf'); close()"
+                    >
+                        <DocumentArrowDownIcon
+                            class="h-5 w-5 text-red-500"
+                        />
+
+                        PDF
+                    </button>
+
+
+                    <!-- ================================================= -->
+                    <!-- Excel -->
+                    <!-- ================================================= -->
+
+                    <button
+                        v-if="showExcel"
+                        type="button"
+                        class="
+                            flex
+                            w-full
+                            items-center
+                            gap-3
+                            px-4
+                            py-2.5
+                            text-sm
+                            text-gray-700
+                            transition-colors
+                            duration-150
+                            hover:bg-emerald-50
+                            hover:text-emerald-600
+                        "
+                        @click="$emit('excel'); close()"
+                    >
+                        <TableCellsIcon
+                            class="h-5 w-5 text-emerald-600"
+                        />
+
+                        Excel
+                    </button>
                     <!-- ================================================= -->
                     <!-- Divider -->
                     <!-- ================================================= -->

@@ -869,63 +869,73 @@ $rows =
                     *
                     $sellingPrice;
 
+/*
+|--------------------------------------------------------------------------
+| Unit Details
+|--------------------------------------------------------------------------
+*/
 
-                /*
-                |--------------------------------------------------------------------------
-                | Unit Details
-                |--------------------------------------------------------------------------
-                */
+$units =
+    $stocks
+        ->map(
+            function ($stock) {
 
-                $units =
-                    $stocks
-                        ->map(
-                            function ($stock) {
+                return [
 
-                                return [
+                    'id' =>
+                        $stock->id,
 
-                                    'id' =>
-                                        $stock->id,
+                    'unit_id' =>
+                        $stock->unit_id,
 
-                                    'unit_id' =>
-                                        $stock->unit_id,
+                    'unit_name' =>
+                        $stock->unit?->name,
 
-                                    'unit_name' =>
-                                        $stock->unit?->name,
+                    'reseller' => [
 
-                                    'on_hand_qty' =>
-                                        (float)
-                                        $stock->on_hand_qty,
+                        'id' =>
+                            $stock->reseller?->id,
 
-                                    'reserved_qty' =>
-                                        (float)
-                                        $stock->reserved_qty,
+                        'code' =>
+                            $stock->reseller?->reseller_code,
 
-                                    'available_qty' =>
-                                        (float)
-                                        $stock->available_qty,
+                        'name' =>
+                            $stock->reseller?->name,
 
-                                    'average_cost' =>
-                                        (float)
-                                        $stock->average_cost,
+                    ],
 
-                                    'stock_value' =>
-                                        (
-                                            (float)
-                                            $stock->on_hand_qty
-                                        )
-                                        *
-                                        (
-                                            (float)
-                                            $stock->average_cost
-                                        ),
+                    'on_hand_qty' =>
+                        (float)
+                        $stock->on_hand_qty,
 
-                                ];
+                    'reserved_qty' =>
+                        (float)
+                        $stock->reserved_qty,
 
-                            }
+                    'available_qty' =>
+                        (float)
+                        $stock->available_qty,
+
+                    'average_cost' =>
+                        (float)
+                        $stock->average_cost,
+
+                    'stock_value' =>
+                        (
+                            (float)
+                            $stock->on_hand_qty
                         )
-                        ->values();
+                        *
+                        (
+                            (float)
+                            $stock->average_cost
+                        ),
 
+                ];
 
+            }
+        )
+        ->values();
                 /*
                 |--------------------------------------------------------------------------
                 | Row
@@ -1362,6 +1372,7 @@ public function getMovements(
                 'variant.product',
                 'branch',
                 'warehouse',
+                'reseller',
             ])
             ->where(
                 'product_variant_id',
@@ -1394,6 +1405,19 @@ public function getMovements(
 
                             'name' =>
                                 $stock->unit?->name,
+
+                        ],
+
+                        'reseller' => [
+
+                            'id' =>
+                                $stock->reseller?->id,
+
+                            'code' =>
+                                $stock->reseller?->reseller_code,
+
+                            'name' =>
+                                $stock->reseller?->name,
 
                         ],
 

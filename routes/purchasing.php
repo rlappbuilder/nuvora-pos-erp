@@ -624,6 +624,8 @@ Route::middleware('auth')
                             'excel',
                         ]
                     )->name('supplier-statement.excel');
+
+                   
                 });
             Route::resource(
                 'purchase-invoices',

@@ -366,8 +366,6 @@ const exportExcel = () => {
 }
 
 </script>
-
-
 <template>
 
 <AppLayout>

@@ -71,7 +71,11 @@ $modules = [
     // ==========================
     // Reseller
     // ==========================
-    ['module' => 'reseller   ',         'prefix' => 'RSL',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'reseller',                'prefix' => 'RSL',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'consignment_out',          'prefix' => 'CSO',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'consignment_in',            'prefix' => 'CSI',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'consignment_settlement',     'prefix' => 'CSS',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'consignment_return',         'prefix' => 'CSR',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
   
 ];
 

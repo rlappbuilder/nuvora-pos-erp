@@ -1035,8 +1035,14 @@ public function deleteInventoryAdjustments(
             'average_cost' =>
                 $data['unit_cost'] ?? null,
 
+             'update_average_cost' =>
+             true,
+
             'transaction_date' =>
                 $data['transaction_date'],
+
+            'reseller_id' =>
+            $data['reseller_id'] ?? null,
 
         ]);
 
@@ -1078,6 +1084,9 @@ public function deleteInventoryAdjustments(
 
                 'description' =>
                     $data['description'] ?? null,
+                
+                 'reseller_id' =>
+                $data['reseller_id'] ?? null,
 
             ]
 
@@ -1096,6 +1105,7 @@ public function deleteInventoryAdjustments(
             'warehouse_id' => $data['warehouse_id'],
             'product_variant_id' => $data['product_variant_id'],
             'unit_id' => $data['unit_id'],
+             'reseller_id' =>$data['reseller_id'] ?? null,
         ])
         ->lockForUpdate()
         ->firstOrFail();
@@ -1156,6 +1166,9 @@ public function deleteInventoryAdjustments(
 
                 'description' =>
                     $data['description'] ?? null,
+
+                'reseller_id' =>
+                $data['reseller_id'] ?? null,
             ]
         );
 
@@ -1640,8 +1653,11 @@ public function transfer(array $data): void
         ->where(
             'unit_id',
             $data['unit_id']
+        )
+        ->where(
+            'reseller_id',
+            $data['reseller_id'] ?? null
         );
-
 
     if (
         ($data['lock'] ?? false)
@@ -1677,6 +1693,9 @@ public function transfer(array $data): void
 
         $stock->product_variant_id =
             $data['product_variant_id'];
+
+        $stock->reseller_id =
+        $data['reseller_id'] ?? null;
 
         $stock->unit_id =
             $data['unit_id'];
@@ -1844,6 +1863,8 @@ public function transfer(array $data): void
         'branch_id'          => $stock->branch_id,
 
         'warehouse_id'       => $stock->warehouse_id,
+
+        'reseller_id' => $data['reseller_id'] ?? null,
 
         /*
         |--------------------------------------------------------------------------
