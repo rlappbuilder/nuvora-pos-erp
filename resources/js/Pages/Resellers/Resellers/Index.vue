@@ -1,17 +1,7 @@
 <script setup>
-import {
-    ref,
-    reactive,
-    computed,
-    watch,
-    onMounted,
-    onUnmounted,
-} from 'vue'
-
+import { ref,reactive,computed,watch,onMounted,onUnmounted,} from 'vue'
 import { router } from '@inertiajs/vue3'
-
 import AppLayout from '@/Layouts/AppLayout.vue'
-
 import DataTable from '@/Components/Table/DataTable.vue'
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
@@ -20,24 +10,16 @@ import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
 import TablePagination from '@/Components/Table/TablePagination.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
-
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
-
 import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
 import { LoadingOverlay } from '@/Components/Feedback'
 
-import {
-    PlusIcon,
-} from '@heroicons/vue/24/solid'
+import { PlusIcon,} from '@heroicons/vue/24/solid'
 
-import {
-    success,
-    error,
-} from '@/Utils'
+import { success, error,} from '@/Utils'
 
 
 /*

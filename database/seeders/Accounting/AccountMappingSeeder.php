@@ -26,6 +26,10 @@ class AccountMappingSeeder extends Seeder
             'input_vat' => '110501',
             'trade_payable' => '210101',
             'inventory_consignment' => '110307',
+            'settlement_receivable' => '110201',
+            'settlement_revenue' => '410101',
+            'settlement_cogs' => '510101',
+            'consignment_cash' => '110107',
         ];
 
         foreach ($companies as $company) {

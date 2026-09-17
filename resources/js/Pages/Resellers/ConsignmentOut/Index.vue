@@ -17,9 +17,9 @@ import {
 } from '@inertiajs/vue3'
 
 import AppLayout from '@/Layouts/AppLayout.vue'
-import PageHeader from '@/Components/Layout/PageHeader.vue'
+
 import Card from '@/Components/Layout/Card.vue'
-import StatsCard from '@/Components/Card/StatsCard.vue'
+
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
@@ -31,8 +31,6 @@ import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
 import TablePagination from '@/Components/Table/TablePagination.vue'
-import TableEmpty from '@/Components/Table/TableEmpty.vue'
-
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 
@@ -2926,7 +2924,6 @@ const exportExcel = (item) => {
 }
 </script>
 <template>
-
 <AppLayout>
 
     <Transition

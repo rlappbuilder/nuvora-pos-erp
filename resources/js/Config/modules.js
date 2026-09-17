@@ -391,8 +391,8 @@ const modules = {
                 key: 'ConsignmentSettlements',
                 title: 'Consignment Settlement',
                 icon: UsersIcon,
-                route: 'goods-receipts.index',
-                permission: 'goods-receipts.view',
+                route: 'consignment-settlements.index',
+                permission: 'consignment-settlements.view',
             },
               ConsignmentReturns: {
                 key: 'ConsignmentReturns',

@@ -87,7 +87,15 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
-
+            [
+                'code' => '110107',
+                'name' => 'Consignment Cash',
+                'category' => 'Cash & Bank',
+                'parent' => '110100',
+                'normal_balance' => 'Debit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
 
             // ----------------------------------------------------------
             // Accounts Receivable
@@ -218,7 +226,15 @@ class ChartOfAccountSeeder extends Seeder
                 'is_posting' => true,
             ],
 
-
+             [
+                'code' => '110307',
+                'name' => 'Inventory - Consignment',
+                'category' => 'Inventory',
+                'parent' => '110300',
+                'normal_balance' => 'Debit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
             // ----------------------------------------------------------
             // Prepaid Expense
             // ----------------------------------------------------------
