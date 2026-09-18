@@ -4,7 +4,7 @@ namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Company\Company;
+use App\Models\MasterData\Company;
 use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
 use App\Models\MasterData\Unit;

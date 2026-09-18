@@ -6,6 +6,7 @@ use App\Http\Controllers\Reseller\ResellerController;
 use App\Http\Controllers\Consignment\ConsignmentOutController;
 use App\Http\Controllers\Reseller\ConsignmentStockController;
 use App\Http\Controllers\Consignment\ConsignmentReceivableController;
+use App\Http\Controllers\Consignment\ConsignmentReturnController;
                 /*
                 |--------------------------------------------------------------------------
                 | Reseller Routes
@@ -293,7 +294,83 @@ use App\Http\Controllers\Consignment\ConsignmentReceivableController;
                     [ConsignmentReceivableController::class, 'excel']
                 )->name('consignment-receivables.excel');
 
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Return
+                |--------------------------------------------------------------------------
+                */
 
+                Route::get(
+                    '/consignment-returns/preview-code',
+                    [ConsignmentReturnController::class, 'previewCode']
+                )->name('consignment-returns.preview-code');
+
+
+                Route::post(
+                    '/consignment-returns/{consignmentReturn}/submit',
+                    [ConsignmentReturnController::class, 'submit']
+                )->name('consignment-returns.submit');
+
+
+                Route::post(
+                    '/consignment-returns/{consignmentReturn}/approve',
+                    [ConsignmentReturnController::class, 'approve']
+                )->name('consignment-returns.approve');
+
+
+                Route::post(
+                    '/consignment-returns/{consignmentReturn}/reject',
+                    [ConsignmentReturnController::class, 'reject']
+                )->name('consignment-returns.reject');
+
+
+                Route::post(
+                    '/consignment-returns/{consignmentReturn}/post',
+                    [ConsignmentReturnController::class, 'post']
+                )->name('consignment-returns.post');
+
+
+                Route::post(
+                    '/consignment-returns/{consignmentReturn}/cancel',
+                    [ConsignmentReturnController::class, 'cancel']
+                )->name('consignment-returns.cancel');
+
+
+                Route::get(
+                    '/consignment-returns/{consignmentReturn}/data',
+                    [ConsignmentReturnController::class, 'showData']
+                )->name('consignment-returns.data');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Return Print
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get(
+                    '/consignment-returns/{consignmentReturn}/print',
+                    [ConsignmentReturnController::class, 'print']
+                )->name('consignment-returns.print');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Return Resource
+                |--------------------------------------------------------------------------
+                */
+
+                Route::resource(
+                    'consignment-returns',
+                    ConsignmentReturnController::class
+                )->only([
+                    'index',
+                    'create',
+                    'store',
+                    'show',
+                    'edit',
+                    'update',
+                ]);
                 /*
                 |--------------------------------------------------------------------------
                 | Consignment Receivable Resource
