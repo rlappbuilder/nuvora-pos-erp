@@ -1,6 +1,6 @@
 <script setup>
 
-import { ref, reactive, computed, watch, onMounted, onUnmounted, toRefs,} from 'vue'
+import {ref,reactive,computed,watch,onMounted,onUnmounted,toRefs,} from 'vue'
 import {router,} from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
@@ -14,33 +14,20 @@ import DataTableCell from '@/Components/Table/DataTableCell.vue'
 import TablePagination from '@/Components/Table/TablePagination.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import ConsignmentSettlementCancelModal from './Partials/ConsignmentSettlementCancelModal.vue'
-import {
-    LoadingOverlay,
-} from '@/Components/Feedback'
 
-import {
-    PlusIcon,
-} from '@heroicons/vue/24/solid'
+import {LoadingOverlay,} from '@/Components/Feedback'
 
-import {
-    success,
-    error,
-    formatDate,} from '@/Utils'
+import {PlusIcon,} from '@heroicons/vue/24/solid'
+
+import {success,error,formatDate,} from '@/Utils'
 
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
 
-/*
-|--------------------------------------------------------------------------
-| Props
-|--------------------------------------------------------------------------
-*/
-
 const props = defineProps({
 
-    settlements: {
+    receivables: {
 
         type: Object,
 
@@ -69,13 +56,19 @@ const props = defineProps({
 
             total: 0,
 
+            draft: 0,
+
+            submitted: 0,
+
+            rejected: 0,
+
+            approved: 0,
+
             posted: 0,
 
             cancelled: 0,
 
             total_transaction: 0,
-
-            total_items: 0,
 
         }),
 
@@ -83,15 +76,6 @@ const props = defineProps({
 
 
     branches: {
-
-        type: Array,
-
-        default: () => [],
-
-    },
-
-
-    warehouses: {
 
         type: Array,
 
@@ -121,7 +105,7 @@ const props = defineProps({
 
 
 const {
-    settlements,
+    receivables,
     statistics,
 } = toRefs(props)
 
@@ -133,7 +117,7 @@ const {
 */
 
 const pageTitle = computed(
-    () => 'Consignment Settlement'
+    () => 'Consignment Receivable'
 )
 
 
@@ -209,9 +193,6 @@ const filters = reactive({
     branch_id:
         props.filters?.branch_id ?? '',
 
-    warehouse_id:
-        props.filters?.warehouse_id ?? '',
-
     reseller_id:
         props.filters?.reseller_id ?? '',
 
@@ -272,7 +253,7 @@ function loadData()
     router.get(
 
         route(
-            'consignment-settlements.index'
+            'consignment-receivables.index'
         ),
 
         {
@@ -282,9 +263,6 @@ function loadData()
 
             branch_id:
                 filters.branch_id,
-
-            warehouse_id:
-                filters.warehouse_id,
 
             reseller_id:
                 filters.reseller_id,
@@ -383,19 +361,6 @@ watch(
 
 watch(
 
-    () => filters.warehouse_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
     () => filters.reseller_id,
 
     () => {
@@ -465,8 +430,6 @@ function refresh()
 
             branch_id: '',
 
-            warehouse_id: '',
-
             reseller_id: '',
 
             status: '',
@@ -496,6 +459,26 @@ const statusOptions = [
     {
         value: '',
         label: 'All Status',
+    },
+
+    {
+        value: 'Draft',
+        label: 'Draft',
+    },
+
+    {
+        value: 'Submitted',
+        label: 'Submitted',
+    },
+
+    {
+        value: 'Rejected',
+        label: 'Rejected',
+    },
+
+    {
+        value: 'Approved',
+        label: 'Approved',
     },
 
     {
@@ -559,75 +542,6 @@ function sortBy(column)
 
 /*
 |--------------------------------------------------------------------------
-| Filtered Warehouse
-|--------------------------------------------------------------------------
-*/
-
-const filteredWarehouses =
-    computed(() => {
-
-        if (
-            !filters.branch_id
-        ) {
-
-            return props.warehouses
-
-        }
-
-
-        return props.warehouses.filter(
-
-            warehouse =>
-
-                Number(
-                    warehouse.branch_id
-                ) ===
-                Number(
-                    filters.branch_id
-                )
-
-        )
-
-    })
-
-
-/*
-|--------------------------------------------------------------------------
-| Branch Change
-|--------------------------------------------------------------------------
-*/
-
-watch(
-
-    () => filters.branch_id,
-
-    (
-        newBranch,
-        oldBranch
-    ) => {
-
-        if (
-
-            oldBranch === undefined ||
-
-            newBranch === oldBranch
-
-        ) {
-
-            return
-
-        }
-
-
-        filters.warehouse_id = null
-
-    }
-
-)
-
-
-/*
-|--------------------------------------------------------------------------
 | Actions
 |--------------------------------------------------------------------------
 */
@@ -638,7 +552,7 @@ function openView(item)
     router.get(
 
         route(
-            'consignment-settlements.show',
+            'consignment-receivables.show',
             item.id
         )
 
@@ -647,46 +561,18 @@ function openView(item)
 }
 
 
-function printSettlement(item)
+function create()
 {
 
-    window.open(
+    router.get(
 
         route(
-            'consignment-settlements.print',
-            item.id
-        ),
-
-        '_blank'
+            'consignment-receivables.create'
+        )
 
     )
 
 }
-
-
-function cancelSettlement(item)
-{
-
-    selectedSettlement.value =
-        item
-
-    cancelReason.value =
-        ''
-
-    showCancelModal.value =
-        true
-
-}
-
-
-function canCancel(item)
-{
-
-    return item.status === 'Posted'
-
-}
-
-
 /*
 |--------------------------------------------------------------------------
 | Currency
@@ -732,7 +618,7 @@ const summaryCards = computed(() => [
             'total',
 
         label:
-            'Total Settlement',
+            'Total Receivable',
 
         value:
             statistics.value?.total ?? 0,
@@ -864,171 +750,7 @@ function selectSummary(key)
 
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Create
-|--------------------------------------------------------------------------
-*/
-
-function create()
-{
-
-    router.get(
-
-        route(
-            'consignment-settlements.create'
-        )
-
-    )
-
-}
-/*
-|--------------------------------------------------------------------------
-| Cancel
-|--------------------------------------------------------------------------
-*/
-
-const showCancelModal =
-    ref(false)
-
-const cancelLoading =
-    ref(false)
-
-const cancelReason =
-    ref('')
-
-const selectedSettlement =
-    ref(null)
-
-
-function openCancel(item)
-{
-
-    selectedSettlement.value =
-        item
-
-    cancelReason.value =
-        ''
-
-    showCancelModal.value =
-        true
-
-}
-
-
-function closeCancel()
-{
-
-    showCancelModal.value =
-        false
-
-    selectedSettlement.value =
-        null
-
-    cancelReason.value =
-        ''
-
-}
-
-
-function confirmCancel()
-{
-
-    if (
-        !selectedSettlement.value
-    ) {
-
-        return
-
-    }
-
-
-    if (
-        !cancelReason.value.trim()
-    ) {
-
-        error(
-            'Cancellation reason is required.'
-        )
-
-        return
-
-    }
-
-
-    cancelLoading.value =
-        true
-
-
-    router.post(
-
-        route(
-            'consignment-settlements.cancel',
-
-            selectedSettlement.value.id
-
-        ),
-
-        {
-
-            reason:
-                cancelReason.value.trim(),
-
-        },
-
-        {
-
-            preserveScroll:
-                true,
-
-            onSuccess: () => {
-
-                closeCancel()
-
-                success(
-
-                    'Success',
-
-                    'Consignment Settlement cancelled successfully.'
-
-                )
-
-            },
-
-            onError: (errors) => {
-
-                console.error(
-
-                    'CANCEL CONSIGNMENT SETTLEMENT ERROR:',
-
-                    errors
-
-                )
-
-                error(
-
-                    'Failed to cancel consignment settlement.'
-
-                )
-
-            },
-
-            onFinish: () => {
-
-                cancelLoading.value =
-                    false
-
-            },
-
-        }
-
-    )
-
-}
 </script>
-
-
 <template>
 
 <AppLayout>
@@ -1061,7 +783,7 @@ function confirmCancel()
                         text-gray-900
                     "
                 >
-                    Consignment Settlement
+                    Consignment Receivable
                 </h1>
 
 
@@ -1072,7 +794,7 @@ function confirmCancel()
                         text-gray-500
                     "
                 >
-                    Manage consignment settlement transactions.
+                    Manage consignment receivable transactions.
                 </p>
 
             </div>
@@ -1136,7 +858,7 @@ function confirmCancel()
                     grid-cols-1
                     gap-3
                     md:grid-cols-2
-                    lg:grid-cols-5
+                    lg:grid-cols-4
                 "
             >
 
@@ -1153,7 +875,7 @@ function confirmCancel()
                             text-gray-600
                         "
                     >
-                        Transaction Date
+                        Payment Date
                     </label>
 
 
@@ -1164,7 +886,7 @@ function confirmCancel()
                             dateFormat: 'Y-m-d',
                             allowInput: true,
                         }"
-                        placeholder="Transaction Date"
+                        placeholder="Payment Date"
                         class="
                             w-full
                             rounded-lg
@@ -1235,34 +957,6 @@ function confirmCancel()
                 </div>
 
 
-                <!-- Warehouse -->
-
-                <div>
-
-                    <label
-                        class="
-                            mb-1
-                            block
-                            text-xs
-                            font-medium
-                            text-gray-600
-                        "
-                    >
-                        Warehouse
-                    </label>
-
-
-                    <SearchableSelect
-                        v-model="filters.warehouse_id"
-                        :options="filteredWarehouses"
-                        label="label"
-                        value-key="id"
-                        placeholder="All Warehouses"
-                    />
-
-                </div>
-
-
                 <!-- Status -->
 
                 <div>
@@ -1308,7 +1002,7 @@ function confirmCancel()
                 <input
                     v-model="filters.search"
                     type="text"
-                    placeholder="Search settlement number, reseller..."
+                    placeholder="Search receivable number, reseller..."
                     class="
                         min-w-0
                         flex-1
@@ -1415,7 +1109,7 @@ function confirmCancel()
                             "
                         >
 
-                            Rp
+                            
                             {{
                                 formatAmount(
                                     card.value
@@ -1444,8 +1138,6 @@ function confirmCancel()
             </div>
 
         </div>
-
-
         <!-- ========================================================= -->
         <!-- Table -->
         <!-- ========================================================= -->
@@ -1478,7 +1170,7 @@ function confirmCancel()
                         text-gray-500
                     "
                 >
-                    Consignment Settlement Transactions
+                    Consignment Receivable Transactions
                 </div>
 
             </div>
@@ -1488,7 +1180,7 @@ function confirmCancel()
 
             <LoadingOverlay
                 :show="loading"
-                text="Loading Consignment Settlement..."
+                text="Loading Consignment Receivable..."
             />
 
 
@@ -1496,7 +1188,7 @@ function confirmCancel()
 
             <div
                 v-if="
-                    settlements?.data?.length
+                    receivables?.data?.length
                 "
                 class="overflow-x-auto"
             >
@@ -1508,17 +1200,17 @@ function confirmCancel()
 
                     <DataTableHead sticky>
 
-                        <!-- Settlement -->
+                        <!-- Receivable -->
 
                         <DataTableHeaderCell
                             sortable
-                            column="settlement_number"
+                            column="number"
                             :sort="sort"
                             :direction="direction"
                             @sort="sortBy"
                             width="180px"
                         >
-                            Settlement
+                            Receivable
                         </DataTableHeaderCell>
 
 
@@ -1531,42 +1223,31 @@ function confirmCancel()
                         </DataTableHeaderCell>
 
 
-                        <!-- Branch / Warehouse -->
+                        <!-- Branch -->
 
                         <DataTableHeaderCell
                             width="220px"
                         >
-                            Branch / Warehouse
-                        </DataTableHeaderCell>
-
-
-                        <!-- Total / Items -->
-
-                        <DataTableHeaderCell
-                            width="170px"
-                            align="right"
-                        >
-                            Total / Items
+                            Branch
                         </DataTableHeaderCell>
 
 
                         <!-- Payment -->
 
                         <DataTableHeaderCell
-                            width="160px"
+                            width="190px"
                             align="right"
                         >
                             Payment
                         </DataTableHeaderCell>
 
 
-                        <!-- Receivable -->
+                        <!-- Payment Method -->
 
                         <DataTableHeaderCell
-                            width="160px"
-                            align="right"
+                            width="180px"
                         >
-                            Receivable
+                            Payment Method
                         </DataTableHeaderCell>
 
 
@@ -1598,14 +1279,14 @@ function confirmCancel()
                             v-for="
                                 item in
                                 (
-                                    settlements?.data
+                                    receivables?.data
                                     ?? []
                                 )
                             "
                             :key="item.id"
                         >
 
-                            <!-- Settlement -->
+                            <!-- Receivable -->
 
                             <DataTableCell>
 
@@ -1616,7 +1297,7 @@ function confirmCancel()
                                     "
                                 >
                                     {{
-                                        item.settlement_number
+                                        item.number
                                         ?? '-'
                                     }}
                                 </div>
@@ -1630,9 +1311,9 @@ function confirmCancel()
                                     "
                                 >
                                     {{
-                                        item.settlement_date
+                                        item.payment_date
                                             ? formatDate(
-                                                item.settlement_date
+                                                item.payment_date
                                             )
                                             : '-'
                                     }}
@@ -1641,40 +1322,40 @@ function confirmCancel()
                             </DataTableCell>
 
 
-                        <!-- Reseller -->
+                            <!-- Reseller -->
 
-                        <DataTableCell>
+                            <DataTableCell>
 
-                            <div
-                                class="
-                                    font-medium
-                                    text-gray-900
-                                "
-                            >
-                                {{
-                                    item.reseller?.name
-                                    ?? '-'
-                                }}
-                            </div>
-
-
-                            <div
-                                class="
-                                    mt-0.5
-                                    text-xs
-                                    text-gray-500
-                                "
-                            >
-                                {{
-                                    item.reseller?.reseller_code
-                                    ?? '-'
-                                }}
-                            </div>
-
-                        </DataTableCell>
+                                <div
+                                    class="
+                                        font-medium
+                                        text-gray-900
+                                    "
+                                >
+                                    {{
+                                        item.reseller?.name
+                                        ?? '-'
+                                    }}
+                                </div>
 
 
-                            <!-- Branch / Warehouse -->
+                                <div
+                                    class="
+                                        mt-0.5
+                                        text-xs
+                                        text-gray-500
+                                    "
+                                >
+                                    {{
+                                        item.reseller?.reseller_code
+                                        ?? '-'
+                                    }}
+                                </div>
+
+                            </DataTableCell>
+
+
+                            <!-- Branch -->
 
                             <DataTableCell>
 
@@ -1690,24 +1371,10 @@ function confirmCancel()
                                     }}
                                 </div>
 
-
-                                <div
-                                    class="
-                                        mt-0.5
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
-                                    {{
-                                        item.warehouse?.name
-                                        ?? '-'
-                                    }}
-                                </div>
-
                             </DataTableCell>
 
 
-                            <!-- Total / Items -->
+                            <!-- Payment -->
 
                             <DataTableCell
                                 align="right"
@@ -1723,7 +1390,7 @@ function confirmCancel()
                                     Rp
                                     {{
                                         formatAmount(
-                                            item.grand_total
+                                            item.total_amount
                                         )
                                     }}
                                 </div>
@@ -1741,52 +1408,25 @@ function confirmCancel()
                                         item.total_items
                                         ?? 0
                                     }}
-                                    Items
+                                    Settlements
                                 </div>
 
                             </DataTableCell>
 
 
-                            <!-- Payment -->
+                            <!-- Payment Method -->
 
-                            <DataTableCell
-                                align="right"
-                            >
+                            <DataTableCell>
 
                                 <span
                                     class="
-                                        tabular-nums
+                                        text-sm
                                         text-gray-700
                                     "
                                 >
-                                    Rp
                                     {{
-                                        formatAmount(
-                                            item.payment_amount
-                                        )
-                                    }}
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- Receivable -->
-
-                            <DataTableCell
-                                align="right"
-                            >
-
-                                <span
-                                    class="
-                                        tabular-nums
-                                        text-gray-700
-                                    "
-                                >
-                                    Rp
-                                    {{
-                                        formatAmount(
-                                            item.receivable_amount
-                                        )
+                                        item.payment_method
+                                        ?? '-'
                                     }}
                                 </span>
 
@@ -1820,14 +1460,6 @@ function confirmCancel()
                                         openView(item)
                                     "
 
-                                    @print="
-                                        printSettlement(item)
-                                    "
-
-                                    @cancel="
-                                        cancelSettlement(item)
-                                    "
-
                                     :showEdit="
                                         false
                                     "
@@ -1853,7 +1485,7 @@ function confirmCancel()
                                     "
 
                                     :showCancel="
-                                        canCancel(item)
+                                        false
                                     "
 
                                     :showExport="
@@ -1861,7 +1493,7 @@ function confirmCancel()
                                     "
 
                                     :showPrint="
-                                        true
+                                        false
                                     "
 
                                     :showPdf="
@@ -1911,7 +1543,7 @@ function confirmCancel()
                         text-gray-700
                     "
                 >
-                    No Consignment Settlement
+                    No Consignment Receivable
                 </div>
 
 
@@ -1922,60 +1554,10 @@ function confirmCancel()
                         text-gray-500
                     "
                 >
-                    No consignment settlement transactions found.
+                    No consignment receivable transactions found.
                 </div>
 
             </div>
-
-        </div>
-
-
-        <!-- ========================================================= -->
-        <!-- Total -->
-        <!-- ========================================================= -->
-
-        <div
-            class="
-                flex
-                items-center
-                justify-between
-                rounded-xl
-                border
-                border-gray-100
-                bg-white
-                px-4
-                py-3
-                shadow-sm
-            "
-        >
-
-            <span
-                class="
-                    text-sm
-                    font-semibold
-                    text-gray-900
-                "
-            >
-                Total Transaction
-            </span>
-
-
-            <span
-                class="
-                    text-sm
-                    font-semibold
-                    tabular-nums
-                    text-gray-900
-                "
-            >
-                Rp
-                {{
-                    formatAmount(
-                        statistics?.total_transaction
-                        ?? 0
-                    )
-                }}
-            </span>
 
         </div>
 
@@ -1987,8 +1569,8 @@ function confirmCancel()
         <div>
 
             <TablePagination
-                :data="settlements"
-                label="Consignment Settlement"
+                :data="receivables"
+                label="Consignment Receivable"
             />
 
         </div>
@@ -1996,17 +1578,7 @@ function confirmCancel()
     </div>
 
 </AppLayout>
-<ConsignmentSettlementCancelModal
-    :show="showCancelModal"
-    :settlement="selectedSettlement"
-    :loading="cancelLoading"
-    :reason="cancelReason"
-    @close="closeCancel"
-    @confirm="confirmCancel"
-    @update:reason="
-        cancelReason = $event
-    "
-/>
+
 </template>
 
 

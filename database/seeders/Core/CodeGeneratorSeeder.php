@@ -76,6 +76,8 @@ $modules = [
     ['module' => 'consignment_in',            'prefix' => 'CSI',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
     ['module' => 'consignment_settlement',     'prefix' => 'CSS',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
     ['module' => 'consignment_return',         'prefix' => 'CSR',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+     ['module' => 'consignment_receivable',     'prefix' => 'CRC',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+     
   
 ];
 

@@ -394,9 +394,32 @@ const modules = {
                 route: 'consignment-settlements.index',
                 permission: 'consignment-settlements.view',
             },
+             ConsignmentReceivables: {
+                key: 'ConsignmentReceivables',
+                title: 'Consignment Receivable',
+                icon: UsersIcon,
+                route: 'consignment-receivables.index',
+                permission: 'consignment-receivables.view',
+                
+            },
+                ResellerStatements: {
+                key: 'ResellerStatements',
+                title: 'Reseller Statement',
+                icon: UsersIcon,
+                route: 'consignment-receivables.index',
+                permission: 'consignment-receivables.view',
+                
+            },
               ConsignmentReturns: {
                 key: 'ConsignmentReturns',
                 title: 'Consignment Returns',
+                icon: UsersIcon,
+                route: 'goods-receipts.index',
+                permission: 'goods-receipts.view',
+            },
+                ConsignmentReports: {
+                key: 'ConsignmentReports',
+                title: 'Consignment Reports',
                 icon: UsersIcon,
                 route: 'goods-receipts.index',
                 permission: 'goods-receipts.view',

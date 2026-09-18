@@ -77,8 +77,11 @@ const navigation = [
         modules.Resellers,
         modules.ConsignmentOuts,
         modules.ConsignmentStocks,
-         modules.ConsignmentSettlements,
-         modules.ConsignmentReturns,
+        modules.ConsignmentSettlements,
+        modules.ConsignmentReceivables,
+        modules.ConsignmentReturns,
+        modules.ConsignmentReports,
+        modules.ResellerStatements,
         ],
     },
 

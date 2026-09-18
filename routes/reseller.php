@@ -5,6 +5,7 @@ use App\Http\Controllers\Consignment\ConsignmentSettlementController;
 use App\Http\Controllers\Reseller\ResellerController;
 use App\Http\Controllers\Consignment\ConsignmentOutController;
 use App\Http\Controllers\Reseller\ConsignmentStockController;
+use App\Http\Controllers\Consignment\ConsignmentReceivableController;
                 /*
                 |--------------------------------------------------------------------------
                 | Reseller Routes
@@ -223,6 +224,92 @@ use App\Http\Controllers\Reseller\ConsignmentStockController;
                     'create',
                     'store',
                     'show',
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Receivable
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get(
+                    '/consignment-receivables/preview-code',
+                    [ConsignmentReceivableController::class, 'previewCode']
+                )->name('consignment-receivables.preview-code');
+
+                Route::post(
+                    '/consignment-receivables/{consignmentReceivable}/submit',
+                    [ConsignmentReceivableController::class, 'submit']
+                )->name('consignment-receivables.submit');
+
+                Route::post(
+                    '/consignment-receivables/{consignmentReceivable}/approve',
+                    [ConsignmentReceivableController::class, 'approve']
+                )->name('consignment-receivables.approve');
+
+                Route::post(
+                    '/consignment-receivables/{consignmentReceivable}/reject',
+                    [ConsignmentReceivableController::class, 'reject']
+                )->name('consignment-receivables.reject');
+
+                Route::post(
+                    '/consignment-receivables/{consignmentReceivable}/post',
+                    [ConsignmentReceivableController::class, 'post']
+                )->name('consignment-receivables.post');
+
+                Route::post(
+                    '/consignment-receivables/{consignmentReceivable}/cancel',
+                    [ConsignmentReceivableController::class, 'cancel']
+                )->name('consignment-receivables.cancel');
+
+                Route::get(
+                    '/consignment-receivables/{consignmentReceivable}/data',
+                    [ConsignmentReceivableController::class, 'showData']
+                )->name('consignment-receivables.data');
+                
+                Route::get(
+                    'consignment-receivables/{consignmentReceivable}/print',
+                    [ConsignmentReceivableController::class, 'print']
+                )->name('consignment-receivables.print');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Receivable Export
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get(
+                    '/consignment-receivables/{consignmentReceivable}/print',
+                    [ConsignmentReceivableController::class, 'print']
+                )->name('consignment-receivables.print');
+
+                Route::get(
+                    '/consignment-receivables/{consignmentReceivable}/pdf',
+                    [ConsignmentReceivableController::class, 'pdf']
+                )->name('consignment-receivables.pdf');
+
+                Route::get(
+                    '/consignment-receivables/{consignmentReceivable}/excel',
+                    [ConsignmentReceivableController::class, 'excel']
+                )->name('consignment-receivables.excel');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Consignment Receivable Resource
+                |--------------------------------------------------------------------------
+                */
+
+                Route::resource(
+                    'consignment-receivables',
+                    ConsignmentReceivableController::class
+                )->only([
+                    'index',
+                    'create',
+                    'store',
+                    'show',
+                    'edit',
+                    'update',
                 ]);
                 /*
                 |--------------------------------------------------------------------------
