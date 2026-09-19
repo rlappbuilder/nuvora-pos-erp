@@ -4,7 +4,7 @@ namespace App\Models\Reseller\ConsignmentReturn;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use App\Models\Reseller\ConsignmentReturn\ConsignmentReturnPriceLayer;
 use App\Models\Product\ProductVariant;
 use App\Models\MasterData\Unit;
 
@@ -126,5 +126,11 @@ class ConsignmentReturnDetail extends Model
             'unit_id'
         );
     }
-
+    public function priceLayers()
+    {
+        return $this->hasMany(
+            ConsignmentReturnPriceLayer::class,
+            'return_detail_id'
+        );
+    }
 }

@@ -10,7 +10,6 @@ use App\Models\MasterData\Branch;
 use App\Models\MasterData\Warehouse;
 use App\Models\Product\ProductVariant;
 use App\Models\Reseller\Reseller;
-use App\Models\Reseller\ResellerPriceHistory;
 use App\Models\Reseller\ConsignmentSettlement\ConsignmentSettlementHeader;
 use App\Models\Reseller\ConsignmentSettlement\ConsignmentSettlementDetail;
 use App\Services\Accounting\AccountMappingService;
@@ -19,6 +18,9 @@ use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use App\Services\Inventory\InventoryService;
 use Illuminate\Support\Facades\DB;
+use App\Models\Reseller\ResellerStockPriceLayer;
+use App\Services\Consignment\ResellerStockPriceLayerService;
+use App\Models\Reseller\ConsignmentSettlement\ConsignmentSettlementPriceLayer;
 
 class ConsignmentSettlementService
 {
@@ -32,12 +34,15 @@ class ConsignmentSettlementService
 
     protected InventoryService $inventoryService;
 
+    protected ResellerStockPriceLayerService $priceLayerService;
+
     public function __construct(
         CodeGeneratorService $codeGeneratorService,
         DocumentActivityService $documentActivityService,
         AccountMappingService $accountMappingService,
         JournalEntryService $journalEntryService,
-        InventoryService $inventoryService
+        InventoryService $inventoryService,
+        ResellerStockPriceLayerService $priceLayerService
     ) {
         $this->codeGeneratorService =
             $codeGeneratorService;
@@ -53,179 +58,187 @@ class ConsignmentSettlementService
 
         $this->inventoryService =
             $inventoryService;
+        $this->priceLayerService =
+         $priceLayerService;
     }
 
+/*
+|--------------------------------------------------------------------------
+| Create Settlement - POSTED
+|--------------------------------------------------------------------------
+*/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create Settlement - POSTED
-    |--------------------------------------------------------------------------
-    */
+public function createSettlement(
+    array $data
+): ConsignmentSettlementHeader {
 
-    public function createSettlement(
-        array $data
-    ): ConsignmentSettlementHeader {
+    return DB::transaction(
+        function () use ($data) {
 
-        return DB::transaction(
-            function () use ($data) {
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Details
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                empty($data['details']) ||
+                ! is_array($data['details'])
+            ) {
+
+                throw new \RuntimeException(
+                    'Settlement must have at least one detail.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Branch
+            |--------------------------------------------------------------------------
+            */
+
+            $branch =
+                Branch::query()
+                    ->findOrFail(
+                        $data['branch_id']
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Company
+            |--------------------------------------------------------------------------
+            */
+
+            $companyId =
+                $branch->company_id;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Warehouse
+            |--------------------------------------------------------------------------
+            */
+
+            $warehouse =
+                Warehouse::query()
+                    ->where(
+                        'id',
+                        $data['warehouse_id']
+                    )
+                    ->where(
+                        'branch_id',
+                        $branch->id
+                    )
+                    ->first();
+
+            if (! $warehouse) {
+
+                throw new \RuntimeException(
+                    'Selected warehouse is invalid for this branch.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Reseller
+            |--------------------------------------------------------------------------
+            */
+
+            $reseller =
+                Reseller::query()
+                    ->where(
+                        'id',
+                        $data['reseller_id']
+                    )
+                    ->where(
+                        'company_id',
+                        $companyId
+                    )
+                    ->where(
+                        'status',
+                        true
+                    )
+                    ->first();
+
+            if (! $reseller) {
+
+                throw new \RuntimeException(
+                    'Selected reseller is invalid for this company.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Prepare Settlement Details
+            |--------------------------------------------------------------------------
+            */
+
+            $preparedDetails = [];
+
+            $subtotal = 0;
+
+            $totalCogs = 0;
+
+            $detailKeys = [];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Process Details
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $data['details']
+                as $detail
+            ) {
 
                 /*
                 |--------------------------------------------------------------------------
-                | Validate Details
+                | Prevent Duplicate Product + Unit
                 |--------------------------------------------------------------------------
                 */
+
+                $detailKey =
+                    $detail['product_variant_id'] .
+                    '-' .
+                    $detail['unit_id'];
 
                 if (
-                    empty($data['details']) ||
-                    ! is_array($data['details'])
+                    isset(
+                        $detailKeys[$detailKey]
+                    )
                 ) {
 
                     throw new \RuntimeException(
-                        'Settlement must have at least one detail.'
+                        'Duplicate product variant and unit is not allowed in settlement.'
                     );
 
                 }
 
+                $detailKeys[$detailKey] = true;
+
 
                 /*
                 |--------------------------------------------------------------------------
-                | Resolve Branch
+                | Product Variant
                 |--------------------------------------------------------------------------
                 */
 
-                $branch =
-                    Branch::query()
+                $variant =
+                    ProductVariant::query()
+                        ->with('product')
                         ->findOrFail(
-                            $data['branch_id']
+                            $detail['product_variant_id']
                         );
 
-
-                /*
-                |--------------------------------------------------------------------------
-                | Resolve Company
-                |--------------------------------------------------------------------------
-                */
-
-                $companyId =
-                    $branch->company_id;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Warehouse
-                |--------------------------------------------------------------------------
-                */
-
-                $warehouse =
-                    Warehouse::query()
-                        ->where(
-                            'id',
-                            $data['warehouse_id']
-                        )
-                        ->where(
-                            'branch_id',
-                            $branch->id
-                        )
-                        ->first();
-
-                if (! $warehouse) {
-
-                    throw new \RuntimeException(
-                        'Selected warehouse is invalid for this branch.'
-                    );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Reseller
-                |--------------------------------------------------------------------------
-                */
-
-                $reseller =
-                    Reseller::query()
-                        ->where(
-                            'id',
-                            $data['reseller_id']
-                        )
-                        ->where(
-                            'company_id',
-                            $companyId
-                        )
-                        ->where(
-                            'status',
-                            true
-                        )
-                        ->first();
-
-                if (! $reseller) {
-
-                    throw new \RuntimeException(
-                        'Selected reseller is invalid for this company.'
-                    );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Prepare Settlement Details
-                |--------------------------------------------------------------------------
-                */
-
-                $preparedDetails = [];
-
-                $subtotal = 0;
-
-                $totalCogs = 0;
-
-                $detailKeys = [];
-
-
-                foreach (
-                    $data['details']
-                    as $detail
-                ) {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Prevent Duplicate Product + Unit
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $detailKey =
-                        $detail['product_variant_id'] .
-                        '-' .
-                        $detail['unit_id'];
-
-                    if (
-                        isset(
-                            $detailKeys[$detailKey]
-                        )
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Duplicate product variant and unit is not allowed in settlement.'
-                        );
-
-                    }
-
-                    $detailKeys[$detailKey] = true;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Product Variant
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $variant =
-                        ProductVariant::query()
-                            ->with('product')
-                            ->findOrFail(
-                                $detail['product_variant_id']
-                            );
 
                 /*
                 |--------------------------------------------------------------------------
@@ -253,316 +266,24 @@ class ConsignmentSettlementService
                 }
 
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Quantity Sold
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $qtySold =
-                        (float) (
-                            $detail['qty_sold']
-                            ?? 0
-                        );
-
-
-                    if (
-                        $qtySold <= 0
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Quantity sold must be greater than zero.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Lock Consignment Stock
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $stock =
-                        ProductStock::query()
-                            ->where(
-                                'company_id',
-                                $companyId
-                            )
-                            ->where(
-                                'branch_id',
-                                $branch->id
-                            )
-                            ->where(
-                                'warehouse_id',
-                                $warehouse->id
-                            )
-                            ->where(
-                                'product_variant_id',
-                                $variant->id
-                            )
-                            ->where(
-                                'unit_id',
-                                $detail['unit_id']
-                            )
-                            ->where(
-                                'reseller_id',
-                                $reseller->id
-                            )
-                            ->lockForUpdate()
-                            ->first();
-
-
-                    if (! $stock) {
-
-                        throw new \RuntimeException(
-                            'Consignment stock was not found for product variant ' .
-                            $variant->id .
-                            '.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Validate Available Stock
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        (float) $stock->available_qty <
-                        $qtySold
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Insufficient consignment stock for product variant ' .
-                            $variant->id .
-                            '. Available: ' .
-                            $stock->available_qty .
-                            '.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | HPP
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $unitCost =
-                        (float) $stock->average_cost;
-
-
-                    $totalCost =
-                        $qtySold *
-                        $unitCost;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Resolve Price History
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $priceHistory =
-                        ResellerPriceHistory::query()
-                            ->where(
-                                'reseller_id',
-                                $reseller->id
-                            )
-                            ->where(
-                                'product_id',
-                                $variant->product_id
-                            )
-                            ->whereDate(
-                                'effective_from',
-                                '<=',
-                                $data['settlement_date']
-                            )
-                            ->where(function ($query) use ($data) {
-
-                                $query
-                                    ->whereNull(
-                                        'effective_to'
-                                    )
-                                    ->orWhereDate(
-                                        'effective_to',
-                                        '>=',
-                                        $data['settlement_date']
-                                    );
-
-                            })
-                            ->orderByDesc(
-                                'effective_from'
-                            )
-                            ->first();
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Fallback To Current Price
-                    |--------------------------------------------------------------------------
-                    |
-                    | Existing reseller price is used when no history
-                    | record is available.
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (! $priceHistory) {
-
-                        $currentPrice =
-                            \App\Models\Reseller\ResellerPrice::query()
-                                ->where(
-                                    'reseller_id',
-                                    $reseller->id
-                                )
-                                ->where(
-                                    'product_id',
-                                    $variant->product_id
-                                )
-                                ->first();
-
-                        if (! $currentPrice) {
-
-                            throw new \RuntimeException(
-                                'Consignment price was not found for product ' .
-                                $variant->product_id .
-                                '.'
-                            );
-
-                        }
-
-                        $unitPrice =
-                            (float) $currentPrice->price;
-
-                    } else {
-
-                        $unitPrice =
-                            (float) $priceHistory->price;
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Validate Price
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $unitPrice < 0
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Consignment price cannot be negative.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Sales Amount
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $totalAmount =
-                        $qtySold *
-                        $unitPrice;
-
-
-                    $subtotal +=
-                        $totalAmount;
-
-                    $totalCogs +=
-                        $totalCost;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Prepare Detail
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $preparedDetails[] = [
-
-                        'product_variant_id' =>
-                            $variant->id,
-
-                        'unit_id' =>
-                            $detail['unit_id'],
-
-                        'qty_sold' =>
-                            $qtySold,
-
-                        'unit_price' =>
-                            round(
-                                $unitPrice,
-                                2
-                            ),
-
-                        'total_amount' =>
-                            round(
-                                $totalAmount,
-                                2
-                            ),
-
-                        'unit_cost' =>
-                            round(
-                                $unitCost,
-                                2
-                            ),
-
-                        'total_cost' =>
-                            round(
-                                $totalCost,
-                                2
-                            ),
-
-                    ];
-
-                }
-
-
                 /*
                 |--------------------------------------------------------------------------
-                | Adjustment
+                | Quantity Sold
                 |--------------------------------------------------------------------------
                 */
 
-                $adjustmentAmount = 0;
-
-                /*
-                |--------------------------------------------------------------------------
-                | Payment
-                |--------------------------------------------------------------------------
-                */
-
-                $paymentAmount =
+                $qtySold =
                     (float) (
-                        $data['payment_amount']
+                        $detail['qty_sold']
                         ?? 0
                     );
-               /*
-                |--------------------------------------------------------------------------
-                | Grand Total
-                |--------------------------------------------------------------------------
-                */
-
-                $grandTotal =
-                    $subtotal +
-                    $adjustmentAmount;
-
 
                 if (
-                    $grandTotal < 0
+                    $qtySold <= 0
                 ) {
 
                     throw new \RuntimeException(
-                        'Settlement grand total cannot be negative.'
+                        'Quantity sold must be greater than zero.'
                     );
 
                 }
@@ -570,27 +291,45 @@ class ConsignmentSettlementService
 
                 /*
                 |--------------------------------------------------------------------------
-                | Validate Payment
+                | Lock Consignment Stock
                 |--------------------------------------------------------------------------
                 */
 
-                if (
-                    $paymentAmount < 0
-                ) {
+                $stock =
+                    ProductStock::query()
+                        ->where(
+                            'company_id',
+                            $companyId
+                        )
+                        ->where(
+                            'branch_id',
+                            $branch->id
+                        )
+                        ->where(
+                            'warehouse_id',
+                            $warehouse->id
+                        )
+                        ->where(
+                            'product_variant_id',
+                            $variant->id
+                        )
+                        ->where(
+                            'unit_id',
+                            $detail['unit_id']
+                        )
+                        ->where(
+                            'reseller_id',
+                            $reseller->id
+                        )
+                        ->lockForUpdate()
+                        ->first();
+
+                if (! $stock) {
 
                     throw new \RuntimeException(
-                        'Payment amount cannot be negative.'
-                    );
-
-                }
-
-
-                if (
-                    $paymentAmount > $grandTotal
-                ) {
-
-                    throw new \RuntimeException(
-                        'Payment amount cannot be greater than settlement grand total.'
+                        'Consignment stock was not found for product variant ' .
+                        $variant->id .
+                        '.'
                     );
 
                 }
@@ -598,458 +337,703 @@ class ConsignmentSettlementService
 
                 /*
                 |--------------------------------------------------------------------------
-                | Receivable
+                | Validate Available Stock
                 |--------------------------------------------------------------------------
                 */
 
-                $receivableAmount =
+                if (
+                    (float) $stock->available_qty <
+                    $qtySold
+                ) {
+
+                    throw new \RuntimeException(
+                        'Insufficient consignment stock for product variant ' .
+                        $variant->id .
+                        '. Available: ' .
+                        $stock->available_qty .
+                        '.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | HPP
+                |--------------------------------------------------------------------------
+                */
+
+                $unitCost =
+                    (float) $stock->average_cost;
+
+                $totalCost =
+                    $qtySold *
+                    $unitCost;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Resolve FIFO Price Layer
+                |--------------------------------------------------------------------------
+                */
+
+                $priceLayerAllocations =
+                    $this->priceLayerService->allocate(
+                        $companyId,
+                        $branch->id,
+                        $warehouse->id,
+                        $reseller->id,
+                        $variant->id,
+                        $detail['unit_id'],
+                        $qtySold
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Calculate Sales Amount From FIFO Allocation
+                |--------------------------------------------------------------------------
+                */
+
+                $totalAmount = 0;
+
+                foreach (
+                    $priceLayerAllocations
+                    as $allocation
+                ) {
+
+                    $totalAmount +=
+                        (float) $allocation['total_value'];
+
+                }
+
+                $totalAmount =
+                    round(
+                        $totalAmount,
+                        2
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Weighted Average Unit Price
+                |--------------------------------------------------------------------------
+                */
+
+                $unitPrice =
+                    $qtySold > 0
+                        ? $totalAmount / $qtySold
+                        : 0;
+
+                $unitPrice =
+                    round(
+                        $unitPrice,
+                        2
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Price
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $unitPrice < 0
+                ) {
+
+                    throw new \RuntimeException(
+                        'Consignment price cannot be negative.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Sales Totals
+                |--------------------------------------------------------------------------
+                */
+
+                $subtotal +=
+                    $totalAmount;
+
+                $totalCogs +=
+                    $totalCost;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Prepare Detail
+                |--------------------------------------------------------------------------
+                */
+
+                $preparedDetails[] = [
+
+                    'product_variant_id' =>
+                        $variant->id,
+
+                    'unit_id' =>
+                        $detail['unit_id'],
+
+                    'qty_sold' =>
+                        $qtySold,
+
+                    'unit_price' =>
+                        round(
+                            $unitPrice,
+                            2
+                        ),
+
+                    'total_amount' =>
+                        round(
+                            $totalAmount,
+                            2
+                        ),
+
+                    'unit_cost' =>
+                        round(
+                            $unitCost,
+                            2
+                        ),
+
+                    'total_cost' =>
+                        round(
+                            $totalCost,
+                            2
+                        ),
+
+                    'price_layer_allocations' =>
+                        $priceLayerAllocations,
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Adjustment
+            |--------------------------------------------------------------------------
+            */
+
+            $adjustmentAmount = 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Payment
+            |--------------------------------------------------------------------------
+            */
+
+            $paymentAmount =
+                (float) (
+                    $data['payment_amount']
+                    ?? 0
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Grand Total
+            |--------------------------------------------------------------------------
+            */
+
+            $grandTotal =
+                $subtotal +
+                $adjustmentAmount;
+
+            $grandTotal =
+                round(
+                    $grandTotal,
+                    2
+                );
+
+            if (
+                $grandTotal < 0
+            ) {
+
+                throw new \RuntimeException(
+                    'Settlement grand total cannot be negative.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Payment
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $paymentAmount < 0
+            ) {
+
+                throw new \RuntimeException(
+                    'Payment amount cannot be negative.'
+                );
+
+            }
+
+            if (
+                $paymentAmount > $grandTotal
+            ) {
+
+                throw new \RuntimeException(
+                    'Payment amount cannot be greater than settlement grand total.'
+                );
+
+            }
+
+            $paymentAmount =
+                round(
+                    $paymentAmount,
+                    2
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Receivable
+            |--------------------------------------------------------------------------
+            */
+
+            $receivableAmount =
+                round(
                     $grandTotal -
-                    $paymentAmount;
+                    $paymentAmount,
+                    2
+                );
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Payment Status
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | Payment Status
+            |--------------------------------------------------------------------------
+            */
 
-                $paymentStatus =
-                    $paymentAmount >= $grandTotal
-                        ? 'Paid'
-                        : 'Receivable';
-                /*
-                |--------------------------------------------------------------------------
-                | Resolve Fiscal Year
-                |--------------------------------------------------------------------------
-                */
-
-                $fiscalYear =
-                    FiscalYear::query()
-                        ->where(
-                            'company_id',
-                            $companyId
-                        )
-                        ->whereDate(
-                            'start_date',
-                            '<=',
-                            $data['settlement_date']
-                        )
-                        ->whereDate(
-                            'end_date',
-                            '>=',
-                            $data['settlement_date']
-                        )
-                        ->where(
-                            'status',
-                            'Open'
-                        )
-                        ->first();
+            $paymentStatus =
+                $paymentAmount >= $grandTotal
+                    ? 'Paid'
+                    : 'Receivable';
 
 
-                if (! $fiscalYear) {
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Fiscal Year
+            |--------------------------------------------------------------------------
+            */
 
-                    throw new \RuntimeException(
-                        'No open fiscal year found for settlement date.'
+            $fiscalYear =
+                FiscalYear::query()
+                    ->where(
+                        'company_id',
+                        $companyId
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $data['settlement_date']
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $data['settlement_date']
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+            if (! $fiscalYear) {
+
+                throw new \RuntimeException(
+                    'No open fiscal year found for settlement date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounting Period
+            |--------------------------------------------------------------------------
+            */
+
+            $accountingPeriod =
+                AccountingPeriod::query()
+                    ->where(
+                        'company_id',
+                        $companyId
+                    )
+                    ->where(
+                        'fiscal_year_id',
+                        $fiscalYear->id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $data['settlement_date']
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $data['settlement_date']
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+            if (! $accountingPeriod) {
+
+                throw new \RuntimeException(
+                    'No open accounting period found for settlement date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $journal =
+                AccountingJournal::query()
+                    ->where(
+                        'company_id',
+                        $companyId
+                    )
+                    ->where(
+                        'code',
+                        'ADJ'
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+            if (! $journal) {
+
+                throw new \RuntimeException(
+                    'Adjustment accounting journal is not configured.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Account Mapping
+            |--------------------------------------------------------------------------
+            */
+
+            $receivableAccount =
+                $this
+                    ->accountMappingService
+                    ->getAccount(
+                        $companyId,
+                        'settlement_receivable'
                     );
 
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Resolve Accounting Period
-                |--------------------------------------------------------------------------
-                */
-
-                $accountingPeriod =
-                    AccountingPeriod::query()
-                        ->where(
-                            'company_id',
-                            $companyId
-                        )
-                        ->where(
-                            'fiscal_year_id',
-                            $fiscalYear->id
-                        )
-                        ->whereDate(
-                            'start_date',
-                            '<=',
-                            $data['settlement_date']
-                        )
-                        ->whereDate(
-                            'end_date',
-                            '>=',
-                            $data['settlement_date']
-                        )
-                        ->where(
-                            'status',
-                            'Open'
-                        )
-                        ->first();
-
-
-                if (! $accountingPeriod) {
-
-                    throw new \RuntimeException(
-                        'No open accounting period found for settlement date.'
+            $consignmentCashAccount =
+                $this
+                    ->accountMappingService
+                    ->getAccount(
+                        $companyId,
+                        'consignment_cash'
                     );
 
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Accounting Journal
-                |--------------------------------------------------------------------------
-                */
-
-                $journal =
-                    AccountingJournal::query()
-                        ->where(
-                            'company_id',
-                            $companyId
-                        )
-                        ->where(
-                            'code',
-                            'ADJ'
-                        )
-                        ->where(
-                            'is_active',
-                            true
-                        )
-                        ->first();
-
-
-                if (! $journal) {
-
-                    throw new \RuntimeException(
-                        'Adjustment accounting journal is not configured.'
+            $revenueAccount =
+                $this
+                    ->accountMappingService
+                    ->getAccount(
+                        $companyId,
+                        'settlement_revenue'
                     );
 
-                }
+            $cogsAccount =
+                $this
+                    ->accountMappingService
+                    ->getAccount(
+                        $companyId,
+                        'settlement_cogs'
+                    );
+
+            $consignmentInventoryAccount =
+                $this
+                    ->accountMappingService
+                    ->getAccount(
+                        $companyId,
+                        'inventory_consignment'
+                    );
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Account Mapping
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | Journal Lines
+            |--------------------------------------------------------------------------
+            */
 
-                $receivableAccount =
-                    $this
-                        ->accountMappingService
-                        ->getAccount(
-                            $companyId,
-                            'settlement_receivable'
-                        );
-                /*
-                |--------------------------------------------------------------------------
-                | Consignment Cash Account
-                |--------------------------------------------------------------------------
-                */
-
-                $consignmentCashAccount =
-                    $this
-                        ->accountMappingService
-                        ->getAccount(
-                            $companyId,
-                            'consignment_cash'
-                        );
-
-                $revenueAccount =
-                    $this
-                        ->accountMappingService
-                        ->getAccount(
-                            $companyId,
-                            'settlement_revenue'
-                        );
+            $lines = [];
 
 
-                $cogsAccount =
-                    $this
-                        ->accountMappingService
-                        ->getAccount(
-                            $companyId,
-                            'settlement_cogs'
-                        );
+            /*
+            |--------------------------------------------------------------------------
+            | Sales Journal
+            |--------------------------------------------------------------------------
+            */
 
-
-                $consignmentInventoryAccount =
-                    $this
-                        ->accountMappingService
-                        ->getAccount(
-                            $companyId,
-                            'inventory_consignment'
-                        );
-
+            if (
+                $grandTotal > 0
+            ) {
 
                 /*
                 |--------------------------------------------------------------------------
-                | Journal Lines
-                |--------------------------------------------------------------------------
-                */
-
-                $lines = [];
-
-                /*
-                |--------------------------------------------------------------------------
-                | Sales Journal
-                |--------------------------------------------------------------------------
-                | Payment portion:
                 | Dr Consignment Cash
-                |
-                | Receivable portion:
-                | Dr Trade Receivable
-                |
-                | Total:
-                | Cr Merchandise Sales
                 |--------------------------------------------------------------------------
                 */
 
                 if (
-                    $grandTotal > 0
-                ) {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Dr Consignment Cash
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $paymentAmount > 0
-                    ) {
-
-                        $lines[] = [
-
-                            'account_id' =>
-                                $consignmentCashAccount->id,
-
-                            'debit' =>
-                                round(
-                                    $paymentAmount,
-                                    2
-                                ),
-
-                            'credit' =>
-                                0,
-
-                            'description' =>
-                                'Consignment settlement payment.',
-
-                        ];
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Dr Trade Receivable
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $receivableAmount > 0
-                    ) {
-
-                        $lines[] = [
-
-                            'account_id' =>
-                                $receivableAccount->id,
-
-                            'debit' =>
-                                round(
-                                    $receivableAmount,
-                                    2
-                                ),
-
-                            'credit' =>
-                                0,
-
-                            'description' =>
-                                'Consignment settlement receivable.',
-
-                        ];
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Cr Merchandise Sales
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $lines[] = [
-
-                        'account_id' =>
-                            $revenueAccount->id,
-
-                        'debit' =>
-                            0,
-
-                        'credit' =>
-                            round(
-                                $grandTotal,
-                                2
-                            ),
-
-                        'description' =>
-                            'Consignment settlement sales revenue.',
-
-                    ];
-
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Dr COGS
-                | Cr Inventory - Consignment
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $totalCogs > 0
+                    $paymentAmount > 0
                 ) {
 
                     $lines[] = [
 
                         'account_id' =>
-                            $cogsAccount->id,
+                            $consignmentCashAccount->id,
 
                         'debit' =>
-                            round(
-                                $totalCogs,
-                                2
-                            ),
-
-                        'credit' =>
-                            0,
-
-                        'description' =>
-                            'COGS for consignment settlement.',
-
-                    ];
-
-
-                    $lines[] = [
-
-                        'account_id' =>
-                            $consignmentInventoryAccount->id,
-
-                        'debit' =>
-                            0,
-
-                        'credit' =>
-                            round(
-                                $totalCogs,
-                                2
-                            ),
-
-                        'description' =>
-                            'Consignment inventory sold.',
-
-                    ];
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Create Settlement Header
-                |--------------------------------------------------------------------------
-                */
-
-                $header =
-                    ConsignmentSettlementHeader::create([
-
-                        'company_id' =>
-                            $companyId,
-
-                        'branch_id' =>
-                            $branch->id,
-
-                        'warehouse_id' =>
-                            $warehouse->id,
-
-                        'reseller_id' =>
-                            $reseller->id,
-
-                        'settlement_number' =>
-                            $this
-                                ->codeGeneratorService
-                                ->next(
-                                    'consignment_settlement'
-                                ),
-
-                        'settlement_date' =>
-                            $data['settlement_date'],
-
-                        'period_from' =>
-                            $data['period_from'],
-
-                        'period_to' =>
-                            $data['period_to'],
-
-                        'status' =>
-                            'Posted',
-
-                        'subtotal' =>
-                            round(
-                                $subtotal,
-                                2
-                            ),
-
-                        'adjustment_amount' =>
-                            0,
-
-                      'grand_total' =>
-                            round(
-                                $grandTotal,
-                                2
-                            ),
-
-                        'payment_amount' =>
                             round(
                                 $paymentAmount,
                                 2
                             ),
 
-                        'receivable_amount' =>
+                        'credit' =>
+                            0,
+
+                        'description' =>
+                            'Consignment settlement payment.',
+
+                    ];
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Dr Trade Receivable
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $receivableAmount > 0
+                ) {
+
+                    $lines[] = [
+
+                        'account_id' =>
+                            $receivableAccount->id,
+
+                        'debit' =>
                             round(
                                 $receivableAmount,
                                 2
                             ),
 
-                        'payment_status' =>
-                            $paymentStatus,
+                        'credit' =>
+                            0,
 
-                        'remarks' =>
-                            $data['remarks'] ?? null,
+                        'description' =>
+                            'Consignment settlement receivable.',
 
-                        'created_by' =>
-                            auth()->id(),
+                    ];
 
-                        'posted_by' =>
-                            auth()->id(),
-
-                        'posted_at' =>
-                            now(),
-
-                    ]);
+                }
 
 
                 /*
                 |--------------------------------------------------------------------------
-                | Create Settlement Details
+                | Cr Merchandise Sales
                 |--------------------------------------------------------------------------
                 */
 
-                foreach (
-                    $preparedDetails
-                    as $detail
-                ) {
+                $lines[] = [
 
+                    'account_id' =>
+                        $revenueAccount->id,
+
+                    'debit' =>
+                        0,
+
+                    'credit' =>
+                        round(
+                            $grandTotal,
+                            2
+                        ),
+
+                    'description' =>
+                        'Consignment settlement sales revenue.',
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | COGS Journal
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $totalCogs > 0
+            ) {
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $cogsAccount->id,
+
+                    'debit' =>
+                        round(
+                            $totalCogs,
+                            2
+                        ),
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'COGS for consignment settlement.',
+
+                ];
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $consignmentInventoryAccount->id,
+
+                    'debit' =>
+                        0,
+
+                    'credit' =>
+                        round(
+                            $totalCogs,
+                            2
+                        ),
+
+                    'description' =>
+                        'Consignment inventory sold.',
+
+                ];
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Settlement Header
+            |--------------------------------------------------------------------------
+            */
+
+            $header =
+                ConsignmentSettlementHeader::create([
+
+                    'company_id' =>
+                        $companyId,
+
+                    'branch_id' =>
+                        $branch->id,
+
+                    'warehouse_id' =>
+                        $warehouse->id,
+
+                    'reseller_id' =>
+                        $reseller->id,
+
+                    'settlement_number' =>
+                        $this
+                            ->codeGeneratorService
+                            ->next(
+                                'consignment_settlement'
+                            ),
+
+                    'settlement_date' =>
+                        $data['settlement_date'],
+
+                    'period_from' =>
+                        $data['period_from'],
+
+                    'period_to' =>
+                        $data['period_to'],
+
+                    'status' =>
+                        'Posted',
+
+                    'subtotal' =>
+                        round(
+                            $subtotal,
+                            2
+                        ),
+
+                    'adjustment_amount' =>
+                        0,
+
+                    'grand_total' =>
+                        round(
+                            $grandTotal,
+                            2
+                        ),
+
+                    'payment_amount' =>
+                        round(
+                            $paymentAmount,
+                            2
+                        ),
+
+                    'receivable_amount' =>
+                        round(
+                            $receivableAmount,
+                            2
+                        ),
+
+                    'payment_status' =>
+                        $paymentStatus,
+
+                    'remarks' =>
+                        $data['remarks'] ?? null,
+
+                    'created_by' =>
+                        auth()->id(),
+
+                    'posted_by' =>
+                        auth()->id(),
+
+                    'posted_at' =>
+                        now(),
+
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Settlement Details + FIFO Allocation
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $preparedDetails
+                as $detail
+            ) {
+
+                $settlementDetail =
                     ConsignmentSettlementDetail::create([
 
                         'settlement_header_id' =>
@@ -1072,169 +1056,201 @@ class ConsignmentSettlementService
 
                     ]);
 
-                }
-
 
                 /*
                 |--------------------------------------------------------------------------
-                | Create Journal
-                |--------------------------------------------------------------------------
-                */
-
-                $journalEntry =
-                    $this
-                        ->journalEntryService
-                        ->create([
-
-                            'company_id' =>
-                                $companyId,
-
-                            'branch_id' =>
-                                $branch->id,
-
-                            'accounting_journal_id' =>
-                                $journal->id,
-
-                            'fiscal_year_id' =>
-                                $fiscalYear->id,
-
-                            'accounting_period_id' =>
-                                $accountingPeriod->id,
-
-                            'entry_date' =>
-                                $data['settlement_date'],
-
-                            'reference_type' =>
-                                'CONSIGNMENT_SETTLEMENT',
-
-                            'reference_id' =>
-                                $header->id,
-
-                            'reference_number' =>
-                                $header->settlement_number,
-
-                            'description' =>
-                                'Consignment settlement ' .
-                                $header->settlement_number,
-
-                            'lines' =>
-                                $lines,
-
-                            'created_by' =>
-                                auth()->id(),
-
-                        ]);
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Post Journal
-                |--------------------------------------------------------------------------
-                */
-
-                $this
-                    ->journalEntryService
-                    ->post(
-                        $journalEntry
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Inventory OUT
+                | Save FIFO Price Layer Allocation
                 |--------------------------------------------------------------------------
                 */
 
                 foreach (
-                    $preparedDetails
-                    as $detail
+                    $detail['price_layer_allocations']
+                    as $allocation
                 ) {
 
-                    $this
-                        ->inventoryService
-                        ->stockOut([
+                    ConsignmentSettlementPriceLayer::create([
 
-                            'company_id' =>
-                                $companyId,
+                        'settlement_detail_id' =>
+                            $settlementDetail->id,
 
-                            'branch_id' =>
-                                $branch->id,
+                        'price_layer_id' =>
+                            $allocation['layer_id'],
 
-                            'warehouse_id' =>
-                                $warehouse->id,
+                        'qty' =>
+                            $allocation['qty'],
 
-                            'product_variant_id' =>
-                                $detail['product_variant_id'],
+                        'unit_price' =>
+                            $allocation['unit_price'],
 
-                            'unit_id' =>
-                                $detail['unit_id'],
+                        'total_value' =>
+                            $allocation['total_value'],
 
-                            'qty' =>
-                                $detail['qty_sold'],
-
-                            'unit_cost' =>
-                                $detail['unit_cost'],
-
-                            'total_cost' =>
-                                $detail['total_cost'],
-
-                            'transaction_date' =>
-                                $data['settlement_date'],
-
-                            'reference_type' =>
-                                'SETTLEMENT',
-
-                            'reference_id' =>
-                                $header->id,
-
-                            'reference_number' =>
-                                $header->settlement_number,
-
-                            'description' =>
-                                'Consignment stock sold by reseller.',
-
-                            'created_by' =>
-                                auth()->id(),
-
-                            'reseller_id' =>
-                                $reseller->id,
-
-                        ]);
+                    ]);
 
                 }
 
+            }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Document Activity
-                |--------------------------------------------------------------------------
-                */
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry =
+                $this
+                    ->journalEntryService
+                    ->create([
+
+                        'company_id' =>
+                            $companyId,
+
+                        'branch_id' =>
+                            $branch->id,
+
+                        'accounting_journal_id' =>
+                            $journal->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod->id,
+
+                        'entry_date' =>
+                            $data['settlement_date'],
+
+                        'reference_type' =>
+                            'CONSIGNMENT_SETTLEMENT',
+
+                        'reference_id' =>
+                            $header->id,
+
+                        'reference_number' =>
+                            $header->settlement_number,
+
+                        'description' =>
+                            'Consignment settlement ' .
+                            $header->settlement_number,
+
+                        'lines' =>
+                            $lines,
+
+                        'created_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->journalEntryService
+                ->post(
+                    $journalEntry
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory OUT
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $preparedDetails
+                as $detail
+            ) {
 
                 $this
-                    ->documentActivityService
-                    ->record(
+                    ->inventoryService
+                    ->stockOut([
 
-                        $header,
+                        'company_id' =>
+                            $companyId,
 
-                        'POSTED',
+                        'branch_id' =>
+                            $branch->id,
 
-                        null,
+                        'warehouse_id' =>
+                            $warehouse->id,
 
-                        'Posted',
+                        'product_variant_id' =>
+                            $detail['product_variant_id'],
 
-                        'Consignment settlement posted.'
+                        'unit_id' =>
+                            $detail['unit_id'],
 
-                    );
+                        'qty' =>
+                            $detail['qty_sold'],
 
+                        'unit_cost' =>
+                            $detail['unit_cost'],
 
-                return $header;
+                        'total_cost' =>
+                            $detail['total_cost'],
+
+                        'transaction_date' =>
+                            $data['settlement_date'],
+
+                        'reference_type' =>
+                            'SETTLEMENT',
+
+                        'reference_id' =>
+                            $header->id,
+
+                        'reference_number' =>
+                            $header->settlement_number,
+
+                        'description' =>
+                            'Consignment stock sold by reseller.',
+
+                        'created_by' =>
+                            auth()->id(),
+
+                        'reseller_id' =>
+                            $reseller->id,
+
+                    ]);
 
             }
-        );
-    }
 
 
-  /*
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->documentActivityService
+                ->record(
+
+                    $header,
+
+                    'POSTED',
+
+                    null,
+
+                    'Posted',
+
+                    'Consignment settlement posted.'
+
+                );
+
+
+            return $header;
+
+        }
+    );
+}
+
+/*
 |--------------------------------------------------------------------------
 | Cancel Settlement
 |--------------------------------------------------------------------------
@@ -1253,13 +1269,15 @@ public function cancelSettlement(
 
             /*
             |--------------------------------------------------------------------------
-            | Lock Header
+            | Lock Header + Details + Price Layer Allocations
             |--------------------------------------------------------------------------
             */
 
             $settlement =
                 ConsignmentSettlementHeader::query()
-                    ->with('details')
+                    ->with([
+                        'details.priceLayers.priceLayer',
+                    ])
                     ->lockForUpdate()
                     ->findOrFail(
                         $settlement->id
@@ -1302,6 +1320,45 @@ public function cancelSettlement(
 
             /*
             |--------------------------------------------------------------------------
+            | Validate Price Layer Allocations
+            |--------------------------------------------------------------------------
+            */
+
+            $priceLayerAllocations =
+                collect();
+
+            foreach (
+                $settlement->details
+                as $detail
+            ) {
+
+                foreach (
+                    $detail->priceLayers
+                    as $allocation
+                ) {
+
+                    $priceLayerAllocations->push(
+                        $allocation
+                    );
+
+                }
+
+            }
+
+
+            if (
+                $priceLayerAllocations->isEmpty()
+            ) {
+
+                throw new \RuntimeException(
+                    'Settlement price layer allocation was not found.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
             | Resolve Fiscal Year
             |--------------------------------------------------------------------------
             */
@@ -1327,7 +1384,6 @@ public function cancelSettlement(
                         'Open'
                     )
                     ->first();
-
 
             if (! $fiscalYear) {
 
@@ -1370,7 +1426,6 @@ public function cancelSettlement(
                     )
                     ->first();
 
-
             if (! $accountingPeriod) {
 
                 throw new \RuntimeException(
@@ -1402,7 +1457,6 @@ public function cancelSettlement(
                     )
                     ->first();
 
-
             if (! $journal) {
 
                 throw new \RuntimeException(
@@ -1426,7 +1480,6 @@ public function cancelSettlement(
                         'settlement_receivable'
                     );
 
-
             $consignmentCashAccount =
                 $this
                     ->accountMappingService
@@ -1434,7 +1487,6 @@ public function cancelSettlement(
                         $settlement->company_id,
                         'consignment_cash'
                     );
-
 
             $revenueAccount =
                 $this
@@ -1444,7 +1496,6 @@ public function cancelSettlement(
                         'settlement_revenue'
                     );
 
-
             $cogsAccount =
                 $this
                     ->accountMappingService
@@ -1452,7 +1503,6 @@ public function cancelSettlement(
                         $settlement->company_id,
                         'settlement_cogs'
                     );
-
 
             $consignmentInventoryAccount =
                 $this
@@ -1480,7 +1530,6 @@ public function cancelSettlement(
                     ->lockForUpdate()
                     ->get();
 
-
             if (
                 $movements->isEmpty()
             ) {
@@ -1500,7 +1549,6 @@ public function cancelSettlement(
 
             $totalCogs = 0;
 
-
             foreach (
                 $movements
                 as $movement
@@ -1510,6 +1558,12 @@ public function cancelSettlement(
                     (float) $movement->total_cost;
 
             }
+
+            $totalCogs =
+                round(
+                    $totalCogs,
+                    2
+                );
 
 
             /*
@@ -1579,6 +1633,121 @@ public function cancelSettlement(
 
             /*
             |--------------------------------------------------------------------------
+            | Restore FIFO Price Layers
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $priceLayerAllocations
+                as $allocation
+            ) {
+
+                $layer =
+                    $allocation->priceLayer;
+
+                if (! $layer) {
+
+                    throw new \RuntimeException(
+                        'Price layer for settlement allocation was not found.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Lock Price Layer
+                |--------------------------------------------------------------------------
+                */
+
+                $layer =
+                    ResellerStockPriceLayer::query()
+                        ->lockForUpdate()
+                        ->findOrFail(
+                            $layer->id
+                        );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Layer Context
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    (int) $layer->company_id !==
+                    (int) $settlement->company_id ||
+
+                    (int) $layer->branch_id !==
+                    (int) $settlement->branch_id ||
+
+                    (int) $layer->warehouse_id !==
+                    (int) $settlement->warehouse_id ||
+
+                    (int) $layer->reseller_id !==
+                    (int) $settlement->reseller_id
+                ) {
+
+                    throw new \RuntimeException(
+                        'Settlement price layer context is invalid.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Restore Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                $restoreQty =
+                    (float) $allocation->qty;
+
+                $newRemainingQty =
+                    (float) $layer->remaining_qty +
+                    $restoreQty;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Prevent Exceeding Original Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $newRemainingQty >
+                    (
+                        (float) $layer->original_qty +
+                        0.000001
+                    )
+                ) {
+
+                    throw new \RuntimeException(
+                        'Restored price layer quantity cannot exceed original quantity.'
+                    );
+
+                }
+
+
+                $layer->remaining_qty =
+                    round(
+                        $newRemainingQty,
+                        6
+                    );
+
+                $layer->status =
+                    $newRemainingQty > 0
+                        ? 'Open'
+                        : 'Exhausted';
+
+                $layer->save();
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
             | Payment & Receivable Values
             |--------------------------------------------------------------------------
             */
@@ -1595,20 +1764,7 @@ public function cancelSettlement(
 
             /*
             |--------------------------------------------------------------------------
-            | Revenue Reversal
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            |
-            | Dr Consignment Cash
-            | Dr Trade Receivable
-            |     Cr Merchandise Sales
-            |
-            | Cancellation:
-            |
-            | Dr Merchandise Sales
-            |     Cr Consignment Cash
-            |     Cr Trade Receivable
+            | Reversal Journal Lines
             |--------------------------------------------------------------------------
             */
 
@@ -1717,17 +1873,6 @@ public function cancelSettlement(
             /*
             |--------------------------------------------------------------------------
             | COGS Reversal
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            |
-            | Dr Merchandise COGS
-            |     Cr Inventory - Consignment
-            |
-            | Cancellation:
-            |
-            | Dr Inventory - Consignment
-            |     Cr Merchandise COGS
             |--------------------------------------------------------------------------
             */
 
@@ -1851,7 +1996,6 @@ public function cancelSettlement(
 
             $oldStatus =
                 $settlement->status;
-
 
             $settlement->update([
 

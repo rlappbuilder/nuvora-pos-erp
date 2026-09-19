@@ -14,7 +14,9 @@ use App\Services\Accounting\JournalEntryService;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use App\Services\Inventory\InventoryService;
-
+use App\Models\Reseller\ConsignmentReturn\ConsignmentReturnPriceLayer;
+use App\Models\Reseller\ResellerStockPriceLayer;
+use App\Services\Consignment\ResellerStockPriceLayerService;
 use Illuminate\Support\Facades\DB;
 
 class ConsignmentReturnService
@@ -29,31 +31,35 @@ class ConsignmentReturnService
 
     protected JournalEntryService $journalEntryService;
 
+    protected ResellerStockPriceLayerService $priceLayerService;
 
-    public function __construct(
-        CodeGeneratorService $codeGeneratorService,
-        DocumentActivityService $documentActivityService,
-        InventoryService $inventoryService,
-        AccountMappingService $accountMappingService,
-        JournalEntryService $journalEntryService
-    ) {
 
-        $this->codeGeneratorService =
-            $codeGeneratorService;
+   public function __construct(
+    CodeGeneratorService $codeGeneratorService,
+    DocumentActivityService $documentActivityService,
+    InventoryService $inventoryService,
+    AccountMappingService $accountMappingService,
+    JournalEntryService $journalEntryService,
+    ResellerStockPriceLayerService $priceLayerService
+) {
+    $this->codeGeneratorService =
+        $codeGeneratorService;
 
-        $this->documentActivityService =
-            $documentActivityService;
+    $this->documentActivityService =
+        $documentActivityService;
 
-        $this->inventoryService =
-            $inventoryService;
+    $this->inventoryService =
+        $inventoryService;
 
-        $this->accountMappingService =
-            $accountMappingService;
+    $this->accountMappingService =
+        $accountMappingService;
 
-        $this->journalEntryService =
-            $journalEntryService;
+    $this->journalEntryService =
+        $journalEntryService;
 
-    }
+    $this->priceLayerService =
+        $priceLayerService;
+}
 
 
     /*
@@ -1209,47 +1215,282 @@ public function updateConsignmentReturn(
 
     }
 
+/*
+|--------------------------------------------------------------------------
+| Post
+|--------------------------------------------------------------------------
+*/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Post
-    |--------------------------------------------------------------------------
-    */
+public function postConsignmentReturn(
+    ConsignmentReturnHeader $consignmentReturn
+): void {
 
-    public function postConsignmentReturn(
-        ConsignmentReturnHeader $consignmentReturn
-    ): void {
+    DB::transaction(
+        function () use ($consignmentReturn) {
 
-        DB::transaction(
-            function () use ($consignmentReturn) {
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Header
+            |--------------------------------------------------------------------------
+            */
+
+            $consignmentReturn =
+                ConsignmentReturnHeader::query()
+                    ->with('details')
+                    ->lockForUpdate()
+                    ->findOrFail(
+                        $consignmentReturn->id
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $consignmentReturn->status !== 'Approved'
+            ) {
+
+                throw new \RuntimeException(
+                    'Only Approved consignment return can be posted.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Details
+            |--------------------------------------------------------------------------
+            */
+
+            $details =
+                $consignmentReturn->details;
+
+            if (
+                $details->isEmpty()
+            ) {
+
+                throw new \RuntimeException(
+                    'Consignment return must have at least one detail.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Fiscal Year
+            |--------------------------------------------------------------------------
+            */
+
+            $fiscalYear =
+                FiscalYear::query()
+                    ->where(
+                        'company_id',
+                        $consignmentReturn->company_id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $consignmentReturn->return_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $consignmentReturn->return_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+
+            if (! $fiscalYear) {
+
+                throw new \RuntimeException(
+                    'No open fiscal year found for consignment return date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Accounting Period
+            |--------------------------------------------------------------------------
+            */
+
+            $accountingPeriod =
+                AccountingPeriod::query()
+                    ->where(
+                        'company_id',
+                        $consignmentReturn->company_id
+                    )
+                    ->where(
+                        'fiscal_year_id',
+                        $fiscalYear->id
+                    )
+                    ->whereDate(
+                        'start_date',
+                        '<=',
+                        $consignmentReturn->return_date
+                    )
+                    ->whereDate(
+                        'end_date',
+                        '>=',
+                        $consignmentReturn->return_date
+                    )
+                    ->where(
+                        'status',
+                        'Open'
+                    )
+                    ->first();
+
+
+            if (! $accountingPeriod) {
+
+                throw new \RuntimeException(
+                    'No open accounting period found for consignment return date.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $journal =
+                AccountingJournal::query()
+                    ->where(
+                        'company_id',
+                        $consignmentReturn->company_id
+                    )
+                    ->where(
+                        'code',
+                        'ADJ'
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+
+            if (! $journal) {
+
+                throw new \RuntimeException(
+                    'Adjustment accounting journal is not configured.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Account Mapping
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryMerchandiseAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $consignmentReturn->company_id,
+                        'inventory_merchandise'
+                    );
+
+
+            $inventoryConsignmentAccount =
+                $this->accountMappingService
+                    ->getAccount(
+                        $consignmentReturn->company_id,
+                        'inventory_consignment'
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Accounting Amount
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryAmount = 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Process Details
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $details
+                as $detail
+            ) {
+
+                $returnedQty =
+                    (float) $detail->returned_qty;
+
+
+                if (
+                    $returnedQty <= 0
+                ) {
+
+                    throw new \RuntimeException(
+                        'Returned quantity must be greater than zero.'
+                    );
+
+                }
+
 
                 /*
                 |--------------------------------------------------------------------------
-                | Lock Header
+                | Lock Reseller Consignment Stock
                 |--------------------------------------------------------------------------
                 */
 
-                $consignmentReturn =
-                    ConsignmentReturnHeader::query()
-                        ->with('details')
+                $productStock =
+                    ProductStock::query()
+                        ->where(
+                            'company_id',
+                            $consignmentReturn->company_id
+                        )
+                        ->where(
+                            'branch_id',
+                            $consignmentReturn->branch_id
+                        )
+                        ->where(
+                            'warehouse_id',
+                            $consignmentReturn->warehouse_id
+                        )
+                        ->where(
+                            'reseller_id',
+                            $consignmentReturn->reseller_id
+                        )
+                        ->where(
+                            'product_variant_id',
+                            $detail->product_variant_id
+                        )
+                        ->where(
+                            'unit_id',
+                            $detail->unit_id
+                        )
                         ->lockForUpdate()
-                        ->findOrFail(
-                            $consignmentReturn->id
-                        );
+                        ->first();
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Status
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $consignmentReturn->status !== 'Approved'
-                ) {
+                if (! $productStock) {
 
                     throw new \RuntimeException(
-                        'Only Approved consignment return can be posted.'
+                        'Consignment stock not found for product variant ' .
+                        $detail->product_variant_id .
+                        '.'
                     );
 
                 }
@@ -1257,28 +1498,590 @@ public function updateConsignmentReturn(
 
                 /*
                 |--------------------------------------------------------------------------
-                | Validate Details
+                | Validate Available Stock
                 |--------------------------------------------------------------------------
                 */
 
-                $details =
-                    $consignmentReturn->details;
+                $availableQty =
+                    (float) $productStock->available_qty;
+
 
                 if (
-                    $details->isEmpty()
+                    $returnedQty >
+                    $availableQty
                 ) {
 
                     throw new \RuntimeException(
-                        'Consignment return must have at least one detail.'
+                        'Return quantity exceeds available consignment stock.'
                     );
 
                 }
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unit Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $unitCost =
+                    (float) $productStock->average_cost;
+
+
+                if (
+                    $unitCost < 0
+                ) {
+
+                    throw new \RuntimeException(
+                        'Consignment stock average cost cannot be negative.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Total Cost
+                |--------------------------------------------------------------------------
+                */
+
+                $totalCost =
+                    round(
+                        $returnedQty *
+                        $unitCost,
+                        2
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | FIFO Price Layer Allocation
+                |--------------------------------------------------------------------------
+                */
+
+                $priceLayerAllocations =
+                    $this->priceLayerService->allocate(
+                        $consignmentReturn->company_id,
+                        $consignmentReturn->branch_id,
+                        $consignmentReturn->warehouse_id,
+                        $consignmentReturn->reseller_id,
+                        $detail->product_variant_id,
+                        $detail->unit_id,
+                        $returnedQty
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate FIFO Allocation Total
+                |--------------------------------------------------------------------------
+                */
+
+                $allocatedQty = 0;
+
+                $allocatedValue = 0;
+
+                foreach (
+                    $priceLayerAllocations
+                    as $allocation
+                ) {
+
+                    $allocatedQty +=
+                        (float) $allocation['qty'];
+
+                    $allocatedValue +=
+                        (float) $allocation['total_value'];
+
+                }
+
+
+                $allocatedQty =
+                    round(
+                        $allocatedQty,
+                        6
+                    );
+
+                $allocatedValue =
+                    round(
+                        $allocatedValue,
+                        2
+                    );
+
+
+                if (
+                    abs(
+                        $allocatedQty -
+                        $returnedQty
+                    ) > 0.000001
+                ) {
+
+                    throw new \RuntimeException(
+                        'Price layer allocation quantity does not match return quantity.'
+                    );
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Update Stored Cost Snapshot
+                |--------------------------------------------------------------------------
+                */
+
+                $detail->update([
+
+                    'unit_cost' =>
+                        $unitCost,
+
+                    'total_cost' =>
+                        $totalCost,
+
+                ]);
+
+
+                $inventoryAmount +=
+                    $totalCost;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Stock Out From Reseller
+                |--------------------------------------------------------------------------
+                */
+
+                $this->inventoryService
+                    ->stockOut([
+
+                        'company_id' =>
+                            $consignmentReturn->company_id,
+
+                        'branch_id' =>
+                            $consignmentReturn->branch_id,
+
+                        'warehouse_id' =>
+                            $consignmentReturn->warehouse_id,
+
+                        'reseller_id' =>
+                            $consignmentReturn->reseller_id,
+
+                        'product_variant_id' =>
+                            $detail->product_variant_id,
+
+                        'unit_id' =>
+                            $detail->unit_id,
+
+                        'qty' =>
+                            $returnedQty,
+
+                        'unit_cost' =>
+                            $unitCost,
+
+                        'total_cost' =>
+                            $totalCost,
+
+                        'transaction_date' =>
+                            $consignmentReturn->return_date,
+
+                        'reference_type' =>
+                            'CONSIGNMENT_RETURN',
+
+                        'reference_id' =>
+                            $consignmentReturn->id,
+
+                        'reference_number' =>
+                            $consignmentReturn->return_number,
+
+                        'description' =>
+                            'Consignment return from reseller ' .
+                            $consignmentReturn->return_number,
+
+                        'updated_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Stock In To Warehouse
+                |--------------------------------------------------------------------------
+                */
+
+                $this->inventoryService
+                    ->stockIn([
+
+                        'company_id' =>
+                            $consignmentReturn->company_id,
+
+                        'branch_id' =>
+                            $consignmentReturn->branch_id,
+
+                        'warehouse_id' =>
+                            $consignmentReturn->warehouse_id,
+
+                        'reseller_id' =>
+                            null,
+
+                        'product_variant_id' =>
+                            $detail->product_variant_id,
+
+                        'unit_id' =>
+                            $detail->unit_id,
+
+                        'qty' =>
+                            $returnedQty,
+
+                        'unit_cost' =>
+                            $unitCost,
+
+                        'total_cost' =>
+                            $totalCost,
+
+                        'transaction_date' =>
+                            $consignmentReturn->return_date,
+
+                        'reference_type' =>
+                            'CONSIGNMENT_RETURN',
+
+                        'reference_id' =>
+                            $consignmentReturn->id,
+
+                        'reference_number' =>
+                            $consignmentReturn->return_number,
+
+                        'description' =>
+                            'Consignment return received into warehouse ' .
+                            $consignmentReturn->return_number,
+
+                        'updated_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Create Return Price Layer Allocations
+                |--------------------------------------------------------------------------
+                */
+
+                foreach (
+                    $priceLayerAllocations
+                    as $allocation
+                ) {
+
+                    ConsignmentReturnPriceLayer::create([
+
+                        'return_detail_id' =>
+                            $detail->id,
+
+                        'price_layer_id' =>
+                            $allocation['layer_id'],
+
+                        'qty' =>
+                            $allocation['qty'],
+
+                        'unit_price' =>
+                            $allocation['unit_price'],
+
+                        'total_value' =>
+                            $allocation['total_value'],
+
+                    ]);
+
+                }
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Normalize Amount
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryAmount =
+                round(
+                    $inventoryAmount,
+                    2
+                );
+
+
+            if (
+                $inventoryAmount <= 0
+            ) {
+
+                throw new \RuntimeException(
+                    'Consignment return inventory value must be greater than zero.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Journal Lines
+            |--------------------------------------------------------------------------
+            */
+
+            $lines = [];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Merchandise Inventory
+            |--------------------------------------------------------------------------
+            */
+
+            $lines[] = [
+
+                'account_id' =>
+                    $inventoryMerchandiseAccount->id,
+
+                'debit' =>
+                    $inventoryAmount,
+
+                'credit' =>
+                    0,
+
+                'description' =>
+                    'Inventory received from consignment return ' .
+                    $consignmentReturn->return_number,
+
+            ];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Consignment Inventory
+            |--------------------------------------------------------------------------
+            */
+
+            $lines[] = [
+
+                'account_id' =>
+                    $inventoryConsignmentAccount->id,
+
+                'debit' =>
+                    0,
+
+                'credit' =>
+                    $inventoryAmount,
+
+                'description' =>
+                    'Consignment inventory reduction for return ' .
+                    $consignmentReturn->return_number,
+
+            ];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry =
+                $this->journalEntryService
+                    ->create([
+
+                        'company_id' =>
+                            $consignmentReturn->company_id,
+
+                        'branch_id' =>
+                            $consignmentReturn->branch_id,
+
+                        'accounting_journal_id' =>
+                            $journal->id,
+
+                        'fiscal_year_id' =>
+                            $fiscalYear->id,
+
+                        'accounting_period_id' =>
+                            $accountingPeriod->id,
+
+                        'entry_date' =>
+                            $consignmentReturn->return_date,
+
+                        'reference_type' =>
+                            'CONSIGNMENT_RETURN',
+
+                        'reference_id' =>
+                            $consignmentReturn->id,
+
+                        'reference_number' =>
+                            $consignmentReturn->return_number,
+
+                        'description' =>
+                            'Consignment return ' .
+                            $consignmentReturn->return_number,
+
+                        'lines' =>
+                            $lines,
+
+                        'created_by' =>
+                            auth()->id(),
+
+                    ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post Journal
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->journalEntryService
+                ->post(
+                    $journalEntry
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mark Posted
+            |--------------------------------------------------------------------------
+            */
+
+            $consignmentReturn->update([
+
+                'status' =>
+                    'Posted',
+
+                'posted_at' =>
+                    now(),
+
+                'posted_by' =>
+                    auth()->id(),
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this
+                ->documentActivityService
+                    ->record(
+
+                        $consignmentReturn,
+
+                        'POSTED',
+
+                        'Approved',
+
+                        'Posted',
+
+                        'Consignment return posted.'
+
+                    );
+
+        }
+    );
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Cancel
+|--------------------------------------------------------------------------
+*/
+
+public function cancel(
+    ConsignmentReturnHeader $consignmentReturn,
+    string $reason
+): void {
+
+    DB::transaction(
+        function () use (
+            $consignmentReturn,
+            $reason
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Header
+            |--------------------------------------------------------------------------
+            */
+
+            $consignmentReturn =
+                ConsignmentReturnHeader::query()
+                    ->with([
+                        'details.priceLayers.priceLayer',
+                    ])
+                    ->lockForUpdate()
+                    ->findOrFail(
+                        $consignmentReturn->id
+                    );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Status
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                ! in_array(
+                    $consignmentReturn->status,
+                    [
+                        'Draft',
+                        'Submitted',
+                        'Approved',
+                        'Posted',
+                    ],
+                    true
+                )
+            ) {
+
+                throw new \RuntimeException(
+                    'Only Draft, Submitted, Approved, or Posted consignment return can be cancelled.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Reason
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                trim($reason) === ''
+            ) {
+
+                throw new \RuntimeException(
+                    'Cancellation reason is required.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Posted → Reverse
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $consignmentReturn->status === 'Posted'
+            ) {
 
                 /*
                 |--------------------------------------------------------------------------
                 | Resolve Fiscal Year
                 |--------------------------------------------------------------------------
+                |
+                | Cancellation uses the current open period.
+                |
                 */
 
                 $fiscalYear =
@@ -1290,12 +2093,12 @@ public function updateConsignmentReturn(
                         ->whereDate(
                             'start_date',
                             '<=',
-                            $consignmentReturn->return_date
+                            now()
                         )
                         ->whereDate(
                             'end_date',
                             '>=',
-                            $consignmentReturn->return_date
+                            now()
                         )
                         ->where(
                             'status',
@@ -1307,7 +2110,7 @@ public function updateConsignmentReturn(
                 if (! $fiscalYear) {
 
                     throw new \RuntimeException(
-                        'No open fiscal year found for consignment return date.'
+                        'No open fiscal year found for consignment return cancellation.'
                     );
 
                 }
@@ -1332,12 +2135,12 @@ public function updateConsignmentReturn(
                         ->whereDate(
                             'start_date',
                             '<=',
-                            $consignmentReturn->return_date
+                            now()
                         )
                         ->whereDate(
                             'end_date',
                             '>=',
-                            $consignmentReturn->return_date
+                            now()
                         )
                         ->where(
                             'status',
@@ -1349,7 +2152,7 @@ public function updateConsignmentReturn(
                 if (! $accountingPeriod) {
 
                     throw new \RuntimeException(
-                        'No open accounting period found for consignment return date.'
+                        'No open accounting period found for consignment return cancellation.'
                     );
 
                 }
@@ -1415,24 +2218,33 @@ public function updateConsignmentReturn(
                 |--------------------------------------------------------------------------
                 */
 
-                $inventoryAmount =
-                    0;
+                $inventoryAmount = 0;
 
 
                 /*
                 |--------------------------------------------------------------------------
-                | Process Details
+                | Reverse Details
                 |--------------------------------------------------------------------------
                 */
 
                 foreach (
-                    $details
+                    $consignmentReturn->details
                     as $detail
                 ) {
 
                     $returnedQty =
-                        (float)
-                        $detail->returned_qty;
+                        (float) $detail->returned_qty;
+
+
+                    $unitCost =
+                        (float) $detail->unit_cost;
+
+
+                    $totalCost =
+                        round(
+                            (float) $detail->total_cost,
+                            2
+                        );
 
 
                     if (
@@ -1446,93 +2258,12 @@ public function updateConsignmentReturn(
                     }
 
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Lock Reseller Consignment Stock
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $productStock =
-                        ProductStock::query()
-                            ->where(
-                                'company_id',
-                                $consignmentReturn->company_id
-                            )
-                            ->where(
-                                'branch_id',
-                                $consignmentReturn->branch_id
-                            )
-                            ->where(
-                                'warehouse_id',
-                                $consignmentReturn->warehouse_id
-                            )
-                            ->where(
-                                'reseller_id',
-                                $consignmentReturn->reseller_id
-                            )
-                            ->where(
-                                'product_variant_id',
-                                $detail->product_variant_id
-                            )
-                            ->where(
-                                'unit_id',
-                                $detail->unit_id
-                            )
-                            ->lockForUpdate()
-                            ->first();
-
-
-                    if (! $productStock) {
-
-                        throw new \RuntimeException(
-                            'Consignment stock not found for product variant ' .
-                            $detail->product_variant_id .
-                            '.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Validate Available Stock
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $availableQty =
-                        (float)
-                        $productStock->available_qty;
-
-
-                    if (
-                        $returnedQty >
-                        $availableQty
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Return quantity exceeds available consignment stock.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Unit Cost
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $unitCost =
-                        (float)
-                        $productStock->average_cost;
-
-
                     if (
                         $unitCost < 0
                     ) {
 
                         throw new \RuntimeException(
-                            'Consignment stock average cost cannot be negative.'
+                            'Consignment return unit cost cannot be negative.'
                         );
 
                     }
@@ -1540,47 +2271,133 @@ public function updateConsignmentReturn(
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Total Cost
+                    | Validate Price Layer Allocation
                     |--------------------------------------------------------------------------
                     */
 
-                    $totalCost =
+                    $allocatedQty = 0;
+
+
+                    foreach (
+                        $detail->priceLayers
+                        as $returnLayer
+                    ) {
+
+                        $layer =
+                            ResellerStockPriceLayer::query()
+                                ->lockForUpdate()
+                                ->findOrFail(
+                                    $returnLayer->price_layer_id
+                                );
+
+
+                        $restoreQty =
+                            (float) $returnLayer->qty;
+
+
+                        if (
+                            $restoreQty <= 0
+                        ) {
+
+                            throw new \RuntimeException(
+                                'Invalid return price layer allocation quantity.'
+                            );
+
+                        }
+
+
+                        $currentRemainingQty =
+                            (float) $layer->remaining_qty;
+
+
+                        $originalQty =
+                            (float) $layer->original_qty;
+
+
+                        $newRemainingQty =
+                            $currentRemainingQty +
+                            $restoreQty;
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Prevent Over Restoration
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            $newRemainingQty >
+                            ($originalQty + 0.000001)
+                        ) {
+
+                            throw new \RuntimeException(
+                                'Price layer restoration exceeds original quantity.'
+                            );
+
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Restore Layer
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $layer->remaining_qty =
+                            round(
+                                $newRemainingQty,
+                                6
+                            );
+
+                        $layer->status =
+                            $newRemainingQty <= 0
+                                ? 'Exhausted'
+                                : 'Open';
+
+                        $layer->save();
+
+
+                        $allocatedQty +=
+                            $restoreQty;
+
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Validate Allocation Quantity
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $allocatedQty =
                         round(
-                            $returnedQty *
-                            $unitCost,
-                            2
+                            $allocatedQty,
+                            6
                         );
 
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Update Stored Cost Snapshot
-                    |--------------------------------------------------------------------------
-                    */
+                    if (
+                        abs(
+                            $allocatedQty -
+                            $returnedQty
+                        ) > 0.000001
+                    ) {
 
-                    $detail->update([
+                        throw new \RuntimeException(
+                            'Price layer allocation does not match returned quantity.'
+                        );
 
-                        'unit_cost' =>
-                            $unitCost,
-
-                        'total_cost' =>
-                            $totalCost,
-
-                    ]);
-
-
-                    $inventoryAmount +=
-                        $totalCost;
+                    }
 
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Stock Out From Reseller
+                    | Restore Stock To Reseller
                     |--------------------------------------------------------------------------
                     */
 
                     $this->inventoryService
-                        ->stockOut([
+                        ->stockIn([
 
                             'company_id' =>
                                 $consignmentReturn->company_id,
@@ -1610,10 +2427,10 @@ public function updateConsignmentReturn(
                                 $totalCost,
 
                             'transaction_date' =>
-                                $consignmentReturn->return_date,
+                                now(),
 
                             'reference_type' =>
-                                'CONSIGNMENT_RETURN',
+                                'CONSIGNMENT_RETURN_CANCEL',
 
                             'reference_id' =>
                                 $consignmentReturn->id,
@@ -1622,7 +2439,7 @@ public function updateConsignmentReturn(
                                 $consignmentReturn->return_number,
 
                             'description' =>
-                                'Consignment return from reseller ' .
+                                'Reversal consignment return to reseller ' .
                                 $consignmentReturn->return_number,
 
                             'updated_by' =>
@@ -1633,12 +2450,12 @@ public function updateConsignmentReturn(
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Stock In To Warehouse
+                    | Remove Stock From Warehouse
                     |--------------------------------------------------------------------------
                     */
 
                     $this->inventoryService
-                        ->stockIn([
+                        ->stockOut([
 
                             'company_id' =>
                                 $consignmentReturn->company_id,
@@ -1668,10 +2485,10 @@ public function updateConsignmentReturn(
                                 $totalCost,
 
                             'transaction_date' =>
-                                $consignmentReturn->return_date,
+                                now(),
 
                             'reference_type' =>
-                                'CONSIGNMENT_RETURN',
+                                'CONSIGNMENT_RETURN_CANCEL',
 
                             'reference_id' =>
                                 $consignmentReturn->id,
@@ -1680,13 +2497,23 @@ public function updateConsignmentReturn(
                                 $consignmentReturn->return_number,
 
                             'description' =>
-                                'Consignment return received into warehouse ' .
+                                'Reversal consignment return from warehouse ' .
                                 $consignmentReturn->return_number,
 
                             'updated_by' =>
                                 auth()->id(),
 
                         ]);
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Accounting Amount
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $inventoryAmount +=
+                        $totalCost;
 
                 }
 
@@ -1709,7 +2536,7 @@ public function updateConsignmentReturn(
                 ) {
 
                     throw new \RuntimeException(
-                        'Consignment return inventory value must be greater than zero.'
+                        'Consignment return cancellation inventory value must be greater than zero.'
                     );
 
                 }
@@ -1726,6 +2553,30 @@ public function updateConsignmentReturn(
 
                 /*
                 |--------------------------------------------------------------------------
+                | Inventory - Consignment
+                |--------------------------------------------------------------------------
+                */
+
+                $lines[] = [
+
+                    'account_id' =>
+                        $inventoryConsignmentAccount->id,
+
+                    'debit' =>
+                        $inventoryAmount,
+
+                    'credit' =>
+                        0,
+
+                    'description' =>
+                        'Reversal consignment inventory ' .
+                        $consignmentReturn->return_number,
+
+                ];
+
+
+                /*
+                |--------------------------------------------------------------------------
                 | Merchandise Inventory
                 |--------------------------------------------------------------------------
                 */
@@ -1736,13 +2587,13 @@ public function updateConsignmentReturn(
                         $inventoryMerchandiseAccount->id,
 
                     'debit' =>
-                        $inventoryAmount,
-
-                    'credit' =>
                         0,
 
+                    'credit' =>
+                        $inventoryAmount,
+
                     'description' =>
-                        'Inventory received from consignment return ' .
+                        'Reversal merchandise inventory ' .
                         $consignmentReturn->return_number,
 
                 ];
@@ -1750,48 +2601,7 @@ public function updateConsignmentReturn(
 
                 /*
                 |--------------------------------------------------------------------------
-                | Consignment Inventory
-                |--------------------------------------------------------------------------
-                */
-
-                $lines[] = [
-
-                    'account_id' =>
-                        $inventoryConsignmentAccount->id,
-
-                    'debit' =>
-                        0,
-
-                    'credit' =>
-                        $inventoryAmount,
-
-                    'description' =>
-                        'Consignment inventory reduction for return ' .
-                        $consignmentReturn->return_number,
-
-                ];
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Journal Lines
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    empty($lines)
-                ) {
-
-                    throw new \RuntimeException(
-                        'Consignment return journal has no accounting lines.'
-                    );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Create Journal Entry
+                | Create Reversal Journal
                 |--------------------------------------------------------------------------
                 */
 
@@ -1815,10 +2625,10 @@ public function updateConsignmentReturn(
                                 $accountingPeriod->id,
 
                             'entry_date' =>
-                                $consignmentReturn->return_date,
+                                now(),
 
                             'reference_type' =>
-                                'CONSIGNMENT_RETURN',
+                                'CONSIGNMENT_RETURN_CANCEL',
 
                             'reference_id' =>
                                 $consignmentReturn->id,
@@ -1827,7 +2637,7 @@ public function updateConsignmentReturn(
                                 $consignmentReturn->return_number,
 
                             'description' =>
-                                'Consignment return ' .
+                                'Cancellation of consignment return ' .
                                 $consignmentReturn->return_number,
 
                             'lines' =>
@@ -1841,7 +2651,7 @@ public function updateConsignmentReturn(
 
                 /*
                 |--------------------------------------------------------------------------
-                | Post Journal
+                | Post Reversal Journal
                 |--------------------------------------------------------------------------
                 */
 
@@ -1851,181 +2661,65 @@ public function updateConsignmentReturn(
                         $journalEntry
                     );
 
-
-                /*
-                |--------------------------------------------------------------------------
-                | Mark Posted
-                |--------------------------------------------------------------------------
-                */
-
-                $consignmentReturn->update([
-
-                    'status' =>
-                        'Posted',
-
-                    'posted_at' =>
-                        now(),
-
-                    'posted_by' =>
-                        auth()->id(),
-
-                    'updated_by' =>
-                        auth()->id(),
-
-                ]);
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Document Activity
-                |--------------------------------------------------------------------------
-                */
-
-                $this
-                    ->documentActivityService
-                    ->record(
-
-                        $consignmentReturn,
-
-                        'POSTED',
-
-                        'Approved',
-
-                        'Posted',
-
-                        'Consignment return posted.'
-
-                    );
-
             }
-        );
-
-    }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Cancel
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Mark Cancelled
+            |--------------------------------------------------------------------------
+            */
 
-    public function cancel(
-        ConsignmentReturnHeader $consignmentReturn,
-        string $reason
-    ): void {
-
-        DB::transaction(
-            function () use (
-                $consignmentReturn,
-                $reason
-            ) {
-
-                $consignmentReturn =
-                    ConsignmentReturnHeader::query()
-                        ->lockForUpdate()
-                        ->findOrFail(
-                            $consignmentReturn->id
-                        );
+            $previousStatus =
+                $consignmentReturn->status;
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Status
-                |--------------------------------------------------------------------------
-                */
+            $consignmentReturn->update([
 
-                if (
-                    ! in_array(
-                        $consignmentReturn->status,
-                        [
-                            'Draft',
-                            'Submitted',
-                            'Approved',
-                        ],
-                        true
-                    )
-                ) {
+                'status' =>
+                    'Cancelled',
 
-                    throw new \RuntimeException(
-                        'Only Draft, Submitted, or Approved consignment return can be cancelled.'
-                    );
+                'cancelled_at' =>
+                    now(),
 
-                }
+                'cancelled_by' =>
+                    auth()->id(),
+
+                'cancel_reason' =>
+                    $reason,
+
+                'updated_by' =>
+                    auth()->id(),
+
+            ]);
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Reason
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | Document Activity
+            |--------------------------------------------------------------------------
+            */
 
-                if (
-                    trim($reason) === ''
-                ) {
+            $this
+                ->documentActivityService
+                ->record(
 
-                    throw new \RuntimeException(
-                        'Cancellation reason is required.'
-                    );
+                    $consignmentReturn,
 
-                }
+                    'CANCELLED',
 
+                    $previousStatus,
 
-                /*
-                |--------------------------------------------------------------------------
-                | Cancel
-                |--------------------------------------------------------------------------
-                */
+                    'Cancelled',
 
-                $previousStatus =
-                    $consignmentReturn->status;
+                    $reason
 
+                );
 
-                $consignmentReturn->update([
+        }
+    );
 
-                    'status' =>
-                        'Cancelled',
-
-                    'cancelled_at' =>
-                        now(),
-
-                    'cancelled_by' =>
-                        auth()->id(),
-
-                    'cancel_reason' =>
-                        $reason,
-
-                    'updated_by' =>
-                        auth()->id(),
-
-                ]);
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Document Activity
-                |--------------------------------------------------------------------------
-                */
-
-                $this
-                    ->documentActivityService
-                    ->record(
-
-                        $consignmentReturn,
-
-                        'CANCELLED',
-
-                        $previousStatus,
-
-                        'Cancelled',
-
-                        $reason
-
-                    );
-
-            }
-        );
-
-    }
+}
 
 
     /*

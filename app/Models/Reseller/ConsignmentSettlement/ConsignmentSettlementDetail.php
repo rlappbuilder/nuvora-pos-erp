@@ -7,6 +7,7 @@ use App\Models\Product\ProductVariant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Reseller\ConsignmentSettlement\ConsignmentSettlementPriceLayer;
 
 class ConsignmentSettlementDetail extends Model
 {
@@ -54,5 +55,13 @@ class ConsignmentSettlementDetail extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function priceLayers()
+    {
+        return $this->hasMany(
+            ConsignmentSettlementPriceLayer::class,
+            'settlement_detail_id'
+        );
     }
 }

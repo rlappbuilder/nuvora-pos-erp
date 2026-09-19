@@ -46,471 +46,513 @@ class ConsignmentReceivableService
     }
 
     /**
-     * Create Consignment Receivable.
-     */
-    public function create(
-        array $data
-    ): ConsignmentReceivableHeader {
-        return DB::transaction(function () use ($data) {
+ * Create Consignment Receivable.
+ */
+public function create(
+    array $data
+): ConsignmentReceivableHeader {
+    return DB::transaction(function () use ($data) {
 
-            $details =
-                $data['details'] ?? [];
+        $details =
+            $data['details'] ?? [];
 
-            if (empty($details)) {
+        if (empty($details)) {
+            throw new RuntimeException(
+                'Consignment Receivable must contain at least one settlement.'
+            );
+        }
+
+        $paymentDate =
+            $data['payment_date'] ?? null;
+
+        if (!$paymentDate) {
+            throw new RuntimeException(
+                'Payment date is required.'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Settlements
+        |--------------------------------------------------------------------------
+        */
+
+        $settlementIds = collect($details)
+            ->pluck('settlement_header_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($settlementIds->isEmpty()) {
+            throw new RuntimeException(
+                'No settlement selected.'
+            );
+        }
+
+        $settlements =
+            ConsignmentSettlementHeader::query()
+                ->whereIn(
+                    'id',
+                    $settlementIds
+                )
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+        if (
+            $settlements->count()
+            !== $settlementIds->count()
+        ) {
+            throw new RuntimeException(
+                'One or more settlements were not found.'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Company / Branch / Reseller
+        |--------------------------------------------------------------------------
+        */
+
+        $companyId = null;
+        $branchId = null;
+        $resellerId = null;
+
+        foreach ($settlements as $settlement) {
+
+            if ($settlement->status !== 'Posted') {
                 throw new RuntimeException(
-                    'Consignment Receivable must contain at least one settlement.'
+                    "Settlement {$settlement->settlement_number} "
+                    . "is not available for payment."
                 );
             }
 
-            $paymentDate =
-                $data['payment_date'] ?? null;
+            $receivable =
+                round(
+                    (float) $settlement->receivable_amount,
+                    2
+                );
 
-            if (!$paymentDate) {
+            if ($receivable <= 0) {
                 throw new RuntimeException(
-                    'Payment date is required.'
+                    "Settlement {$settlement->settlement_number} "
+                    . "has no receivable balance."
                 );
             }
+
+            if ($companyId === null) {
+                $companyId =
+                    $settlement->company_id;
+            } elseif (
+                (int) $companyId
+                !== (int) $settlement->company_id
+            ) {
+                throw new RuntimeException(
+                    'All settlements must belong to the same company.'
+                );
+            }
+
+            if ($branchId === null) {
+                $branchId =
+                    $settlement->branch_id;
+            } elseif (
+                (int) $branchId
+                !== (int) $settlement->branch_id
+            ) {
+                throw new RuntimeException(
+                    'All settlements must belong to the same branch.'
+                );
+            }
+
+            if ($resellerId === null) {
+                $resellerId =
+                    $settlement->reseller_id;
+            } elseif (
+                (int) $resellerId
+                !== (int) $settlement->reseller_id
+            ) {
+                throw new RuntimeException(
+                    'All settlements must belong to the same reseller.'
+                );
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Branch
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            isset($data['branch_id'])
+            && (int) $data['branch_id']
+            !== (int) $branchId
+        ) {
+            throw new RuntimeException(
+                'Selected branch does not match the settlements.'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Reseller
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            isset($data['reseller_id'])
+            && (int) $data['reseller_id']
+            !== (int) $resellerId
+        ) {
+            throw new RuntimeException(
+                'Selected reseller does not match the settlements.'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Payment Account
+        |--------------------------------------------------------------------------
+        */
+
+        $paymentAccount =
+            ChartOfAccount::query()
+                ->where(
+                    'id',
+                    $data['payment_account_id'] ?? 0
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->where(
+                    'status',
+                    true
+                )
+                ->where(
+                    'is_posting',
+                    true
+                )
+                ->first();
+
+        if (!$paymentAccount) {
+            throw new RuntimeException(
+                'Payment account is invalid or inactive.'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prepare Details
+        |--------------------------------------------------------------------------
+        */
+
+        $receivableDetails = [];
+
+        $totalAmount = 0;
+
+        foreach ($details as $detail) {
+
+            $settlementId =
+                $detail['settlement_header_id']
+                ?? null;
+
+            if (
+                !$settlementId
+                || !$settlements->has($settlementId)
+            ) {
+                throw new RuntimeException(
+                    'Invalid settlement selected.'
+                );
+            }
+
+            $settlement =
+                $settlements->get(
+                    $settlementId
+                );
 
             /*
             |--------------------------------------------------------------------------
-            | Load Settlements
+            | Calculate Previous Payments
             |--------------------------------------------------------------------------
             */
 
-            $settlementIds = collect($details)
-                ->pluck('settlement_header_id')
-                ->filter()
-                ->unique()
-                ->values();
-
-            if ($settlementIds->isEmpty()) {
-                throw new RuntimeException(
-                    'No settlement selected.'
-                );
-            }
-
-            $settlements =
-                ConsignmentSettlementHeader::query()
+            $previousPaidAmount =
+                (float) ConsignmentReceivableHeader::query()
+                    ->where(
+                        'reseller_id',
+                        $resellerId
+                    )
                     ->whereIn(
-                        'id',
-                        $settlementIds
-                    )
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-            if (
-                $settlements->count()
-                !== $settlementIds->count()
-            ) {
-                throw new RuntimeException(
-                    'One or more settlements were not found.'
-                );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Company / Branch / Reseller
-            |--------------------------------------------------------------------------
-            */
-
-            $companyId = null;
-            $branchId = null;
-            $resellerId = null;
-
-            foreach ($settlements as $settlement) {
-
-                if ($settlement->status !== 'Posted') {
-                    throw new RuntimeException(
-                        "Settlement {$settlement->settlement_number} "
-                        . "is not available for payment."
-                    );
-                }
-
-                $receivable =
-                    round(
-                        (float) $settlement->receivable_amount,
-                        2
-                    );
-
-                if ($receivable <= 0) {
-                    throw new RuntimeException(
-                        "Settlement {$settlement->settlement_number} "
-                        . "has no receivable balance."
-                    );
-                }
-
-                if ($companyId === null) {
-                    $companyId =
-                        $settlement->company_id;
-                } elseif (
-                    (int) $companyId
-                    !== (int) $settlement->company_id
-                ) {
-                    throw new RuntimeException(
-                        'All settlements must belong to the same company.'
-                    );
-                }
-
-                if ($branchId === null) {
-                    $branchId =
-                        $settlement->branch_id;
-                } elseif (
-                    (int) $branchId
-                    !== (int) $settlement->branch_id
-                ) {
-                    throw new RuntimeException(
-                        'All settlements must belong to the same branch.'
-                    );
-                }
-
-                if ($resellerId === null) {
-                    $resellerId =
-                        $settlement->reseller_id;
-                } elseif (
-                    (int) $resellerId
-                    !== (int) $settlement->reseller_id
-                ) {
-                    throw new RuntimeException(
-                        'All settlements must belong to the same reseller.'
-                    );
-                }
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Validate Branch
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                isset($data['branch_id'])
-                && (int) $data['branch_id']
-                !== (int) $branchId
-            ) {
-                throw new RuntimeException(
-                    'Selected branch does not match the settlements.'
-                );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Validate Reseller
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                isset($data['reseller_id'])
-                && (int) $data['reseller_id']
-                !== (int) $resellerId
-            ) {
-                throw new RuntimeException(
-                    'Selected reseller does not match the settlements.'
-                );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Validate Payment Account
-            |--------------------------------------------------------------------------
-            */
-
-            $paymentAccount =
-                ChartOfAccount::query()
-                    ->where(
-                        'id',
-                        $data['payment_account_id'] ?? 0
-                    )
-                    ->where(
-                        'company_id',
-                        $companyId
-                    )
-                    ->where(
                         'status',
-                        true
+                        [
+                            'Posted',
+                        ]
                     )
-                    ->where(
-                        'is_posting',
-                        true
+                    ->whereHas(
+                        'details',
+                        function ($query) use (
+                            $settlementId
+                        ) {
+                            $query->where(
+                                'settlement_header_id',
+                                $settlementId
+                            );
+                        }
                     )
-                    ->first();
-
-            if (!$paymentAccount) {
-                throw new RuntimeException(
-                    'Payment account is invalid or inactive.'
-                );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Prepare Details
-            |--------------------------------------------------------------------------
-            */
-
-            $receivableDetails = [];
-
-            $totalAmount = 0;
-
-            foreach ($details as $detail) {
-
-                $settlementId =
-                    $detail['settlement_header_id']
-                    ?? null;
-
-                if (
-                    !$settlementId
-                    || !$settlements->has($settlementId)
-                ) {
-                    throw new RuntimeException(
-                        'Invalid settlement selected.'
-                    );
-                }
-
-                $settlement =
-                    $settlements->get(
-                        $settlementId
-                    );
-
-                /*
-                |--------------------------------------------------------------------------
-                | Calculate Previous Payments
-                |--------------------------------------------------------------------------
-                */
-
-                $previousPaidAmount =
-                    (float) ConsignmentReceivableHeader::query()
-                        ->where(
-                            'reseller_id',
-                            $resellerId
-                        )
-                        ->whereIn(
-                            'status',
-                            [
-                                'Posted',
-                            ]
-                        )
-                        ->whereHas(
-                            'details',
-                            function ($query) use (
+                    ->withSum(
+                        [
+                            'details as settlement_payment_total'
+                            => function ($query) use (
                                 $settlementId
                             ) {
                                 $query->where(
                                     'settlement_header_id',
                                     $settlementId
                                 );
-                            }
-                        )
-                        ->withSum(
-                            [
-                                'details as settlement_payment_total'
-                                => function ($query) use (
-                                    $settlementId
-                                ) {
-                                    $query->where(
-                                        'settlement_header_id',
-                                        $settlementId
-                                    );
-                                },
-                            ],
-                            'payment_amount'
-                        )
-                        ->get()
-                        ->sum(
-                            'settlement_payment_total'
-                        );
-
-                $previousPaidAmount =
-                    round(
-                        $previousPaidAmount,
-                        2
+                            },
+                        ],
+                        'payment_amount'
+                    )
+                    ->get()
+                    ->sum(
+                        'settlement_payment_total'
                     );
 
-                $settlementReceivable =
-                    round(
-                        (float) $settlement->receivable_amount,
-                        2
-                    );
-
-                $previousOutstandingAmount =
-                    round(
-                        $settlementReceivable
-                        - $previousPaidAmount,
-                        2
-                    );
-
-                if (
-                    $previousOutstandingAmount <= 0
-                ) {
-                    throw new RuntimeException(
-                        "Settlement {$settlement->settlement_number} "
-                        . "has no outstanding receivable balance."
-                    );
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Payment Amount
-                |--------------------------------------------------------------------------
-                */
-
-                $paymentAmount =
-                    round(
-                        (float) (
-                            $detail['payment_amount']
-                            ?? 0
-                        ),
-                        2
-                    );
-
-                if ($paymentAmount <= 0) {
-                    throw new RuntimeException(
-                        "Payment amount for settlement "
-                        . "{$settlement->settlement_number} "
-                        . "must be greater than zero."
-                    );
-                }
-
-                if (
-                    $paymentAmount
-                    > $previousOutstandingAmount
-                ) {
-                    throw new RuntimeException(
-                        "Payment amount for settlement "
-                        . "{$settlement->settlement_number} "
-                        . "cannot exceed outstanding amount "
-                        . number_format(
-                            $previousOutstandingAmount,
-                            2,
-                            '.',
-                            ','
-                        ) . '.'
-                    );
-                }
-
-                $receivableDetails[] = [
-
-                    'settlement_header_id' =>
-                        $settlement->id,
-
-                    'settlement_amount' =>
-                        $settlementReceivable,
-
-                    'previous_paid_amount' =>
-                        $previousPaidAmount,
-
-                    'previous_outstanding_amount' =>
-                        $previousOutstandingAmount,
-
-                    'payment_amount' =>
-                        $paymentAmount,
-
-                    'remarks' =>
-                        $detail['remarks'] ?? null,
-                ];
-
-                $totalAmount +=
-                    $paymentAmount;
-            }
-
-            $totalAmount =
+            $previousPaidAmount =
                 round(
-                    $totalAmount,
+                    $previousPaidAmount,
                     2
                 );
 
-            if ($totalAmount <= 0) {
-                throw new RuntimeException(
-                    'Consignment Receivable total must be greater than zero.'
+            /*
+            |--------------------------------------------------------------------------
+            | Settlement Receivable
+            |--------------------------------------------------------------------------
+            |
+            | Actual AR balance.
+            |
+            */
+
+            $settlementReceivable =
+                round(
+                    (float) $settlement->receivable_amount,
+                    2
                 );
-            }
 
             /*
             |--------------------------------------------------------------------------
-            | Create Header
+            | Settlement Amount
             |--------------------------------------------------------------------------
+            |
+            | Original Settlement Grand Total.
+            |
             */
 
-            $number =
-                $this->codeGeneratorService->next(
-                    'consignment_receivable'
+            $settlementAmount =
+                round(
+                    (float) $settlement->grand_total,
+                    2
                 );
-
-            $receivable =
-                ConsignmentReceivableHeader::create([
-
-                    'company_id' =>
-                        $companyId,
-
-                    'branch_id' =>
-                        $branchId,
-
-                    'number' =>
-                        $number,
-
-                    'payment_date' =>
-                        $paymentDate,
-
-                    'reseller_id' =>
-                        $resellerId,
-
-                    'payment_method' =>
-                        $data['payment_method']
-                        ?? null,
-
-                    'payment_account_id' =>
-                        $paymentAccount->id,
-
-                    'total_amount' =>
-                        $totalAmount,
-
-                    'status' =>
-                        'Draft',
-
-                    'remarks' =>
-                        $data['remarks']
-                        ?? null,
-
-                    'created_by' =>
-                        auth()->id(),
-
-                    'updated_by' =>
-                        auth()->id(),
-                ]);
 
             /*
             |--------------------------------------------------------------------------
-            | Create Details
+            | Previous Outstanding
             |--------------------------------------------------------------------------
+            |
+            | Outstanding tetap berdasarkan receivable_amount,
+            | bukan grand_total.
+            |
             */
 
-            foreach (
-                $receivableDetails
-                as $detail
+            $previousOutstandingAmount =
+                round(
+                    $settlementReceivable
+                    - $previousPaidAmount,
+                    2
+                );
+
+            if (
+                $previousOutstandingAmount <= 0
             ) {
-                $receivable
-                    ->details()
-                    ->create($detail);
+                throw new RuntimeException(
+                    "Settlement {$settlement->settlement_number} "
+                    . "has no outstanding receivable balance."
+                );
             }
 
             /*
             |--------------------------------------------------------------------------
-            | Activity
+            | Payment Amount
             |--------------------------------------------------------------------------
             */
 
-            $this->documentActivityService->record(
-                $receivable,
-                'CREATED',
-                null,
-                'Draft',
-                'Consignment Receivable created.'
+            $paymentAmount =
+                round(
+                    (float) (
+                        $detail['payment_amount']
+                        ?? 0
+                    ),
+                    2
+                );
+
+            if ($paymentAmount <= 0) {
+                throw new RuntimeException(
+                    "Payment amount for settlement "
+                    . "{$settlement->settlement_number} "
+                    . "must be greater than zero."
+                );
+            }
+
+            if (
+                $paymentAmount
+                > $previousOutstandingAmount
+            ) {
+                throw new RuntimeException(
+                    "Payment amount for settlement "
+                    . "{$settlement->settlement_number} "
+                    . "cannot exceed outstanding amount "
+                    . number_format(
+                        $previousOutstandingAmount,
+                        2,
+                        '.',
+                        ','
+                    ) . '.'
+                );
+            }
+
+            $receivableDetails[] = [
+
+                'settlement_header_id' =>
+                    $settlement->id,
+
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT
+                |--------------------------------------------------------------------------
+                | Display Settlement Amount = Grand Total
+                |--------------------------------------------------------------------------
+                */
+
+                'settlement_amount' =>
+                    $settlementAmount,
+
+                'previous_paid_amount' =>
+                    $previousPaidAmount,
+
+                'previous_outstanding_amount' =>
+                    $previousOutstandingAmount,
+
+                'payment_amount' =>
+                    $paymentAmount,
+
+                'remarks' =>
+                    $detail['remarks'] ?? null,
+            ];
+
+            $totalAmount +=
+                $paymentAmount;
+        }
+
+        $totalAmount =
+            round(
+                $totalAmount,
+                2
             );
 
-            return $receivable->load(
-                'details'
+        if ($totalAmount <= 0) {
+            throw new RuntimeException(
+                'Consignment Receivable total must be greater than zero.'
             );
-        });
-    }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Header
+        |--------------------------------------------------------------------------
+        */
+
+        $number =
+            $this->codeGeneratorService->next(
+                'consignment_receivable'
+            );
+
+        $receivable =
+            ConsignmentReceivableHeader::create([
+
+                'company_id' =>
+                    $companyId,
+
+                'branch_id' =>
+                    $branchId,
+
+                'number' =>
+                    $number,
+
+                'payment_date' =>
+                    $paymentDate,
+
+                'reseller_id' =>
+                    $resellerId,
+
+                'payment_method' =>
+                    $data['payment_method']
+                    ?? null,
+
+                'payment_account_id' =>
+                    $paymentAccount->id,
+
+                'total_amount' =>
+                    $totalAmount,
+
+                'status' =>
+                    'Draft',
+
+                'remarks' =>
+                    $data['remarks']
+                    ?? null,
+
+                'created_by' =>
+                    auth()->id(),
+
+                'updated_by' =>
+                    auth()->id(),
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Details
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (
+            $receivableDetails
+            as $detail
+        ) {
+            $receivable
+                ->details()
+                ->create($detail);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity
+        |--------------------------------------------------------------------------
+        */
+
+        $this->documentActivityService->record(
+            $receivable,
+            'CREATED',
+            null,
+            'Draft',
+            'Consignment Receivable created.'
+        );
+
+        return $receivable->load(
+            'details'
+        );
+    });
+}
 
     /**
      * Submit Consignment Receivable.
@@ -1216,492 +1258,526 @@ class ConsignmentReceivableService
     }
 
     /**
-     * Update Consignment Receivable.
-     */
-    public function update(
-        ConsignmentReceivableHeader $receivable,
-        array $data
-    ): ConsignmentReceivableHeader {
-        return DB::transaction(
-            function () use (
-                $receivable,
-                $data
-            ) {
+ * Update Consignment Receivable.
+ */
+public function update(
+    ConsignmentReceivableHeader $receivable,
+    array $data
+): ConsignmentReceivableHeader {
+    return DB::transaction(
+        function () use (
+            $receivable,
+            $data
+        ) {
 
-                $receivable =
-                    ConsignmentReceivableHeader::query()
-                        ->with('details')
-                        ->lockForUpdate()
-                        ->findOrFail(
-                            $receivable->id
-                        );
+            $receivable =
+                ConsignmentReceivableHeader::query()
+                    ->with('details')
+                    ->lockForUpdate()
+                    ->findOrFail(
+                        $receivable->id
+                    );
+
+            if (
+                !in_array(
+                    $receivable->status,
+                    [
+                        'Draft',
+                        'Rejected',
+                    ],
+                    true
+                )
+            ) {
+                throw new RuntimeException(
+                    'Only Draft or Rejected Consignment Receivable can be updated.'
+                );
+            }
+
+            $details =
+                $data['details'] ?? [];
+
+            if (empty($details)) {
+                throw new RuntimeException(
+                    'Consignment Receivable must contain at least one settlement.'
+                );
+            }
+
+            $paymentDate =
+                $data['payment_date']
+                ?? null;
+
+            if (!$paymentDate) {
+                throw new RuntimeException(
+                    'Payment date is required.'
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Load Settlements
+            |--------------------------------------------------------------------------
+            */
+
+            $settlementIds =
+                collect($details)
+                    ->pluck(
+                        'settlement_header_id'
+                    )
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+            if ($settlementIds->isEmpty()) {
+                throw new RuntimeException(
+                    'No settlement selected.'
+                );
+            }
+
+            $settlements =
+                ConsignmentSettlementHeader::query()
+                    ->whereIn(
+                        'id',
+                        $settlementIds
+                    )
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+            if (
+                $settlements->count()
+                !== $settlementIds->count()
+            ) {
+                throw new RuntimeException(
+                    'One or more settlements were not found.'
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Company / Branch / Reseller
+            |--------------------------------------------------------------------------
+            */
+
+            $companyId = null;
+            $branchId = null;
+            $resellerId = null;
+
+            foreach ($settlements as $settlement) {
 
                 if (
-                    !in_array(
-                        $receivable->status,
-                        [
-                            'Draft',
-                            'Rejected',
-                        ],
+                    $settlement->status
+                    !== 'Posted'
+                ) {
+                    throw new RuntimeException(
+                        "Settlement {$settlement->settlement_number} "
+                        . "is not available for payment."
+                    );
+                }
+
+                if (
+                    $companyId === null
+                ) {
+                    $companyId =
+                        $settlement->company_id;
+                } elseif (
+                    (int) $companyId
+                    !== (int) $settlement->company_id
+                ) {
+                    throw new RuntimeException(
+                        'All settlements must belong to the same company.'
+                    );
+                }
+
+                if (
+                    $branchId === null
+                ) {
+                    $branchId =
+                        $settlement->branch_id;
+                } elseif (
+                    (int) $branchId
+                    !== (int) $settlement->branch_id
+                ) {
+                    throw new RuntimeException(
+                        'All settlements must belong to the same branch.'
+                    );
+                }
+
+                if (
+                    $resellerId === null
+                ) {
+                    $resellerId =
+                        $settlement->reseller_id;
+                } elseif (
+                    (int) $resellerId
+                    !== (int) $settlement->reseller_id
+                ) {
+                    throw new RuntimeException(
+                        'All settlements must belong to the same reseller.'
+                    );
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Header
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                isset($data['branch_id'])
+                && (int) $data['branch_id']
+                !== (int) $branchId
+            ) {
+                throw new RuntimeException(
+                    'Selected branch does not match the settlements.'
+                );
+            }
+
+            if (
+                isset($data['reseller_id'])
+                && (int) $data['reseller_id']
+                !== (int) $resellerId
+            ) {
+                throw new RuntimeException(
+                    'Selected reseller does not match the settlements.'
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Payment Account
+            |--------------------------------------------------------------------------
+            */
+
+            $paymentAccount =
+                ChartOfAccount::query()
+                    ->where(
+                        'id',
+                        $data['payment_account_id']
+                        ?? 0
+                    )
+                    ->where(
+                        'company_id',
+                        $companyId
+                    )
+                    ->where(
+                        'status',
                         true
+                    )
+                    ->where(
+                        'is_posting',
+                        true
+                    )
+                    ->first();
+
+            if (!$paymentAccount) {
+                throw new RuntimeException(
+                    'Payment account is invalid or inactive.'
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Prepare Details
+            |--------------------------------------------------------------------------
+            */
+
+            $receivableDetails = [];
+
+            $totalAmount = 0;
+
+            foreach ($details as $detail) {
+
+                $settlementId =
+                    $detail[
+                        'settlement_header_id'
+                    ] ?? null;
+
+                if (
+                    !$settlementId
+                    || !$settlements->has(
+                        $settlementId
                     )
                 ) {
                     throw new RuntimeException(
-                        'Only Draft or Rejected Consignment Receivable can be updated.'
+                        'Invalid settlement selected.'
                     );
                 }
 
-                $details =
-                    $data['details'] ?? [];
-
-                if (empty($details)) {
-                    throw new RuntimeException(
-                        'Consignment Receivable must contain at least one settlement.'
+                $settlement =
+                    $settlements->get(
+                        $settlementId
                     );
-                }
-
-                $paymentDate =
-                    $data['payment_date']
-                    ?? null;
-
-                if (!$paymentDate) {
-                    throw new RuntimeException(
-                        'Payment date is required.'
-                    );
-                }
 
                 /*
                 |--------------------------------------------------------------------------
-                | Load Settlements
+                | Existing Posted Payments
                 |--------------------------------------------------------------------------
                 */
 
-                $settlementIds =
-                    collect($details)
-                        ->pluck(
-                            'settlement_header_id'
-                        )
-                        ->filter()
-                        ->unique()
-                        ->values();
-
-                if ($settlementIds->isEmpty()) {
-                    throw new RuntimeException(
-                        'No settlement selected.'
-                    );
-                }
-
-                $settlements =
-                    ConsignmentSettlementHeader::query()
-                        ->whereIn(
-                            'id',
-                            $settlementIds
-                        )
-                        ->lockForUpdate()
-                        ->get()
-                        ->keyBy('id');
-
-                if (
-                    $settlements->count()
-                    !== $settlementIds->count()
-                ) {
-                    throw new RuntimeException(
-                        'One or more settlements were not found.'
-                    );
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Company / Branch / Reseller
-                |--------------------------------------------------------------------------
-                */
-
-                $companyId = null;
-                $branchId = null;
-                $resellerId = null;
-
-                foreach ($settlements as $settlement) {
-
-                    if (
-                        $settlement->status
-                        !== 'Posted'
-                    ) {
-                        throw new RuntimeException(
-                            "Settlement {$settlement->settlement_number} "
-                            . "is not available for payment."
-                        );
-                    }
-
-                    if (
-                        $companyId === null
-                    ) {
-                        $companyId =
-                            $settlement->company_id;
-                    } elseif (
-                        (int) $companyId
-                        !== (int) $settlement->company_id
-                    ) {
-                        throw new RuntimeException(
-                            'All settlements must belong to the same company.'
-                        );
-                    }
-
-                    if (
-                        $branchId === null
-                    ) {
-                        $branchId =
-                            $settlement->branch_id;
-                    } elseif (
-                        (int) $branchId
-                        !== (int) $settlement->branch_id
-                    ) {
-                        throw new RuntimeException(
-                            'All settlements must belong to the same branch.'
-                        );
-                    }
-
-                    if (
-                        $resellerId === null
-                    ) {
-                        $resellerId =
-                            $settlement->reseller_id;
-                    } elseif (
-                        (int) $resellerId
-                        !== (int) $settlement->reseller_id
-                    ) {
-                        throw new RuntimeException(
-                            'All settlements must belong to the same reseller.'
-                        );
-                    }
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Header
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    isset($data['branch_id'])
-                    && (int) $data['branch_id']
-                    !== (int) $branchId
-                ) {
-                    throw new RuntimeException(
-                        'Selected branch does not match the settlements.'
-                    );
-                }
-
-                if (
-                    isset($data['reseller_id'])
-                    && (int) $data['reseller_id']
-                    !== (int) $resellerId
-                ) {
-                    throw new RuntimeException(
-                        'Selected reseller does not match the settlements.'
-                    );
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate Payment Account
-                |--------------------------------------------------------------------------
-                */
-
-                $paymentAccount =
-                    ChartOfAccount::query()
+                $previousPaidAmount =
+                    (float) ConsignmentReceivableHeader::query()
                         ->where(
-                            'id',
-                            $data['payment_account_id']
-                            ?? 0
-                        )
-                        ->where(
-                            'company_id',
-                            $companyId
+                            'reseller_id',
+                            $resellerId
                         )
                         ->where(
                             'status',
-                            true
+                            'Posted'
                         )
-                        ->where(
-                            'is_posting',
-                            true
+                        ->whereHas(
+                            'details',
+                            function ($query) use (
+                                $settlementId
+                            ) {
+                                $query->where(
+                                    'settlement_header_id',
+                                    $settlementId
+                                );
+                            }
                         )
-                        ->first();
-
-                if (!$paymentAccount) {
-                    throw new RuntimeException(
-                        'Payment account is invalid or inactive.'
-                    );
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Prepare Details
-                |--------------------------------------------------------------------------
-                */
-
-                $receivableDetails = [];
-
-                $totalAmount = 0;
-
-                foreach ($details as $detail) {
-
-                    $settlementId =
-                        $detail[
-                            'settlement_header_id'
-                        ] ?? null;
-
-                    if (
-                        !$settlementId
-                        || !$settlements->has(
-                            $settlementId
-                        )
-                    ) {
-                        throw new RuntimeException(
-                            'Invalid settlement selected.'
-                        );
-                    }
-
-                    $settlement =
-                        $settlements->get(
-                            $settlementId
-                        );
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Existing Posted Payments
-                    |--------------------------------------------------------------------------
-                    |
-                    | Current payment is Draft/Rejected,
-                    | therefore it is not included.
-                    |
-                    */
-
-                    $previousPaidAmount =
-                        (float) ConsignmentReceivableHeader::query()
-                            ->where(
-                                'reseller_id',
-                                $resellerId
-                            )
-                            ->where(
-                                'status',
-                                'Posted'
-                            )
-                            ->whereHas(
-                                'details',
-                                function ($query) use (
+                        ->withSum(
+                            [
+                                'details as settlement_payment_total'
+                                => function ($query) use (
                                     $settlementId
                                 ) {
                                     $query->where(
                                         'settlement_header_id',
                                         $settlementId
                                     );
-                                }
-                            )
-                            ->withSum(
-                                [
-                                    'details as settlement_payment_total'
-                                    => function ($query) use (
-                                        $settlementId
-                                    ) {
-                                        $query->where(
-                                            'settlement_header_id',
-                                            $settlementId
-                                        );
-                                    },
-                                ],
-                                'payment_amount'
-                            )
-                            ->get()
-                            ->sum(
-                                'settlement_payment_total'
-                            );
-
-                    $previousPaidAmount =
-                        round(
-                            $previousPaidAmount,
-                            2
+                                },
+                            ],
+                            'payment_amount'
+                        )
+                        ->get()
+                        ->sum(
+                            'settlement_payment_total'
                         );
 
-                    $settlementAmount =
-                        round(
-                            (float) $settlement->receivable_amount,
-                            2
-                        );
-
-                    $previousOutstandingAmount =
-                        round(
-                            $settlementAmount
-                            - $previousPaidAmount,
-                            2
-                        );
-
-                    if (
-                        $previousOutstandingAmount
-                        <= 0
-                    ) {
-                        throw new RuntimeException(
-                            "Settlement {$settlement->settlement_number} "
-                            . "has no outstanding receivable balance."
-                        );
-                    }
-
-                    $paymentAmount =
-                        round(
-                            (float) (
-                                $detail[
-                                    'payment_amount'
-                                ] ?? 0
-                            ),
-                            2
-                        );
-
-                    if (
-                        $paymentAmount <= 0
-                    ) {
-                        throw new RuntimeException(
-                            "Payment amount for settlement "
-                            . "{$settlement->settlement_number} "
-                            . "must be greater than zero."
-                        );
-                    }
-
-                    if (
-                        $paymentAmount
-                        > $previousOutstandingAmount
-                    ) {
-                        throw new RuntimeException(
-                            "Payment amount for settlement "
-                            . "{$settlement->settlement_number} "
-                            . "cannot exceed outstanding amount "
-                            . number_format(
-                                $previousOutstandingAmount,
-                                2,
-                                '.',
-                                ','
-                            ) . '.'
-                        );
-                    }
-
-                    $receivableDetails[] = [
-
-                        'settlement_header_id' =>
-                            $settlement->id,
-
-                        'settlement_amount' =>
-                            $settlementAmount,
-
-                        'previous_paid_amount' =>
-                            $previousPaidAmount,
-
-                        'previous_outstanding_amount' =>
-                            $previousOutstandingAmount,
-
-                        'payment_amount' =>
-                            $paymentAmount,
-
-                        'remarks' =>
-                            $detail['remarks']
-                            ?? null,
-                    ];
-
-                    $totalAmount +=
-                        $paymentAmount;
-                }
-
-                $totalAmount =
+                $previousPaidAmount =
                     round(
-                        $totalAmount,
+                        $previousPaidAmount,
+                        2
+                    );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Actual Receivable
+                |--------------------------------------------------------------------------
+                */
+
+                $settlementReceivable =
+                    round(
+                        (float) $settlement->receivable_amount,
+                        2
+                    );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Settlement Amount Snapshot
+                |--------------------------------------------------------------------------
+                |
+                | Settlement Amount = Grand Total.
+                |
+                */
+
+                $settlementAmount =
+                    round(
+                        (float) $settlement->grand_total,
+                        2
+                    );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Previous Outstanding
+                |--------------------------------------------------------------------------
+                |
+                | Outstanding tetap menggunakan receivable_amount.
+                |
+                */
+
+                $previousOutstandingAmount =
+                    round(
+                        $settlementReceivable
+                        - $previousPaidAmount,
                         2
                     );
 
                 if (
-                    $totalAmount <= 0
+                    $previousOutstandingAmount
+                    <= 0
                 ) {
                     throw new RuntimeException(
-                        'Consignment Receivable total must be greater than zero.'
+                        "Settlement {$settlement->settlement_number} "
+                        . "has no outstanding receivable balance."
                     );
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Update Header
-                |--------------------------------------------------------------------------
-                */
+                $paymentAmount =
+                    round(
+                        (float) (
+                            $detail[
+                                'payment_amount'
+                            ] ?? 0
+                        ),
+                        2
+                    );
 
-                $receivable->update([
-
-                    'company_id' =>
-                        $companyId,
-
-                    'branch_id' =>
-                        $branchId,
-
-                    'payment_date' =>
-                        $paymentDate,
-
-                    'reseller_id' =>
-                        $resellerId,
-
-                    'payment_method' =>
-                        $data['payment_method']
-                        ?? null,
-
-                    'payment_account_id' =>
-                        $paymentAccount->id,
-
-                    'total_amount' =>
-                        $totalAmount,
-
-                    'remarks' =>
-                        $data['remarks']
-                        ?? null,
-
-                    'updated_by' =>
-                        auth()->id(),
-                ]);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Replace Details
-                |--------------------------------------------------------------------------
-                */
-
-                $receivable
-                    ->details()
-                    ->delete();
-
-                foreach (
-                    $receivableDetails
-                    as $detail
+                if (
+                    $paymentAmount <= 0
                 ) {
-                    $receivable
-                        ->details()
-                        ->create($detail);
+                    throw new RuntimeException(
+                        "Payment amount for settlement "
+                        . "{$settlement->settlement_number} "
+                        . "must be greater than zero."
+                    );
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Activity
-                |--------------------------------------------------------------------------
-                */
+                if (
+                    $paymentAmount
+                    > $previousOutstandingAmount
+                ) {
+                    throw new RuntimeException(
+                        "Payment amount for settlement "
+                        . "{$settlement->settlement_number} "
+                        . "cannot exceed outstanding amount "
+                        . number_format(
+                            $previousOutstandingAmount,
+                            2,
+                            '.',
+                            ','
+                        ) . '.'
+                    );
+                }
 
-                $this->documentActivityService->record(
-                    $receivable,
-                    'UPDATED',
-                    $receivable->getOriginal(
-                        'status'
-                    ),
-                    $receivable->status,
-                    'Consignment Receivable updated.'
+                $receivableDetails[] = [
+
+                    'settlement_header_id' =>
+                        $settlement->id,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | IMPORTANT
+                    |--------------------------------------------------------------------------
+                    | Display Settlement Amount = Grand Total
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'settlement_amount' =>
+                        $settlementAmount,
+
+                    'previous_paid_amount' =>
+                        $previousPaidAmount,
+
+                    'previous_outstanding_amount' =>
+                        $previousOutstandingAmount,
+
+                    'payment_amount' =>
+                        $paymentAmount,
+
+                    'remarks' =>
+                        $detail['remarks']
+                        ?? null,
+                ];
+
+                $totalAmount +=
+                    $paymentAmount;
+            }
+
+            $totalAmount =
+                round(
+                    $totalAmount,
+                    2
                 );
 
-                return $receivable->fresh(
-                    'details'
+            if (
+                $totalAmount <= 0
+            ) {
+                throw new RuntimeException(
+                    'Consignment Receivable total must be greater than zero.'
                 );
             }
-        );
-    }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Header
+            |--------------------------------------------------------------------------
+            */
+
+            $receivable->update([
+
+                'company_id' =>
+                    $companyId,
+
+                'branch_id' =>
+                    $branchId,
+
+                'payment_date' =>
+                    $paymentDate,
+
+                'reseller_id' =>
+                    $resellerId,
+
+                'payment_method' =>
+                    $data['payment_method']
+                    ?? null,
+
+                'payment_account_id' =>
+                    $paymentAccount->id,
+
+                'total_amount' =>
+                    $totalAmount,
+
+                'remarks' =>
+                    $data['remarks']
+                    ?? null,
+
+                'updated_by' =>
+                    auth()->id(),
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Replace Details
+            |--------------------------------------------------------------------------
+            */
+
+            $receivable
+                ->details()
+                ->delete();
+
+            foreach (
+                $receivableDetails
+                as $detail
+            ) {
+                $receivable
+                    ->details()
+                    ->create($detail);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Activity
+            |--------------------------------------------------------------------------
+            */
+
+            $this->documentActivityService->record(
+                $receivable,
+                'UPDATED',
+                $receivable->getOriginal(
+                    'status'
+                ),
+                $receivable->status,
+                'Consignment Receivable updated.'
+            );
+
+            return $receivable->fresh(
+                'details'
+            );
+        }
+    );
+}
 
     /**
      * Reject Consignment Receivable.

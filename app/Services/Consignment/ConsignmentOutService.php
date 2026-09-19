@@ -15,7 +15,7 @@ use App\Models\Accounting\AccountingJournal;
 use App\Services\Accounting\AccountMappingService;
 use App\Services\Accounting\JournalEntryService;
 use App\Services\Inventory\InventoryService;
-
+use App\Models\Reseller\ResellerStockPriceLayer;
 class ConsignmentOutService
 {
     protected CodeGeneratorService $codeGeneratorService;
@@ -1220,7 +1220,7 @@ public function postConsignmentOut(
                     $unitCost;
 
 
-                $inventoryLines[] = [
+               $inventoryLines[] = [
 
                     'product_variant_id' =>
                         $detail->product_variant_id,
@@ -1236,6 +1236,12 @@ public function postConsignmentOut(
 
                     'total_cost' =>
                         $totalCost,
+
+                    'reseller_unit_price' =>
+                        (float) $detail->unit_price,
+
+                    'consignment_out_detail_id' =>
+                        $detail->id,
 
                 ];
 
@@ -1674,6 +1680,62 @@ public function postConsignmentOut(
                             $consignmentOut->reseller_id,
 
                     ]);
+                    /*
+                        |--------------------------------------------------------------------------
+                        | Create Reseller Stock Price Layer
+                        |--------------------------------------------------------------------------
+                        */
+
+                        ResellerStockPriceLayer::create([
+
+                            'company_id' =>
+                                $consignmentOut->company_id,
+
+                            'branch_id' =>
+                                $consignmentOut->branch_id,
+
+                            'warehouse_id' =>
+                                $consignmentOut->warehouse_id,
+
+                            'reseller_id' =>
+                                $consignmentOut->reseller_id,
+
+                            'product_variant_id' =>
+                                $line[
+                                    'product_variant_id'
+                                ],
+
+                            'unit_id' =>
+                                $line[
+                                    'unit_id'
+                                ],
+
+                            'consignment_out_id' =>
+                                $consignmentOut->id,
+
+                            'consignment_out_detail_id' =>
+                                $line[
+                                    'consignment_out_detail_id'
+                                ],
+
+                            'unit_price' =>
+                                round(
+                                    $line[
+                                        'reseller_unit_price'
+                                    ],
+                                    2
+                                ),
+
+                            'original_qty' =>
+                                $line['qty'],
+
+                            'remaining_qty' =>
+                                $line['qty'],
+
+                            'status' =>
+                                'Open',
+
+                        ]);
 
             }
 
@@ -1920,6 +1982,7 @@ public function cancelConsignmentOut(
                                     null,
 
                             ]);
+                            
 
                     }
 

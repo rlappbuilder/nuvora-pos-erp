@@ -31,8 +31,7 @@ import {
     formatDate,
 } from '@/Utils'
 
-import ConsignmentReturnCancelModal
-    from './Partials/ConsignmentReturnCancelModal.vue'
+
 
 import ConsignmentReturnRejectModal
     from './Partials/ConsignmentReturnRejectModal.vue'
@@ -359,20 +358,15 @@ function print()
 |--------------------------------------------------------------------------
 */
 
-const showCancelModal =
-    ref(false)
+
 
 const showRejectModal =
     ref(false)
 
-const cancelLoading =
-    ref(false)
 
 const rejectLoading =
     ref(false)
 
-const cancelReason =
-    ref('')
 
 const rejectReason =
     ref('')
@@ -472,100 +466,6 @@ function confirmReject()
 
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Cancel
-|--------------------------------------------------------------------------
-*/
-
-function cancel()
-{
-
-    cancelReason.value = ''
-
-    showCancelModal.value = true
-
-}
-
-
-function closeCancel()
-{
-
-    if (
-        cancelLoading.value
-    ) {
-
-        return
-
-    }
-
-
-    showCancelModal.value =
-        false
-
-    cancelReason.value =
-        ''
-
-}
-
-
-function confirmCancel()
-{
-
-    if (
-        !cancelReason.value.trim()
-    ) {
-
-        return
-
-    }
-
-
-    cancelLoading.value =
-        true
-
-
-    router.post(
-
-        route(
-            'consignment-returns.cancel',
-            props.consignmentReturn.id
-        ),
-
-        {
-
-            reason:
-                cancelReason.value.trim(),
-
-        },
-
-        {
-
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                showCancelModal.value =
-                    false
-
-                cancelReason.value =
-                    ''
-
-            },
-
-            onFinish: () => {
-
-                cancelLoading.value =
-                    false
-
-            },
-
-        }
-
-    )
-
-}
 
 </script>
 
@@ -753,20 +653,6 @@ function confirmCancel()
                     >
                         Post
                     </BaseButton>
-
-
-                    <BaseButton
-                        class="
-                            !border-red-600
-                            !bg-red-600
-                            !text-white
-                            hover:!bg-red-600
-                        "
-                        @click="cancel"
-                    >
-                        Cancel
-                    </BaseButton>
-
                 </template>
 
 
@@ -1769,37 +1655,6 @@ function confirmCancel()
 
         @update:reason="
             rejectReason = $event
-        "
-    />
-
-
-    <!-- ========================================================= -->
-    <!-- Cancel Modal -->
-    <!-- ========================================================= -->
-
-    <ConsignmentReturnCancelModal
-        :show="
-            showCancelModal
-        "
-
-        :loading="
-            cancelLoading
-        "
-
-        :reason="
-            cancelReason
-        "
-
-        @close="
-            closeCancel
-        "
-
-        @confirm="
-            confirmCancel
-        "
-
-        @update:reason="
-            cancelReason = $event
         "
     />
 

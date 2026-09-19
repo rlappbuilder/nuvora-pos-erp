@@ -324,6 +324,8 @@ class ConsignmentReturnController extends Controller
                                     $detail->total_cost
                             );
 
+
+
                     return $consignmentReturn;
 
                 }
@@ -341,6 +343,15 @@ class ConsignmentReturnController extends Controller
 
 
         $statistics = [
+
+            'total_return_amount' =>
+                (clone $statisticsQuery)
+                    ->withSum(
+                        'details',
+                        'total_cost'
+                    )
+                    ->get()
+                    ->sum('details_sum_total_cost'),
 
             'total' =>
                 (clone $statisticsQuery)
@@ -1421,7 +1432,7 @@ class ConsignmentReturnController extends Controller
 
         $this
             ->consignmentReturnService
-            ->cancelConsignmentReturn(
+            ->cancel(
                 $consignmentReturn,
                 $validated['reason']
             );

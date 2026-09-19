@@ -1,61 +1,25 @@
 <script setup>
 
-import {
-    ref,
-    reactive,
-    computed,
-    watch,
-    onMounted,
-    onUnmounted,
-    toRefs,
-} from 'vue'
-
-import {
-    router,
-} from '@inertiajs/vue3'
-
+import {ref,reactive, computed, watch, onMounted, onUnmounted,toRefs,} from 'vue'
+import {router,} from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-
 import BaseButton from '@/Components/Button/BaseButton.vue'
-
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
-
 import DataTable from '@/Components/Table/DataTable.vue'
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
 import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
-
+import ConsignmentReturnCancelModal    from './Partials/ConsignmentReturnCancelModal.vue'
 import TablePagination from '@/Components/Table/TablePagination.vue'
-
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
-
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-
-import {
-    LoadingOverlay,
-} from '@/Components/Feedback'
-
-import {
-    PlusIcon,
-} from '@heroicons/vue/24/solid'
-
-import {
-    success,
-    error,
-    formatDate,
-} from '@/Utils'
-
+import { LoadingOverlay,} from '@/Components/Feedback'
+import {PlusIcon,} from '@heroicons/vue/24/solid'
+import {success,error,formatDate,} from '@/Utils'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-
-
-/*
-|--------------------------------------------------------------------------
-| Props
-|--------------------------------------------------------------------------
-*/
 
 const props = defineProps({
 
@@ -186,7 +150,126 @@ const stopLoading = () => {
     loading.value = false
 
 }
+/* Delete modal - Reverse */
+const showCancelModal =
+    ref(false)
 
+const cancelLoading =
+    ref(false)
+
+const cancelReason =
+    ref('')
+
+const selectedReturn =
+    ref(null)
+
+function cancel(item)
+{
+
+    selectedReturn.value =
+        item
+
+    cancelReason.value =
+        ''
+
+    showCancelModal.value =
+        true
+
+}
+function closeCancel()
+{
+
+    if (
+        cancelLoading.value
+    ) {
+
+        return
+
+    }
+
+
+    showCancelModal.value =
+        false
+
+    cancelReason.value =
+        ''
+
+    selectedReturn.value =
+        null
+
+}
+function confirmCancel()
+{
+
+    if (
+        ! cancelReason.value.trim()
+    ) {
+
+        return
+
+    }
+
+
+    if (
+        ! selectedReturn.value?.id
+    ) {
+
+        return
+
+    }
+
+
+    cancelLoading.value =
+        true
+
+
+    router.post(
+
+        route(
+            'consignment-returns.cancel',
+            selectedReturn.value.id
+        ),
+
+        {
+
+            reason:
+                cancelReason.value.trim(),
+
+        },
+
+        {
+
+            preserveScroll: true,
+
+            onSuccess: () => {
+
+                showCancelModal.value =
+                    false
+
+                cancelReason.value =
+                    ''
+
+                selectedReturn.value =
+                    null
+
+                success(
+                    'Consignment return cancelled successfully.'
+                )
+
+            },
+
+            onFinish: () => {
+
+                cancelLoading.value =
+                    false
+
+            },
+
+        }
+
+    )
+
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -677,23 +760,22 @@ const formatAmount = (value) => {
 const summaryCards = computed(() => [
 
     {
+    key:
+        'total',
 
-        key:
-            'total',
+    label:
+        'Total Return',
 
-        label:
-            'Total Return',
+    value:
+        statistics.value?.total_return_amount
+        ?? 0,
 
-        value:
-            statistics.value?.total ?? 0,
+    classes:
+        'border-gray-100 bg-white',
 
-        classes:
-            'border-gray-100 bg-white',
-
-        accent:
-            'bg-gray-400',
-
-    },
+    accent:
+        'bg-gray-400',
+},
 
     {
 
@@ -1495,6 +1577,10 @@ function selectSummary(key)
                                         openView(item)
                                     "
 
+                                    @cancel="
+                                        cancel(item)
+                                    "
+
                                     :showEdit="
                                         false
                                     "
@@ -1520,7 +1606,8 @@ function selectSummary(key)
                                     "
 
                                     :showCancel="
-                                        false
+                                        item.status === 'Approved' ||
+                                        item.status === 'Posted'
                                     "
 
                                     :showExport="
@@ -1613,7 +1700,31 @@ function selectSummary(key)
     </div>
 
 </AppLayout>
+<ConsignmentReturnCancelModal
+    :show="
+        showCancelModal
+    "
 
+    :loading="
+        cancelLoading
+    "
+
+    :reason="
+        cancelReason
+    "
+
+    @close="
+        closeCancel
+    "
+
+    @confirm="
+        confirmCancel
+    "
+
+    @update:reason="
+        cancelReason = $event
+    "
+/>
 </template>
 
 
