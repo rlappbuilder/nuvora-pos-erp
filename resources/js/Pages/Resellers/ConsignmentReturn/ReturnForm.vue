@@ -18,9 +18,12 @@ import {
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
+import Swal from 'sweetalert2'
+
 import {
     computed,
     onMounted,
+    watch,
 } from 'vue'
 
 
@@ -262,7 +265,9 @@ const availableStocks = (
 ) => {
 
     if (
-        !form.reseller_id
+        !form.reseller_id ||
+        !form.branch_id ||
+        !form.warehouse_id
     ) {
 
         return []
@@ -322,7 +327,6 @@ const availableStocks = (
             */
 
             if (
-                form.branch_id &&
                 Number(
                     stock.branch_id
                 ) !==
@@ -343,13 +347,29 @@ const availableStocks = (
             */
 
             if (
-                form.warehouse_id &&
                 Number(
                     stock.warehouse_id
                 ) !==
                 Number(
                     form.warehouse_id
                 )
+            ) {
+
+                return false
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Available Stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                Number(
+                    stock.available_qty || 0
+                ) <= 0
             ) {
 
                 return false
@@ -396,6 +416,221 @@ const availableStocks = (
 
 /*
 |--------------------------------------------------------------------------
+| Available Settlements
+|--------------------------------------------------------------------------
+*/
+
+const availableSettlements = computed(() => {
+
+    if (
+        !form.reseller_id ||
+        !form.branch_id
+    ) {
+
+        return []
+
+    }
+
+
+    return props.settlements.filter(
+
+        settlement =>
+
+            Number(
+                settlement.reseller_id
+            ) ===
+            Number(
+                form.reseller_id
+            )
+
+            &&
+
+            Number(
+                settlement.branch_id
+            ) ===
+            Number(
+                form.branch_id
+            )
+
+    )
+
+})
+
+
+/*
+|--------------------------------------------------------------------------
+| Has Available Product
+|--------------------------------------------------------------------------
+*/
+
+const hasAvailableProduct = computed(() => {
+
+    if (
+        !form.reseller_id ||
+        !form.branch_id ||
+        !form.warehouse_id
+    ) {
+
+        return false
+
+    }
+
+
+    return props.consignmentStocks.some(
+
+        stock =>
+
+            Number(
+                stock.reseller_id
+            ) ===
+            Number(
+                form.reseller_id
+            )
+
+            &&
+
+            Number(
+                stock.branch_id
+            ) ===
+            Number(
+                form.branch_id
+            )
+
+            &&
+
+            Number(
+                stock.warehouse_id
+            ) ===
+            Number(
+                form.warehouse_id
+            )
+
+            &&
+
+            Number(
+                stock.available_qty || 0
+            ) > 0
+
+    )
+
+})
+
+
+/*
+|--------------------------------------------------------------------------
+| Context Changed
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    [
+        () => form.reseller_id,
+        () => form.branch_id,
+        () => form.warehouse_id,
+    ],
+
+    (
+        newValues,
+        oldValues
+    ) => {
+
+        if (
+            JSON.stringify(newValues) ===
+            JSON.stringify(oldValues)
+        ) {
+
+            return
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reset Details
+        |--------------------------------------------------------------------------
+        */
+
+        form.details = [
+            createEmptyDetail()
+        ]
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reset Settlement
+        |--------------------------------------------------------------------------
+        */
+
+        form.settlement_header_id =
+            null
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Context Incomplete
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !form.reseller_id ||
+            !form.branch_id ||
+            !form.warehouse_id
+        ) {
+
+            return
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | No Available Product
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !hasAvailableProduct.value
+        ) {
+
+            Swal.fire({
+
+                icon:
+                    'info',
+
+                title:
+                    'Reseller Has No Product',
+
+                text:
+                    'This reseller has no consignment product available for return in the selected branch and warehouse.',
+
+                confirmButtonText:
+                    'OK',
+
+                buttonsStyling:
+                    false,
+
+                customClass: {
+
+                    popup:
+                        'rounded-2xl',
+
+                    confirmButton:
+                        'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+                },
+
+            })
+
+        }
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
 | Get Stock
 |--------------------------------------------------------------------------
 */
@@ -413,21 +648,27 @@ const getStock = (
             ) ===
             Number(
                 productVariantId
-            ) &&
+            )
+
+            &&
 
             Number(
                 stock.reseller_id
             ) ===
             Number(
                 form.reseller_id
-            ) &&
+            )
+
+            &&
 
             Number(
                 stock.branch_id
             ) ===
             Number(
                 form.branch_id
-            ) &&
+            )
+
+            &&
 
             Number(
                 stock.warehouse_id
@@ -466,6 +707,89 @@ const changeProduct = (
 
         detail.total_cost =
             0
+
+        return
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate Product
+    |--------------------------------------------------------------------------
+    */
+
+    const duplicate =
+        form.details.some(
+
+            item =>
+
+                item !== detail
+
+                &&
+
+                Number(
+                    item.product_variant_id
+                ) ===
+                Number(
+                    detail.product_variant_id
+                )
+
+        )
+
+
+    if (
+        duplicate
+    ) {
+
+        Swal.fire({
+
+            icon:
+                'warning',
+
+            title:
+                'Product Already Exist',
+
+            text:
+                'This product has already been added to the return.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        }).then(() => {
+
+            const index =
+                form.details.indexOf(
+                    detail
+                )
+
+
+            if (
+                index !== -1
+            ) {
+
+                form.details.splice(
+                    index,
+                    1
+                )
+
+            }
+
+        })
+
 
         return
 
@@ -622,17 +946,21 @@ const getProductLabel = (
 |--------------------------------------------------------------------------
 */
 
-const getUnitLabel = (detail) => {
+const getUnitLabel = (
+    detail
+) => {
 
     const stock =
         getStock(
             detail.product_variant_id
         )
 
+
     return (
         stock?.unit?.name ??
         '-'
     )
+
 }
 
 
@@ -657,6 +985,111 @@ const getAvailableQty = (
     )
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Can Add Detail
+|--------------------------------------------------------------------------
+*/
+
+const canAddDetail = computed(() => {
+
+    if (
+        !form.reseller_id ||
+        !form.branch_id ||
+        !form.warehouse_id
+    ) {
+
+        return false
+
+    }
+
+
+    const products =
+        props.consignmentStocks.filter(
+
+            stock =>
+
+                Number(
+                    stock.reseller_id
+                ) ===
+                Number(
+                    form.reseller_id
+                )
+
+                &&
+
+                Number(
+                    stock.branch_id
+                ) ===
+                Number(
+                    form.branch_id
+                )
+
+                &&
+
+                Number(
+                    stock.warehouse_id
+                ) ===
+                Number(
+                    form.warehouse_id
+                )
+
+                &&
+
+                Number(
+                    stock.available_qty || 0
+                ) > 0
+
+        )
+
+
+    const uniqueProductIds =
+        [
+            ...new Set(
+                products.map(
+                    stock =>
+                        Number(
+                            stock.product_variant_id
+                        )
+                )
+            ),
+        ]
+
+
+    const selectedIds =
+        form.details
+            .map(
+                detail =>
+                    Number(
+                        detail.product_variant_id
+                    )
+            )
+            .filter(
+                id =>
+                    id > 0
+            )
+
+
+    const remainingProducts =
+        uniqueProductIds.filter(
+
+            productId =>
+                !selectedIds.includes(
+                    productId
+                )
+
+        )
+
+
+    return (
+        uniqueProductIds.length > 1
+        &&
+        remainingProducts.length > 0
+    )
+
+})
 
 
 /*
@@ -837,8 +1270,6 @@ const handleSubmit = () => {
 }
 
 </script>
-
-
 <template>
 
     <form
@@ -1129,7 +1560,7 @@ const handleSubmit = () => {
                             form.settlement_header_id
                         "
                         :options="
-                            settlements
+                            availableSettlements
                         "
                         label="label"
                         value-key="id"
@@ -1547,7 +1978,7 @@ const handleSubmit = () => {
 
             <div
                 v-if="
-                    form.reseller_id
+                    canAddDetail
                 "
                 class="
                     mt-4

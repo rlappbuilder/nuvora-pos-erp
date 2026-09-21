@@ -5,10 +5,13 @@ import FormInput from '@/Components/Form/FormInput.vue'
 import FormTextarea from '@/Components/Form/FormTextarea.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
+
 import {
     success,
     error,
-    formatDate,} from '@/Utils'
+    formatDate,
+} from '@/Utils'
+
 import {
     PlusIcon,
     TrashIcon,
@@ -17,9 +20,12 @@ import {
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
+import Swal from 'sweetalert2'
+
 import {
     computed,
     onMounted,
+    watch,
 } from 'vue'
 
 
@@ -61,6 +67,13 @@ const props = defineProps({
 
 const form = props.form
 
+
+/*
+|--------------------------------------------------------------------------
+| Selected Reseller
+|--------------------------------------------------------------------------
+*/
+
 const selectedReseller = computed(() => {
 
     return props.resellers.find(
@@ -77,6 +90,7 @@ const selectedReseller = computed(() => {
     ) ?? null
 
 })
+
 
 /*
 |--------------------------------------------------------------------------
@@ -197,6 +211,21 @@ const createEmptyDetail = () => ({
 
 /*
 |--------------------------------------------------------------------------
+| Reset Details
+|--------------------------------------------------------------------------
+*/
+
+const resetDetails = () => {
+
+    form.details = [
+        createEmptyDetail()
+    ]
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Add Detail
 |--------------------------------------------------------------------------
 */
@@ -236,11 +265,125 @@ const removeDetail = (
 
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Available Settlements
+| Reseller Changed
 |--------------------------------------------------------------------------
 */
+
+watch(
+
+    () => form.reseller_id,
+
+    (
+        newReseller,
+        oldReseller
+    ) => {
+
+        if (
+            newReseller === oldReseller
+        ) {
+
+            return
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Clear Existing Settlement Rows
+        |--------------------------------------------------------------------------
+        */
+
+        resetDetails()
+
+
+        if (
+            !newReseller
+        ) {
+
+            return
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Outstanding Receivable
+        |--------------------------------------------------------------------------
+        */
+
+        const hasReceivable =
+            props.settlements.some(
+
+                settlement =>
+
+                    Number(
+                        settlement.reseller_id
+                    ) ===
+                    Number(
+                        newReseller
+                    )
+
+                    &&
+
+                    Number(
+                        settlement.outstanding_amount || 0
+                    ) > 0
+
+            )
+
+
+        if (
+            hasReceivable
+        ) {
+
+            return
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | No Receivable
+        |--------------------------------------------------------------------------
+        */
+
+        Swal.fire({
+
+            icon:
+                'info',
+
+            title:
+                'Reseller Has No Receivable',
+
+            text:
+                'This reseller currently has no outstanding receivable.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        })
+
+    }
+
+)
+
+
 /*
 |--------------------------------------------------------------------------
 | Available Settlements
@@ -276,7 +419,8 @@ const availableSettlements = (
             )
             .filter(
                 id =>
-                    id > 0 &&
+                    id > 0
+                    &&
                     id !== currentSettlementId
             )
 
@@ -307,11 +451,24 @@ const availableSettlements = (
 
             /*
             |--------------------------------------------------------------------------
-            | Current selected settlement
+            | Outstanding
             |--------------------------------------------------------------------------
-            |
-            | Always keep the settlement currently selected
-            | by this row inside the options.
+            */
+
+            if (
+                Number(
+                    settlement.outstanding_amount || 0
+                ) <= 0
+            ) {
+
+                return false
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Current Selected Settlement
             |--------------------------------------------------------------------------
             */
 
@@ -329,7 +486,7 @@ const availableSettlements = (
 
             /*
             |--------------------------------------------------------------------------
-            | Prevent duplicate selection
+            | Prevent Duplicate
             |--------------------------------------------------------------------------
             */
 
@@ -344,6 +501,7 @@ const availableSettlements = (
     )
 
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -426,6 +584,89 @@ const changeSettlement = (
 
         detail.payment_amount =
             0
+
+        return
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prevent Duplicate Settlement
+    |--------------------------------------------------------------------------
+    */
+
+    const duplicate =
+        form.details.some(
+
+            item =>
+
+                item !== detail
+
+                &&
+
+                Number(
+                    item.settlement_header_id
+                ) ===
+                Number(
+                    detail.settlement_header_id
+                )
+
+        )
+
+
+    if (
+        duplicate
+    ) {
+
+        Swal.fire({
+
+            icon:
+                'warning',
+
+            title:
+                'Settlement Already Exist',
+
+            text:
+                'This settlement has already been added to the payment.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        }).then(() => {
+
+            const index =
+                form.details.indexOf(
+                    detail
+                )
+
+
+            if (
+                index !== -1
+            ) {
+
+                form.details.splice(
+                    index,
+                    1
+                )
+
+            }
+
+        })
+
 
         return
 
@@ -527,7 +768,7 @@ const calculateDetail = (
 
 /*
 |--------------------------------------------------------------------------
-| Product / Settlement Info
+| Settlement Number
 |--------------------------------------------------------------------------
 */
 
@@ -548,6 +789,14 @@ const getSettlementNumber = (
     )
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Settlement Date
+|--------------------------------------------------------------------------
+*/
+
 const getSettlementDate = (
     detail
 ) => {
@@ -557,6 +806,7 @@ const getSettlementDate = (
             detail.settlement_header_id
         )
 
+
     return settlement?.settlement_date
         ? formatDate(
             settlement.settlement_date
@@ -564,6 +814,14 @@ const getSettlementDate = (
         : '-'
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Settlement Period
+|--------------------------------------------------------------------------
+*/
+
 const getSettlementPeriod = (
     detail
 ) => {
@@ -573,6 +831,7 @@ const getSettlementPeriod = (
             detail.settlement_header_id
         )
 
+
     if (
         !settlement?.period_from ||
         !settlement?.period_to
@@ -581,6 +840,7 @@ const getSettlementPeriod = (
         return '-'
 
     }
+
 
     return (
         formatDate(
@@ -595,6 +855,68 @@ const getSettlementPeriod = (
     )
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Can Add Settlement
+|--------------------------------------------------------------------------
+*/
+
+const canAddSettlement = computed(() => {
+
+    if (
+        !form.reseller_id
+    ) {
+
+        return false
+
+    }
+
+
+    const selectedIds =
+        form.details
+            .map(
+                detail =>
+                    Number(
+                        detail.settlement_header_id
+                    )
+            )
+            .filter(
+                id =>
+                    id > 0
+            )
+
+
+    return props.settlements.some(
+
+        settlement =>
+
+            Number(
+                settlement.reseller_id
+            ) ===
+            Number(
+                form.reseller_id
+            )
+
+            &&
+
+            Number(
+                settlement.outstanding_amount || 0
+            ) > 0
+
+            &&
+
+            !selectedIds.includes(
+                Number(
+                    settlement.id
+                )
+            )
+
+    )
+
+})
+
 
 /*
 |--------------------------------------------------------------------------
@@ -1487,7 +1809,7 @@ const handleSubmit = () => {
 
             <div
                 v-if="
-                    form.reseller_id
+                    canAddSettlement
                 "
                 class="
                     mt-4

@@ -7,6 +7,9 @@ use App\Http\Controllers\Consignment\ConsignmentOutController;
 use App\Http\Controllers\Reseller\ConsignmentStockController;
 use App\Http\Controllers\Consignment\ConsignmentReceivableController;
 use App\Http\Controllers\Consignment\ConsignmentReturnController;
+use App\Http\Controllers\Consignment\ResellerStatementController;
+use App\Http\Controllers\Consignment\ConsignmentReportController;
+use App\Http\Controllers\Consignment\ResellerMutationController;
                 /*
                 |--------------------------------------------------------------------------
                 | Reseller Routes
@@ -341,7 +344,31 @@ use App\Http\Controllers\Consignment\ConsignmentReturnController;
                     [ConsignmentReturnController::class, 'showData']
                 )->name('consignment-returns.data');
 
+                /*
+                |--------------------------------------------------------------------------
+                | Reseller Statement
+                |--------------------------------------------------------------------------
+                */
 
+                Route::get(
+                    '/reseller-statements',
+                    [ResellerStatementController::class, 'index']
+                )->name('reseller-statements.index');
+
+                Route::get(
+                    '/reseller-statements/print',
+                    [ResellerStatementController::class, 'print']
+                )->name('reseller-statements.print');
+
+                Route::get(
+                    '/reseller-statements/pdf',
+                    [ResellerStatementController::class, 'pdf']
+                )->name('reseller-statements.pdf');
+
+                Route::get(
+                    '/reseller-statements/excel',
+                    [ResellerStatementController::class, 'excel']
+                )->name('reseller-statements.excel');
                 /*
                 |--------------------------------------------------------------------------
                 | Consignment Return Print
@@ -388,7 +415,54 @@ use App\Http\Controllers\Consignment\ConsignmentReturnController;
                     'edit',
                     'update',
                 ]);
-                /*
+               
+                Route::get('/consignment-reports',[
+                        ConsignmentReportController::class,
+                        'index'
+                    ]
+                )->name('consignment-reports.index');
+
+                Route::get(
+                    '/consignment-reports/print',
+                    [
+                        ConsignmentReportController::class,
+                        'print'
+                    ]
+                )->name('consignment-reports.print');
+
+                Route::get(
+                    '/consignment-reports/pdf',
+                    [
+                        ConsignmentReportController::class,
+                        'pdf'
+                    ]
+                )->name('consignment-reports.pdf');
+
+                Route::get(
+                    '/consignment-reports/excel',
+                    [
+                        ConsignmentReportController::class,
+                        'excel'
+                    ]
+                )->name('consignment-reports.excel');
+
+                /* |--------------------------------------------------------------------------
+                | Reseller mutation
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/reseller-mutations', [ResellerMutationController::class, 'index'])
+                    ->name('reseller-mutations.index');
+
+                Route::get('/reseller-mutations/print', [ResellerMutationController::class, 'print'])
+                    ->name('reseller-mutations.print');
+
+                Route::get('/reseller-mutations/pdf', [ResellerMutationController::class, 'pdf'])
+                    ->name('reseller-mutations.pdf');
+
+                Route::get('/reseller-mutations/excel', [ResellerMutationController::class, 'excel'])
+                    ->name('reseller-mutations.excel');
+                                    /*
                 |--------------------------------------------------------------------------
                 | Consignment Out Resource
                 |--------------------------------------------------------------------------

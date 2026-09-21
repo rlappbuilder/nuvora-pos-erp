@@ -245,39 +245,71 @@ const removeDetail = (
 
 const availableVariants = computed(() => {
 
-    if (!form.reseller_id) {
+    if (
+        !form.reseller_id ||
+        !form.branch_id ||
+        !form.warehouse_id
+    ) {
 
         return []
 
     }
 
 
-    const productIds =
-        props.resellerPrices
+    const availableVariantIds =
+        props.consignmentStocks
             .filter(
-                price =>
+                stock =>
+
                     Number(
-                        price.reseller_id
+                        stock.reseller_id
                     ) ===
                     Number(
                         form.reseller_id
                     )
+
+                    &&
+
+                    Number(
+                        stock.branch_id
+                    ) ===
+                    Number(
+                        form.branch_id
+                    )
+
+                    &&
+
+                    Number(
+                        stock.warehouse_id
+                    ) ===
+                    Number(
+                        form.warehouse_id
+                    )
+
+                    &&
+
+                    Number(
+                        stock.available_qty
+                    ) > 0
             )
             .map(
-                price =>
+                stock =>
                     Number(
-                        price.product_id
+                        stock.product_variant_id
                     )
             )
 
 
     return props.filteredVariants.filter(
+
         variant =>
-            productIds.includes(
+
+            availableVariantIds.includes(
                 Number(
-                    variant.product_id
+                    variant.id
                 )
             )
+
     )
 
 })

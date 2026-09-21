@@ -402,27 +402,38 @@ const modules = {
                 permission: 'consignment-receivables.view',
                 
             },
-                ResellerStatements: {
-                key: 'ResellerStatements',
-                title: 'Reseller Statement',
-                icon: UsersIcon,
-                route: 'consignment-receivables.index',
-                permission: 'consignment-receivables.view',
-                
-            },
-              ConsignmentReturns: {
+
+             ConsignmentReturns: {
                 key: 'ConsignmentReturns',
                 title: 'Consignment Returns',
                 icon: UsersIcon,
                 route: 'consignment-returns.index',
                 permission: 'consignment-returns.view',
             },
+
+                ResellerStatements: {
+                key: 'ResellerStatements',
+                title: 'Reseller Statement',
+                icon: UsersIcon,
+                route: 'reseller-statements.index',
+                permission: 'reseller-statements.view',
+                
+            },
+
+             ResellerMutations: {
+                key: 'ResellerMutations',
+                title: 'Reseller Mutation',
+                icon: UsersIcon,
+                route: 'reseller-mutations.index',
+                permission: 'reseller-mutations.view',
+                
+            },
                 ConsignmentReports: {
                 key: 'ConsignmentReports',
                 title: 'Consignment Reports',
                 icon: UsersIcon,
-                route: 'goods-receipts.index',
-                permission: 'goods-receipts.view',
+                route: 'consignment-reports.index',
+                permission: 'consignment-reports.view',
             },
         // End Settings //
         // settings

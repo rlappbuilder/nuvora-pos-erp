@@ -82,6 +82,7 @@ const navigation = [
         modules.ConsignmentReturns,
         modules.ConsignmentReports,
         modules.ResellerStatements,
+        modules.ResellerMutations,
         ],
     },
 

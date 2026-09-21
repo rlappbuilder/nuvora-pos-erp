@@ -6,11 +6,19 @@ import FormInput from '@/Components/Form/FormInput.vue'
 import FormTextarea from '@/Components/Form/FormTextarea.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { TrashIcon } from '@heroicons/vue/24/outline'
+
+import {
+    TrashIcon,
+} from '@heroicons/vue/24/outline'
+
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
-import { computed } from 'vue'
+import Swal from 'sweetalert2'
+
+import {
+    computed,
+} from 'vue'
 
 
 /*
@@ -42,9 +50,9 @@ const props = defineProps({
     },
 
     resellerPrices: {
-    type: Array,
-    default: () => [],
-},
+        type: Array,
+        default: () => [],
+    },
 
     filteredVariants: {
         type: Array,
@@ -147,6 +155,7 @@ const removeDetail = (
 
     }
 
+
     form.details.splice(
         index,
         1
@@ -165,24 +174,35 @@ const getUnitsForVariant = (
     variantId
 ) => {
 
-    if (!variantId) {
+    if (
+        !variantId
+    ) {
 
         return []
 
     }
 
+
     const variant =
         availableVariants.value.find(
 
             item =>
-                Number(item.id) ===
-                Number(variantId)
+
+                Number(
+                    item.id
+                ) ===
+                Number(
+                    variantId
+                )
 
         )
+
 
     return variant?.units ?? []
 
 }
+
+
 /*
 |--------------------------------------------------------------------------
 | Available Variants
@@ -191,36 +211,55 @@ const getUnitsForVariant = (
 
 const availableVariants = computed(() => {
 
-    if (!form.reseller_id) {
+    if (
+        !form.reseller_id
+    ) {
+
         return []
+
     }
+
 
     const productIds =
         props.resellerPrices
             .filter(
+
                 price =>
-                    Number(price.reseller_id) ===
-                    Number(form.reseller_id)
+
+                    Number(
+                        price.reseller_id
+                    ) ===
+                    Number(
+                        form.reseller_id
+                    )
+
             )
             .map(
+
                 price =>
-                    Number(price.product_id)
+
+                    Number(
+                        price.product_id
+                    )
+
             )
 
+
     return props.filteredVariants.filter(
+
         variant =>
+
             productIds.includes(
-                Number(variant.product_id)
+                Number(
+                    variant.product_id
+                )
             )
+
     )
 
 })
 
-/*
-|--------------------------------------------------------------------------
-| Variant Changed
-|--------------------------------------------------------------------------
-*/
+
 /*
 |--------------------------------------------------------------------------
 | Variant Changed
@@ -250,6 +289,89 @@ const changeVariant = (
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate Product
+    |--------------------------------------------------------------------------
+    */
+
+    const duplicate =
+        form.details.some(
+
+            item =>
+
+                item !== detail
+
+                &&
+
+                Number(
+                    item.product_variant_id
+                ) ===
+                Number(
+                    detail.product_variant_id
+                )
+
+        )
+
+
+    if (
+        duplicate
+    ) {
+
+        Swal.fire({
+
+            icon:
+                'warning',
+
+            title:
+                'Product Already Exist',
+
+            text:
+                'This product has already been added to the consignment out.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        }).then(() => {
+
+            const index =
+                form.details.indexOf(
+                    detail
+                )
+
+
+            if (
+                index !== -1
+            ) {
+
+                form.details.splice(
+                    index,
+                    1
+                )
+
+            }
+
+        })
+
+
+        return
+
+    }
+
+
     detail.unit_id =
         null
 
@@ -258,7 +380,10 @@ const changeVariant = (
         availableVariants.value.find(
 
             item =>
-                Number(item.id) ===
+
+                Number(
+                    item.id
+                ) ===
                 Number(
                     detail.product_variant_id
                 )
@@ -277,7 +402,9 @@ const changeVariant = (
         )
 
 
-    if (defaultUnit) {
+    if (
+        defaultUnit
+    ) {
 
         detail.unit_id =
             defaultUnit.id
@@ -310,9 +437,35 @@ const changeVariant = (
 
 
     detail.unit_price =
-        Number(
-            resellerPrice?.price || 0
+        Math.max(
+            0,
+            Number(
+                resellerPrice?.price || 0
+            )
         )
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ensure Valid Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    const qty =
+        Number(
+            detail.qty
+        )
+
+
+    if (
+        !Number.isInteger(qty) ||
+        qty < 1
+    ) {
+
+        detail.qty =
+            1
+
+    }
 
 
     calculateDetail(
@@ -320,6 +473,172 @@ const changeVariant = (
     )
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Quantity
+|--------------------------------------------------------------------------
+*/
+
+const validateQuantity = (
+    detail
+) => {
+
+    const qty =
+        Number(
+            detail.qty
+        )
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Empty / Zero / Negative / Decimal
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !Number.isInteger(qty) ||
+        qty < 1
+    ) {
+
+        Swal.fire({
+
+            icon:
+                'warning',
+
+            title:
+                'Invalid Quantity',
+
+            text:
+                'Quantity must be a positive whole number starting from 1.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        }).then(() => {
+
+            detail.qty =
+                1
+
+            calculateDetail(
+                detail
+            )
+
+        })
+
+
+        return false
+
+    }
+
+
+    detail.qty =
+        qty
+
+
+    calculateDetail(
+        detail
+    )
+
+
+    return true
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Consignment Price
+|--------------------------------------------------------------------------
+*/
+
+const validateUnitPrice = (
+    detail
+) => {
+
+    let price =
+        Number(
+            detail.unit_price
+        )
+
+
+    if (
+        Number.isNaN(price) ||
+        price < 0
+    ) {
+
+        Swal.fire({
+
+            icon:
+                'warning',
+
+            title:
+                'Invalid Consignment Price',
+
+            text:
+                'Consignment price cannot be negative.',
+
+            confirmButtonText:
+                'OK',
+
+            buttonsStyling:
+                false,
+
+            customClass: {
+
+                popup:
+                    'rounded-2xl',
+
+                confirmButton:
+                    'rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white',
+
+            },
+
+        }).then(() => {
+
+            detail.unit_price =
+                0
+
+            calculateDetail(
+                detail
+            )
+
+        })
+
+
+        return false
+
+    }
+
+
+    detail.unit_price =
+        price
+
+
+    calculateDetail(
+        detail
+    )
+
+
+    return true
+
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | Calculate Detail
@@ -330,15 +649,56 @@ const calculateDetail = (
     detail
 ) => {
 
-    const qty =
+    let qty =
         Number(
             detail.qty || 0
         )
 
-    const unitPrice =
+
+    let unitPrice =
         Number(
             detail.unit_price || 0
         )
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Quantity Safety
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !Number.isInteger(qty) ||
+        qty < 1
+    ) {
+
+        qty =
+            1
+
+        detail.qty =
+            qty
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Price Safety
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        Number.isNaN(unitPrice) ||
+        unitPrice < 0
+    ) {
+
+        unitPrice =
+            0
+
+        detail.unit_price =
+            unitPrice
+
+    }
 
 
     detail.total_price =
@@ -380,45 +740,56 @@ const getDetailTotal = (
 |--------------------------------------------------------------------------
 */
 
-const totalItems = computed(() => {
+const totalItems =
+    computed(() => {
 
-    return form.details.length
+        return form.details.length
 
-})
-
-
-const totalQuantity = computed(() => {
-
-    return form.details.reduce(
-
-        (total, detail) =>
-
-            total +
-            Number(
-                detail.qty || 0
-            ),
-
-        0
-
-    )
-
-})
+    })
 
 
-const totalValue = computed(() => {
+const totalQuantity =
+    computed(() => {
 
-    return form.details.reduce(
+        return form.details.reduce(
 
-        (total, detail) =>
+            (
+                total,
+                detail
+            ) =>
 
-            total +
-            getDetailTotal(detail),
+                total +
+                Number(
+                    detail.qty || 0
+                ),
 
-        0
+            0
 
-    )
+        )
 
-})
+    })
+
+
+const totalValue =
+    computed(() => {
+
+        return form.details.reduce(
+
+            (
+                total,
+                detail
+            ) =>
+
+                total +
+                getDetailTotal(
+                    detail
+                ),
+
+            0
+
+        )
+
+    })
 
 
 /*
@@ -434,31 +805,55 @@ const formatCurrency = (
     return new Intl.NumberFormat(
         'id-ID',
         {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            style:
+                'currency',
+
+            currency:
+                'IDR',
+
+            minimumFractionDigits:
+                0,
+
+            maximumFractionDigits:
+                0,
         }
     ).format(
-        Number(value || 0)
+        Number(
+            value || 0
+        )
     )
 
 }
-const formatNumber = (value) => {
+
+
+/*
+|--------------------------------------------------------------------------
+| Number
+|--------------------------------------------------------------------------
+*/
+
+const formatNumber = (
+    value
+) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
+            minimumFractionDigits:
+                0,
+
+            maximumFractionDigits:
+                2,
         }
     ).format(
-        Number(value || 0)
+        Number(
+            value || 0
+        )
     )
 
 }
-</script>
 
+</script>
 
 <template>
 
@@ -792,14 +1187,16 @@ const formatNumber = (value) => {
                                         detail.qty
                                     "
                                     type="number"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0"
+                                    min="1"
+                                    step="1"
+                                    placeholder="1"
+                                    @change="
+                                        validateQuantity(detail)
+                                    "
                                     @input="
                                         calculateDetail(detail)
                                     "
                                 />
-
                             </FormField>
 
 
@@ -815,15 +1212,21 @@ const formatNumber = (value) => {
                                 "
                             >
 
-                                <FormInput
-                                    :model-value="
-                                        formatNumber(
-                                            detail.unit_price
-                                        )
+                               <FormInput
+                                    v-model="
+                                        detail.unit_price
                                     "
-                                   
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="0"
+                                    @change="
+                                        validateUnitPrice(detail)
+                                    "
+                                    @input="
+                                        calculateDetail(detail)
+                                    "
                                 />
-
                             </FormField>
 
 
