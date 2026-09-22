@@ -137,6 +137,44 @@ const stopLoading = () => {
 
 /*
 |--------------------------------------------------------------------------
+| Default Dates
+|--------------------------------------------------------------------------
+*/
+
+const getDefaultDateFrom = () => {
+
+    const now = new Date()
+
+    return [
+        now.getFullYear(),
+        String(
+            now.getMonth() + 1
+        ).padStart(2, '0'),
+        '01',
+    ].join('-')
+
+}
+
+
+const getDefaultDateTo = () => {
+
+    const now = new Date()
+
+    return [
+        now.getFullYear(),
+        String(
+            now.getMonth() + 1
+        ).padStart(2, '0'),
+        String(
+            now.getDate()
+        ).padStart(2, '0'),
+    ].join('-')
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Filters
 |--------------------------------------------------------------------------
 */
@@ -158,67 +196,23 @@ const filters =
 
         date_from:
             props.filters?.date_from
-            ?? '',
+            || getDefaultDateFrom(),
 
         date_to:
             props.filters?.date_to
-            ?? '',
+            || getDefaultDateTo(),
 
     })
 
 
 /*
 |--------------------------------------------------------------------------
-| Load Data
+| Show Zero Account
 |--------------------------------------------------------------------------
 */
 
-function loadData()
-{
-
-    router.get(
-
-        route(
-            'income-statement.index'
-        ),
-
-        {
-
-            branch_id:
-                filters.branch_id
-                || undefined,
-
-            fiscal_year_id:
-                filters.fiscal_year_id
-                || undefined,
-
-            accounting_period_id:
-                filters.accounting_period_id
-                || undefined,
-
-            date_from:
-                filters.date_from
-                || undefined,
-
-            date_to:
-                filters.date_to
-                || undefined,
-
-        },
-
-        {
-
-            preserveState: true,
-
-            preserveScroll: true,
-
-            replace: true,
-
-        }
-
-    )
-
-}
+const showZeroAccount =
+    ref(false)
 
 
 /*
@@ -238,10 +232,8 @@ const filteredAccountingPeriods =
 
         }
 
-
         return props.accountingPeriods
             .filter(
-
                 period =>
                     Number(
                         period.fiscal_year_id
@@ -249,7 +241,6 @@ const filteredAccountingPeriods =
                     Number(
                         filters.fiscal_year_id
                     )
-
             )
 
     })
@@ -261,21 +252,21 @@ const filteredAccountingPeriods =
 |--------------------------------------------------------------------------
 */
 
-function handleFiscalYearChange()
-{
+const handleFiscalYearChange = () => {
 
-    if (
-        filters.accounting_period_id
-        &&
-        !filteredAccountingPeriods.value.some(
-
+    const exists =
+        filteredAccountingPeriods.value.some(
             period =>
                 Number(period.id) ===
                 Number(
                     filters.accounting_period_id
                 )
-
         )
+
+    if (
+        filters.accounting_period_id
+        &&
+        !exists
     ) {
 
         filters.accounting_period_id = ''
@@ -287,68 +278,28 @@ function handleFiscalYearChange()
 
 /*
 |--------------------------------------------------------------------------
-| Refresh
+| Account Visibility
 |--------------------------------------------------------------------------
 */
 
-function refresh()
-{
+const hasBalance = (account) => {
 
-    Object.assign(
+    if (
+        showZeroAccount.value
+    ) {
 
-        filters,
+        return true
 
-        {
+    }
 
-            branch_id: '',
-            fiscal_year_id: '',
-            accounting_period_id: '',
-            date_from: '',
-            date_to: '',
-
-        }
-
-    )
-
-    loadData()
+    return Math.abs(
+        Number(
+            account.balance
+            ?? 0
+        )
+    ) >= 0.005
 
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Date Labels
-|--------------------------------------------------------------------------
-*/
-
-const dateFromLabel =
-    computed(() => {
-
-        if (!filters.date_from) {
-
-            return 'Beginning'
-
-        }
-
-        return filters.date_from
-
-    })
-
-
-const dateToLabel =
-    computed(() => {
-
-        if (!filters.date_to) {
-
-            return new Date()
-                .toISOString()
-                .slice(0, 10)
-
-        }
-
-        return filters.date_to
-
-    })
 
 
 /*
@@ -357,14 +308,20 @@ const dateToLabel =
 |--------------------------------------------------------------------------
 */
 
-function groupAccounts(accounts)
-{
+function groupAccounts(
+    accounts = []
+) {
+
+    const filteredAccounts =
+        accounts.filter(
+            hasBalance
+        )
 
     const grouped = {}
 
 
-    ;(accounts || [])
-        .forEach(account => {
+    filteredAccounts.forEach(
+        account => {
 
             const typeName =
                 account.account_type
@@ -396,29 +353,32 @@ function groupAccounts(accounts)
             grouped[typeName][categoryName]
                 .push(account)
 
+        }
+    )
+
+
+    return Object.entries(
+        grouped
+    ).map(
+        ([type, categories]) => ({
+
+            type,
+
+            categories:
+                Object.entries(
+                    categories
+                ).map(
+                    ([category, accounts]) => ({
+
+                        category,
+
+                        accounts,
+
+                    })
+                ),
+
         })
-
-
-    return Object.entries(grouped)
-        .map(
-            ([type, categories]) => ({
-
-                type,
-
-                categories:
-                    Object.entries(categories)
-                        .map(
-                            ([category, accounts]) => ({
-
-                                category,
-
-                                accounts,
-
-                            })
-                        ),
-
-            })
-        )
+    )
 
 }
 
@@ -475,24 +435,9 @@ const otherExpenseGroups =
 |--------------------------------------------------------------------------
 */
 
-function formatAmount(value)
-{
-
-    return Number(
-        value ?? 0
-    ).toLocaleString(
-        'en-US',
-        {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }
-    )
-
-}
-
-
-function hasAccounts(groups)
-{
+function hasAccounts(
+    groups
+) {
 
     return groups.some(
         group =>
@@ -505,12 +450,12 @@ function hasAccounts(groups)
 }
 
 
-function categoryTotal(category)
-{
+function categoryTotal(
+    category
+) {
 
     return category.accounts
         .reduce(
-
             (
                 total,
                 account
@@ -520,20 +465,18 @@ function categoryTotal(category)
                     account.balance
                     ?? 0
                 ),
-
             0
-
         )
 
 }
 
 
-function typeTotal(type)
-{
+function typeTotal(
+    type
+) {
 
     return type.categories
         .reduce(
-
             (
                 total,
                 category
@@ -542,10 +485,189 @@ function typeTotal(type)
                 categoryTotal(
                     category
                 ),
-
             0
-
         )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Labels
+|--------------------------------------------------------------------------
+*/
+
+const formatDateLabel = (
+    value
+) => {
+
+    if (!value) {
+        return ''
+    }
+
+    const date =
+        new Date(
+            `${value}T00:00:00`
+        )
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return value
+
+    }
+
+    return new Intl.DateTimeFormat(
+        'en-GB',
+        {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+        }
+    ).format(date)
+
+}
+
+
+const dateFromLabel =
+    computed(() =>
+        formatDateLabel(
+            filters.date_from
+        )
+    )
+
+
+const dateToLabel =
+    computed(() =>
+        formatDateLabel(
+            filters.date_to
+        )
+    )
+
+
+/*
+|--------------------------------------------------------------------------
+| Selected Filters
+|--------------------------------------------------------------------------
+*/
+
+const selectedBranch =
+    computed(() => {
+
+        return props.branches.find(
+            branch =>
+                String(branch.id) ===
+                String(filters.branch_id)
+        )
+
+    })
+
+
+const selectedFiscalYear =
+    computed(() => {
+
+        return props.fiscalYears.find(
+            year =>
+                String(year.id) ===
+                String(filters.fiscal_year_id)
+        )
+
+    })
+
+
+const selectedPeriod =
+    computed(() => {
+
+        return props.accountingPeriods.find(
+            period =>
+                String(period.id) ===
+                String(filters.accounting_period_id)
+        )
+
+    })
+
+
+/*
+|--------------------------------------------------------------------------
+| Apply Filters
+|--------------------------------------------------------------------------
+*/
+
+const applyFilters = () => {
+
+    loading.value = true
+
+    router.get(
+        route(
+            'income-statement.index'
+        ),
+        {
+
+            branch_id:
+                filters.branch_id
+                || undefined,
+
+            fiscal_year_id:
+                filters.fiscal_year_id
+                || undefined,
+
+            accounting_period_id:
+                filters.accounting_period_id
+                || undefined,
+
+            date_from:
+                filters.date_from
+                || undefined,
+
+            date_to:
+                filters.date_to
+                || undefined,
+
+        },
+        {
+
+            preserveState: true,
+
+            preserveScroll: true,
+
+            replace: true,
+
+            onFinish: () => {
+
+                loading.value = false
+
+            },
+
+        }
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Reset Filters
+|--------------------------------------------------------------------------
+*/
+
+const resetFilters = () => {
+
+    filters.branch_id = ''
+
+    filters.fiscal_year_id = ''
+
+    filters.accounting_period_id = ''
+
+    filters.date_from =
+        getDefaultDateFrom()
+
+    filters.date_to =
+        getDefaultDateTo()
+
+    applyFilters()
 
 }
 
@@ -556,10 +678,82 @@ function typeTotal(type)
 |--------------------------------------------------------------------------
 */
 
-function printReport()
-{
+const printReport = () => {
 
-    window.print()
+    const params =
+        new URLSearchParams()
+
+
+    if (
+        filters.branch_id
+    ) {
+
+        params.set(
+            'branch_id',
+            filters.branch_id
+        )
+
+    }
+
+
+    if (
+        filters.fiscal_year_id
+    ) {
+
+        params.set(
+            'fiscal_year_id',
+            filters.fiscal_year_id
+        )
+
+    }
+
+
+    if (
+        filters.accounting_period_id
+    ) {
+
+        params.set(
+            'accounting_period_id',
+            filters.accounting_period_id
+        )
+
+    }
+
+
+    if (
+        filters.date_from
+    ) {
+
+        params.set(
+            'date_from',
+            filters.date_from
+        )
+
+    }
+
+
+    if (
+        filters.date_to
+    ) {
+
+        params.set(
+            'date_to',
+            filters.date_to
+        )
+
+    }
+
+
+    const url =
+        `${route(
+            'income-statement.print'
+        )}?${params.toString()}`
+
+
+    window.open(
+        url,
+        '_blank'
+    )
 
 }
 
@@ -571,52 +765,11 @@ function printReport()
 */
 
 watch(
-    () => filters.branch_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-
-watch(
-    () => filters.fiscal_year_id,
+    () =>
+        filters.fiscal_year_id,
     () => {
 
         handleFiscalYearChange()
-
-        loadData()
-
-    }
-)
-
-
-watch(
-    () => filters.accounting_period_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-
-watch(
-    () => filters.date_from,
-    () => {
-
-        loadData()
-
-    }
-)
-
-
-watch(
-    () => filters.date_to,
-    () => {
-
-        loadData()
 
     }
 )
@@ -661,187 +814,530 @@ onUnmounted(() => {
 
 <AppLayout>
 
-    <div class="space-y-6">
+    <div
+        class="
+            space-y-6
+            p-6
+        "
+    >
 
-
-        <!-- ===================================================== -->
+        <!-- ========================================================= -->
         <!-- PAGE HEADER -->
-        <!-- ===================================================== -->
+        <!-- ========================================================= -->
 
-        <PageHeader
-            icon="📈"
-            :title="pageTitle"
-            subtitle="Income statement summary of revenue, expenses, and net income."
-        />
+        <div
+            class="
+                flex
+                flex-col
+                gap-4
+                lg:flex-row
+                lg:items-center
+                lg:justify-between
+            "
+        >
 
+            <div>
 
-        <!-- ===================================================== -->
-        <!-- FILTER CARD -->
-        <!-- ===================================================== -->
-
-        <Card>
-
-            <div class="space-y-4">
-
-
-                <!-- DATE ROW -->
-
-                <div
+                <h1
                     class="
-                        flex
-                        flex-col
-                        gap-3
-                        lg:flex-row
-                        lg:items-center
+                        text-2xl
+                        font-semibold
+                        tracking-tight
+                        text-gray-900
+                        dark:text-white
                     "
                 >
+                    {{ pageTitle }}
+                </h1>
 
-                    <!-- Date From -->
-
-                    <FlatPickr
-                        v-model="
-                            filters.date_from
-                        "
-                        :config="{
-                            dateFormat: 'Y-m-d',
-                            allowInput: true,
-                        }"
-                        placeholder="Date From"
-                        class="
-                            w-full
-                            rounded-xl
-                            border
-                            border-gray-300
-                            px-4
-                            py-2.5
-                            text-sm
-                            lg:w-52
-                        "
-                    />
-
-
-                    <!-- Date To -->
-
-                    <FlatPickr
-                        v-model="
-                            filters.date_to
-                        "
-                        :config="{
-                            dateFormat: 'Y-m-d',
-                            allowInput: true,
-                        }"
-                        placeholder="Date To"
-                        class="
-                            w-full
-                            rounded-xl
-                            border
-                            border-gray-300
-                            px-4
-                            py-2.5
-                            text-sm
-                            lg:w-52
-                        "
-                    />
-
-
-                    <div
-                        class="
-                            flex
-                            w-full
-                            lg:ml-auto
-                            lg:w-auto
-                        "
-                    >
-
-                        <BaseButton
-                            variant="secondary"
-                            class="
-                                w-full
-                                whitespace-nowrap
-                                lg:w-auto
-                            "
-                            @click="refresh"
-                        >
-                            Refresh
-                        </BaseButton>
-
-                    </div>
-
-                </div>
-
-
-                <!-- FILTER ROW -->
-
-                <div
+                <p
                     class="
-                        flex
-                        flex-col
-                        gap-3
-                        lg:flex-row
-                        lg:items-center
+                        mt-1
+                        text-sm
+                        text-gray-500
+                        dark:text-gray-400
                     "
                 >
+                    Statement of Profit or Loss
+                </p>
 
-                    <!-- Branch -->
-
-                    <SearchableSelect
-                        v-model="
-                            filters.branch_id
-                        "
-                        :options="
-                            branches
-                        "
-                        label="label"
-                        value-key="id"
-                        placeholder="All Branches"
-                        class="w-full lg:w-48"
-                    />
-
-
-                    <!-- Fiscal Year -->
-
-                    <SearchableSelect
-                        v-model="
-                            filters.fiscal_year_id
-                        "
-                        :options="
-                            fiscalYears
-                        "
-                        label="label"
-                        value-key="id"
-                        placeholder="All Fiscal Years"
-                        class="w-full lg:w-48"
-                        @update:model-value="
-                            handleFiscalYearChange
-                        "
-                    />
-
-
-                    <!-- Accounting Period -->
-
-                    <SearchableSelect
-                        v-model="
-                            filters.accounting_period_id
-                        "
-                        :options="
-                            filteredAccountingPeriods
-                        "
-                        label="label"
-                        value-key="id"
-                        placeholder="All Periods"
-                        class="w-full lg:w-48"
-                    />
-
-                </div>
+                <p
+                    v-if="
+                        dateFromLabel &&
+                        dateToLabel
+                    "
+                    class="
+                        mt-1
+                        text-sm
+                        text-gray-500
+                        dark:text-gray-400
+                    "
+                >
+                    For the period
+                    {{ dateFromLabel }}
+                    to
+                    {{ dateToLabel }}
+                </p>
 
             </div>
 
-        </Card>
+
+            <div
+                class="
+                    flex
+                    items-center
+                    gap-2
+                "
+            >
+
+                <button
+                    type="button"
+                    class="
+                        inline-flex
+                        items-center
+                        gap-2
+                        rounded-lg
+                        border
+                        border-gray-300
+                        bg-white
+                        px-4
+                        py-2
+                        text-sm
+                        font-medium
+                        text-gray-700
+                        shadow-sm
+                        transition
+                        hover:bg-gray-50
+                        dark:border-gray-700
+                        dark:bg-gray-800
+                        dark:text-gray-200
+                        dark:hover:bg-gray-700
+                    "
+                    @click="
+                        printReport
+                    "
+                >
+
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        class="h-4 w-4"
+                        aria-hidden="true"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M6.75 9V4.5h10.5V9"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M6 18H4.5A1.5 1.5 0 0 1 3 16.5v-5A1.5 1.5 0 0 1 4.5 10h15a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5H18"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M6.75 14.25h10.5v5.25H6.75z"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M17.25 12.75h.008v.008h-.008z"
+                        />
+                    </svg>
+
+                    Print
+
+                </button>
+
+            </div>
+
+        </div>
 
 
-        <!-- ===================================================== -->
+<!-- ========================================================= -->
+<!-- FILTER CARD -->
+<!-- ========================================================= -->
+
+<Card>
+
+    <!-- ===================================================== -->
+    <!-- FILTER HEADER -->
+    <!-- ===================================================== -->
+
+    <div
+        class="
+            mb-4
+            flex
+            flex-col
+            gap-3
+            lg:flex-row
+            lg:items-center
+            lg:justify-between
+        "
+    >
+
+        <div>
+
+            <h2
+                class="
+                    text-sm
+                    font-semibold
+                    text-gray-900
+                    dark:text-white
+                "
+            >
+                Report Filters
+            </h2>
+
+            <p
+                class="
+                    mt-1
+                    text-xs
+                    text-gray-500
+                    dark:text-gray-400
+                "
+            >
+                Select the reporting scope and date.
+            </p>
+
+        </div>
+
+
+        <!-- Show Zero Account -->
+
+        <label
+            class="
+                flex
+                cursor-pointer
+                items-center
+                gap-2
+                text-sm
+                text-gray-600
+                dark:text-gray-300
+            "
+        >
+
+            <input
+                v-model="showZeroAccount"
+                type="checkbox"
+                class="
+                    rounded
+                    border-gray-300
+                    text-indigo-600
+                    focus:ring-indigo-500
+                "
+            />
+
+            <span>
+                Show Zero Account
+            </span>
+
+        </label>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- ROW 1 : DATE FROM | DATE TO | RESET | APPLY -->
+    <!-- ===================================================== -->
+
+    <div
+        class="
+            grid
+            grid-cols-1
+            gap-4
+            lg:grid-cols-4
+        "
+    >
+
+        <!-- ================================================= -->
+        <!-- DATE FROM -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-gray-600
+                    dark:text-gray-300
+                "
+            >
+                Date From
+            </label>
+
+            <FlatPickr
+                v-model="filters.date_from"
+                :config="{
+                    dateFormat: 'Y-m-d',
+                    allowInput: true,
+                }"
+                class="
+                    w-full
+                    rounded-lg
+                    border
+                    border-gray-300
+                    bg-white
+                    px-3
+                    py-2.5
+                    text-sm
+                    text-gray-700
+                    outline-none
+                    transition
+                    focus:border-indigo-500
+                    focus:ring-2
+                    focus:ring-indigo-500/20
+                    dark:border-gray-600
+                    dark:bg-gray-900
+                    dark:text-gray-200
+                "
+            />
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- DATE TO -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-gray-600
+                    dark:text-gray-300
+                "
+            >
+                Date To
+            </label>
+
+            <FlatPickr
+                v-model="filters.date_to"
+                :config="{
+                    dateFormat: 'Y-m-d',
+                    allowInput: true,
+                }"
+                class="
+                    w-full
+                    rounded-lg
+                    border
+                    border-gray-300
+                    bg-white
+                    px-3
+                    py-2.5
+                    text-sm
+                    text-gray-700
+                    outline-none
+                    transition
+                    focus:border-indigo-500
+                    focus:ring-2
+                    focus:ring-indigo-500/20
+                    dark:border-gray-600
+                    dark:bg-gray-900
+                    dark:text-gray-200
+                "
+            />
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- RESET -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-transparent
+                "
+            >
+                Action
+            </label>
+
+            <BaseButton
+                variant="secondary"
+                class="w-full"
+                :disabled="loading"
+                @click="resetFilters"
+            >
+                Reset
+            </BaseButton>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- APPLY -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-transparent
+                "
+            >
+                Action
+            </label>
+
+            <BaseButton
+                variant="primary"
+                class="w-full"
+                :disabled="loading"
+                @click="applyFilters"
+            >
+                {{
+                    loading
+                        ? 'Loading...'
+                        : 'Apply'
+                }}
+            </BaseButton>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- ROW 2 : BRANCH | FISCAL YEAR | PERIOD -->
+    <!-- ===================================================== -->
+
+    <div
+        class="
+            mt-4
+            grid
+            grid-cols-1
+            gap-4
+            lg:grid-cols-3
+        "
+    >
+
+        <!-- ================================================= -->
+        <!-- BRANCH -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-gray-600
+                    dark:text-gray-300
+                "
+            >
+                Branch
+            </label>
+
+            <SearchableSelect
+                v-model="filters.branch_id"
+                :options="branches"
+                label="label"
+                value-key="id"
+                placeholder="All Branches"
+                class="w-full"
+            />
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- FISCAL YEAR -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-gray-600
+                    dark:text-gray-300
+                "
+            >
+                Fiscal Year
+            </label>
+
+            <SearchableSelect
+                v-model="filters.fiscal_year_id"
+                :options="fiscalYears"
+                label="label"
+                value-key="id"
+                placeholder="All Fiscal Years"
+                class="w-full"
+                @update:model-value="
+                    handleFiscalYearChange
+                "
+            />
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- PERIOD -->
+        <!-- ================================================= -->
+
+        <div class="w-full">
+
+            <label
+                class="
+                    mb-1.5
+                    block
+                    text-xs
+                    font-medium
+                    text-gray-600
+                    dark:text-gray-300
+                "
+            >
+                Period
+            </label>
+
+            <SearchableSelect
+                v-model="filters.accounting_period_id"
+                :options="filteredAccountingPeriods"
+                label="label"
+                value-key="id"
+                placeholder="All Periods"
+                class="w-full"
+            />
+
+        </div>
+
+    </div>
+
+</Card>
+
+
+        <!-- ========================================================= -->
         <!-- REPORT -->
-        <!-- ===================================================== -->
+        <!-- ========================================================= -->
 
         <Card>
 
@@ -851,62 +1347,135 @@ onUnmounted(() => {
             />
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- REPORT HEADER -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div
                 class="
                     border-b
                     border-gray-200
                     pb-6
-                    text-center
+                    dark:border-gray-700
                 "
             >
 
                 <div
                     class="
-                        text-xl
-                        font-bold
-                        text-gray-900
+                        flex
+                        flex-col
+                        gap-2
+                        md:flex-row
+                        md:items-end
+                        md:justify-between
                     "
                 >
-                    {{ pageTitle }}
-                </div>
 
-                <div
-                    class="
-                        mt-1
-                        text-sm
-                        font-medium
-                        text-gray-600
-                    "
-                >
-                    Statement of Profit or Loss
-                </div>
+                    <div>
 
-                <div
-                    class="
-                        mt-2
-                        text-xs
-                        text-gray-500
-                    "
-                >
-                    For the period
-                    {{ dateFromLabel }}
-                    to
-                    {{ dateToLabel }}
+                        <div
+                            class="
+                                text-lg
+                                font-semibold
+                                text-gray-900
+                                dark:text-white
+                            "
+                        >
+                            {{ pageTitle }}
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                text-gray-500
+                                dark:text-gray-400
+                            "
+                        >
+                            Statement of Profit or Loss
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            text-left
+                            text-sm
+                            md:text-right
+                        "
+                    >
+
+                        <div
+                            v-if="
+                                selectedBranch
+                            "
+                            class="
+                                font-medium
+                                text-gray-800
+                                dark:text-gray-200
+                            "
+                        >
+                            {{ selectedBranch.label }}
+                        </div>
+
+                        <div
+                            v-if="
+                                selectedFiscalYear
+                            "
+                            class="
+                                text-gray-500
+                                dark:text-gray-400
+                            "
+                        >
+                            Fiscal Year
+                            {{
+                                selectedFiscalYear.label
+                            }}
+                        </div>
+
+                        <div
+                            v-if="
+                                selectedPeriod
+                            "
+                            class="
+                                text-gray-500
+                                dark:text-gray-400
+                            "
+                        >
+                            {{
+                                selectedPeriod.label
+                            }}
+                        </div>
+
+                        <div
+                            v-if="
+                                dateFromLabel &&
+                                dateToLabel
+                            "
+                            class="
+                                text-gray-500
+                                dark:text-gray-400
+                            "
+                        >
+                            For the period
+                            {{ dateFromLabel }}
+                            to
+                            {{ dateToLabel }}
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- REVENUE -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div class="mt-8">
-
 
                 <div
                     class="
@@ -916,6 +1485,7 @@ onUnmounted(() => {
                         border-b
                         border-gray-300
                         pb-2
+                        dark:border-gray-600
                     "
                 >
 
@@ -926,6 +1496,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Revenue
@@ -936,6 +1507,7 @@ onUnmounted(() => {
                             text-sm
                             font-bold
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -974,6 +1546,7 @@ onUnmounted(() => {
                                 text-sm
                                 font-semibold
                                 text-gray-700
+                                dark:text-gray-300
                             "
                         >
                             {{ type.type }}
@@ -998,90 +1571,121 @@ onUnmounted(() => {
                                     uppercase
                                     tracking-wide
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 {{ category.category }}
                             </div>
 
 
-                            <div
-                                v-for="
-                                    account in category.accounts
-                                "
-                                :key="
-                                    account.id
-                                "
-                                class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    py-1
-                                    pl-5
-                                    text-sm
-                                "
-                            >
+                            <div class="space-y-1">
 
                                 <div
+                                    v-for="
+                                        account in category.accounts
+                                    "
+                                    :key="
+                                        account.id
+                                    "
                                     class="
-                                        min-w-0
-                                        text-gray-700
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-4
+                                        rounded-md
+                                        px-2
+                                        py-1.5
+                                        text-sm
+                                        hover:bg-gray-50
+                                        dark:hover:bg-gray-700/40
                                     "
                                 >
+
+                                    <div
+                                        class="
+                                            min-w-0
+                                            truncate
+                                            pl-4
+                                            text-gray-600
+                                            dark:text-gray-300
+                                        "
+                                    >
+
+                                        <span
+                                            class="
+                                                mr-2
+                                                font-mono
+                                                text-xs
+                                                text-gray-400
+                                                dark:text-gray-500
+                                            "
+                                        >
+                                            {{ account.code }}
+                                        </span>
+
+                                        {{ account.name }}
+
+                                    </div>
+
 
                                     <span
                                         class="
-                                            font-medium
-                                            text-gray-900
+                                            shrink-0
+                                            font-mono
+                                            tabular-nums
+                                            text-gray-800
+                                            dark:text-gray-200
                                         "
                                     >
-                                        {{ account.code }}
-                                    </span>
-
-                                    <span class="ml-2">
-                                        {{ account.name }}
+                                        {{
+                                            currency(
+                                                account.balance
+                                                ?? 0
+                                            )
+                                        }}
                                     </span>
 
                                 </div>
-
-                                <span
-                                    class="
-                                        shrink-0
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        currency(
-                                            account.balance
-                                            ?? 0
-                                        )
-                                    }}
-                                </span>
 
                             </div>
 
 
                             <div
                                 class="
-                                    mt-1
+                                    mt-2
                                     flex
+                                    items-center
                                     justify-between
                                     border-t
                                     border-gray-100
-                                    pt-1
-                                    pl-5
-                                    text-sm
-                                    font-semibold
-                                    text-gray-700
+                                    pt-2
+                                    dark:border-gray-700
                                 "
                             >
 
-                                <span>
-                                    Total {{ category.category }}
+                                <span
+                                    class="
+                                        pl-2
+                                        text-xs
+                                        font-medium
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Total
+                                    {{ category.category }}
                                 </span>
 
-                                <span>
+                                <span
+                                    class="
+                                        font-mono
+                                        text-sm
+                                        font-semibold
+                                        tabular-nums
+                                        text-gray-700
+                                        dark:text-gray-200
+                                    "
+                                >
                                     {{
                                         currency(
                                             categoryTotal(
@@ -1106,6 +1710,8 @@ onUnmounted(() => {
                                 text-sm
                                 font-bold
                                 text-gray-800
+                                dark:border-gray-700
+                                dark:text-gray-200
                             "
                         >
 
@@ -1136,6 +1742,7 @@ onUnmounted(() => {
                         py-4
                         text-sm
                         text-gray-500
+                        dark:text-gray-400
                     "
                 >
                     No revenue recorded.
@@ -1144,12 +1751,11 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- COGS -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div class="mt-10">
-
 
                 <div
                     class="
@@ -1159,6 +1765,7 @@ onUnmounted(() => {
                         border-b
                         border-gray-300
                         pb-2
+                        dark:border-gray-600
                     "
                 >
 
@@ -1169,6 +1776,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Cost of Goods Sold
@@ -1179,6 +1787,7 @@ onUnmounted(() => {
                             text-sm
                             font-bold
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -1217,6 +1826,7 @@ onUnmounted(() => {
                                 text-sm
                                 font-semibold
                                 text-gray-700
+                                dark:text-gray-300
                             "
                         >
                             {{ type.type }}
@@ -1241,90 +1851,121 @@ onUnmounted(() => {
                                     uppercase
                                     tracking-wide
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 {{ category.category }}
                             </div>
 
 
-                            <div
-                                v-for="
-                                    account in category.accounts
-                                "
-                                :key="
-                                    account.id
-                                "
-                                class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    py-1
-                                    pl-5
-                                    text-sm
-                                "
-                            >
+                            <div class="space-y-1">
 
                                 <div
+                                    v-for="
+                                        account in category.accounts
+                                    "
+                                    :key="
+                                        account.id
+                                    "
                                     class="
-                                        min-w-0
-                                        text-gray-700
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-4
+                                        rounded-md
+                                        px-2
+                                        py-1.5
+                                        text-sm
+                                        hover:bg-gray-50
+                                        dark:hover:bg-gray-700/40
                                     "
                                 >
+
+                                    <div
+                                        class="
+                                            min-w-0
+                                            truncate
+                                            pl-4
+                                            text-gray-600
+                                            dark:text-gray-300
+                                        "
+                                    >
+
+                                        <span
+                                            class="
+                                                mr-2
+                                                font-mono
+                                                text-xs
+                                                text-gray-400
+                                                dark:text-gray-500
+                                            "
+                                        >
+                                            {{ account.code }}
+                                        </span>
+
+                                        {{ account.name }}
+
+                                    </div>
+
 
                                     <span
                                         class="
-                                            font-medium
-                                            text-gray-900
+                                            shrink-0
+                                            font-mono
+                                            tabular-nums
+                                            text-gray-800
+                                            dark:text-gray-200
                                         "
                                     >
-                                        {{ account.code }}
-                                    </span>
-
-                                    <span class="ml-2">
-                                        {{ account.name }}
+                                        {{
+                                            currency(
+                                                account.balance
+                                                ?? 0
+                                            )
+                                        }}
                                     </span>
 
                                 </div>
-
-                                <span
-                                    class="
-                                        shrink-0
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        currency(
-                                            account.balance
-                                            ?? 0
-                                        )
-                                    }}
-                                </span>
 
                             </div>
 
 
                             <div
                                 class="
-                                    mt-1
+                                    mt-2
                                     flex
+                                    items-center
                                     justify-between
                                     border-t
                                     border-gray-100
-                                    pt-1
-                                    pl-5
-                                    text-sm
-                                    font-semibold
-                                    text-gray-700
+                                    pt-2
+                                    dark:border-gray-700
                                 "
                             >
 
-                                <span>
-                                    Total {{ category.category }}
+                                <span
+                                    class="
+                                        pl-2
+                                        text-xs
+                                        font-medium
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Total
+                                    {{ category.category }}
                                 </span>
 
-                                <span>
+                                <span
+                                    class="
+                                        font-mono
+                                        text-sm
+                                        font-semibold
+                                        tabular-nums
+                                        text-gray-700
+                                        dark:text-gray-200
+                                    "
+                                >
                                     {{
                                         currency(
                                             categoryTotal(
@@ -1349,6 +1990,8 @@ onUnmounted(() => {
                                 text-sm
                                 font-bold
                                 text-gray-800
+                                dark:border-gray-700
+                                dark:text-gray-200
                             "
                         >
 
@@ -1379,6 +2022,7 @@ onUnmounted(() => {
                         py-4
                         text-sm
                         text-gray-500
+                        dark:text-gray-400
                     "
                 >
                     No cost of goods sold recorded.
@@ -1387,9 +2031,9 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- GROSS PROFIT -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div
                 class="
@@ -1400,6 +2044,7 @@ onUnmounted(() => {
                     border-y
                     border-gray-300
                     py-4
+                    dark:border-gray-600
                 "
             >
 
@@ -1410,6 +2055,7 @@ onUnmounted(() => {
                         uppercase
                         tracking-wide
                         text-gray-900
+                        dark:text-white
                     "
                 >
                     Gross Profit
@@ -1417,9 +2063,12 @@ onUnmounted(() => {
 
                 <span
                     class="
+                        font-mono
                         text-base
                         font-bold
+                        tabular-nums
                         text-gray-900
+                        dark:text-white
                     "
                 >
                     {{
@@ -1433,12 +2082,11 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- OPERATING EXPENSES -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div class="mt-10">
-
 
                 <div
                     class="
@@ -1448,6 +2096,7 @@ onUnmounted(() => {
                         border-b
                         border-gray-300
                         pb-2
+                        dark:border-gray-600
                     "
                 >
 
@@ -1458,6 +2107,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Operating Expenses
@@ -1468,6 +2118,7 @@ onUnmounted(() => {
                             text-sm
                             font-bold
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -1506,6 +2157,7 @@ onUnmounted(() => {
                                 text-sm
                                 font-semibold
                                 text-gray-700
+                                dark:text-gray-300
                             "
                         >
                             {{ type.type }}
@@ -1530,90 +2182,121 @@ onUnmounted(() => {
                                     uppercase
                                     tracking-wide
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 {{ category.category }}
                             </div>
 
 
-                            <div
-                                v-for="
-                                    account in category.accounts
-                                "
-                                :key="
-                                    account.id
-                                "
-                                class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    py-1
-                                    pl-5
-                                    text-sm
-                                "
-                            >
+                            <div class="space-y-1">
 
                                 <div
+                                    v-for="
+                                        account in category.accounts
+                                    "
+                                    :key="
+                                        account.id
+                                    "
                                     class="
-                                        min-w-0
-                                        text-gray-700
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-4
+                                        rounded-md
+                                        px-2
+                                        py-1.5
+                                        text-sm
+                                        hover:bg-gray-50
+                                        dark:hover:bg-gray-700/40
                                     "
                                 >
+
+                                    <div
+                                        class="
+                                            min-w-0
+                                            truncate
+                                            pl-4
+                                            text-gray-600
+                                            dark:text-gray-300
+                                        "
+                                    >
+
+                                        <span
+                                            class="
+                                                mr-2
+                                                font-mono
+                                                text-xs
+                                                text-gray-400
+                                                dark:text-gray-500
+                                            "
+                                        >
+                                            {{ account.code }}
+                                        </span>
+
+                                        {{ account.name }}
+
+                                    </div>
+
 
                                     <span
                                         class="
-                                            font-medium
-                                            text-gray-900
+                                            shrink-0
+                                            font-mono
+                                            tabular-nums
+                                            text-gray-800
+                                            dark:text-gray-200
                                         "
                                     >
-                                        {{ account.code }}
-                                    </span>
-
-                                    <span class="ml-2">
-                                        {{ account.name }}
+                                        {{
+                                            currency(
+                                                account.balance
+                                                ?? 0
+                                            )
+                                        }}
                                     </span>
 
                                 </div>
-
-                                <span
-                                    class="
-                                        shrink-0
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        currency(
-                                            account.balance
-                                            ?? 0
-                                        )
-                                    }}
-                                </span>
 
                             </div>
 
 
                             <div
                                 class="
-                                    mt-1
+                                    mt-2
                                     flex
+                                    items-center
                                     justify-between
                                     border-t
                                     border-gray-100
-                                    pt-1
-                                    pl-5
-                                    text-sm
-                                    font-semibold
-                                    text-gray-700
+                                    pt-2
+                                    dark:border-gray-700
                                 "
                             >
 
-                                <span>
-                                    Total {{ category.category }}
+                                <span
+                                    class="
+                                        pl-2
+                                        text-xs
+                                        font-medium
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Total
+                                    {{ category.category }}
                                 </span>
 
-                                <span>
+                                <span
+                                    class="
+                                        font-mono
+                                        text-sm
+                                        font-semibold
+                                        tabular-nums
+                                        text-gray-700
+                                        dark:text-gray-200
+                                    "
+                                >
                                     {{
                                         currency(
                                             categoryTotal(
@@ -1638,6 +2321,8 @@ onUnmounted(() => {
                                 text-sm
                                 font-bold
                                 text-gray-800
+                                dark:border-gray-700
+                                dark:text-gray-200
                             "
                         >
 
@@ -1668,6 +2353,7 @@ onUnmounted(() => {
                         py-4
                         text-sm
                         text-gray-500
+                        dark:text-gray-400
                     "
                 >
                     No operating expenses recorded.
@@ -1676,9 +2362,9 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- OPERATING INCOME -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div
                 class="
@@ -1689,6 +2375,7 @@ onUnmounted(() => {
                     border-y
                     border-gray-300
                     py-4
+                    dark:border-gray-600
                 "
             >
 
@@ -1699,6 +2386,7 @@ onUnmounted(() => {
                         uppercase
                         tracking-wide
                         text-gray-900
+                        dark:text-white
                     "
                 >
                     Operating Income
@@ -1706,9 +2394,12 @@ onUnmounted(() => {
 
                 <span
                     class="
+                        font-mono
                         text-base
                         font-bold
+                        tabular-nums
                         text-gray-900
+                        dark:text-white
                     "
                 >
                     {{
@@ -1721,13 +2412,11 @@ onUnmounted(() => {
 
             </div>
 
-
-            <!-- ================================================= -->
+<!-- ===================================================== -->
             <!-- OTHER INCOME -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div class="mt-10">
-
 
                 <div
                     class="
@@ -1737,6 +2426,7 @@ onUnmounted(() => {
                         border-b
                         border-gray-300
                         pb-2
+                        dark:border-gray-600
                     "
                 >
 
@@ -1747,6 +2437,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Other Income
@@ -1757,6 +2448,7 @@ onUnmounted(() => {
                             text-sm
                             font-bold
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -1795,6 +2487,7 @@ onUnmounted(() => {
                                 text-sm
                                 font-semibold
                                 text-gray-700
+                                dark:text-gray-300
                             "
                         >
                             {{ type.type }}
@@ -1819,90 +2512,121 @@ onUnmounted(() => {
                                     uppercase
                                     tracking-wide
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 {{ category.category }}
                             </div>
 
 
-                            <div
-                                v-for="
-                                    account in category.accounts
-                                "
-                                :key="
-                                    account.id
-                                "
-                                class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    py-1
-                                    pl-5
-                                    text-sm
-                                "
-                            >
+                            <div class="space-y-1">
 
                                 <div
+                                    v-for="
+                                        account in category.accounts
+                                    "
+                                    :key="
+                                        account.id
+                                    "
                                     class="
-                                        min-w-0
-                                        text-gray-700
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-4
+                                        rounded-md
+                                        px-2
+                                        py-1.5
+                                        text-sm
+                                        hover:bg-gray-50
+                                        dark:hover:bg-gray-700/40
                                     "
                                 >
+
+                                    <div
+                                        class="
+                                            min-w-0
+                                            truncate
+                                            pl-4
+                                            text-gray-600
+                                            dark:text-gray-300
+                                        "
+                                    >
+
+                                        <span
+                                            class="
+                                                mr-2
+                                                font-mono
+                                                text-xs
+                                                text-gray-400
+                                                dark:text-gray-500
+                                            "
+                                        >
+                                            {{ account.code }}
+                                        </span>
+
+                                        {{ account.name }}
+
+                                    </div>
+
 
                                     <span
                                         class="
-                                            font-medium
-                                            text-gray-900
+                                            shrink-0
+                                            font-mono
+                                            tabular-nums
+                                            text-gray-800
+                                            dark:text-gray-200
                                         "
                                     >
-                                        {{ account.code }}
-                                    </span>
-
-                                    <span class="ml-2">
-                                        {{ account.name }}
+                                        {{
+                                            currency(
+                                                account.balance
+                                                ?? 0
+                                            )
+                                        }}
                                     </span>
 
                                 </div>
-
-                                <span
-                                    class="
-                                        shrink-0
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        currency(
-                                            account.balance
-                                            ?? 0
-                                        )
-                                    }}
-                                </span>
 
                             </div>
 
 
                             <div
                                 class="
-                                    mt-1
+                                    mt-2
                                     flex
+                                    items-center
                                     justify-between
                                     border-t
                                     border-gray-100
-                                    pt-1
-                                    pl-5
-                                    text-sm
-                                    font-semibold
-                                    text-gray-700
+                                    pt-2
+                                    dark:border-gray-700
                                 "
                             >
 
-                                <span>
-                                    Total {{ category.category }}
+                                <span
+                                    class="
+                                        pl-2
+                                        text-xs
+                                        font-medium
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Total
+                                    {{ category.category }}
                                 </span>
 
-                                <span>
+                                <span
+                                    class="
+                                        font-mono
+                                        text-sm
+                                        font-semibold
+                                        tabular-nums
+                                        text-gray-700
+                                        dark:text-gray-200
+                                    "
+                                >
                                     {{
                                         currency(
                                             categoryTotal(
@@ -1927,6 +2651,8 @@ onUnmounted(() => {
                                 text-sm
                                 font-bold
                                 text-gray-800
+                                dark:border-gray-700
+                                dark:text-gray-200
                             "
                         >
 
@@ -1957,6 +2683,7 @@ onUnmounted(() => {
                         py-4
                         text-sm
                         text-gray-500
+                        dark:text-gray-400
                     "
                 >
                     No other income recorded.
@@ -1965,12 +2692,11 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- OTHER EXPENSES -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div class="mt-10">
-
 
                 <div
                     class="
@@ -1980,6 +2706,7 @@ onUnmounted(() => {
                         border-b
                         border-gray-300
                         pb-2
+                        dark:border-gray-600
                     "
                 >
 
@@ -1990,6 +2717,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Other Expenses
@@ -2000,6 +2728,7 @@ onUnmounted(() => {
                             text-sm
                             font-bold
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -2038,6 +2767,7 @@ onUnmounted(() => {
                                 text-sm
                                 font-semibold
                                 text-gray-700
+                                dark:text-gray-300
                             "
                         >
                             {{ type.type }}
@@ -2062,90 +2792,121 @@ onUnmounted(() => {
                                     uppercase
                                     tracking-wide
                                     text-gray-500
+                                    dark:text-gray-400
                                 "
                             >
                                 {{ category.category }}
                             </div>
 
 
-                            <div
-                                v-for="
-                                    account in category.accounts
-                                "
-                                :key="
-                                    account.id
-                                "
-                                class="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    py-1
-                                    pl-5
-                                    text-sm
-                                "
-                            >
+                            <div class="space-y-1">
 
                                 <div
+                                    v-for="
+                                        account in category.accounts
+                                    "
+                                    :key="
+                                        account.id
+                                    "
                                     class="
-                                        min-w-0
-                                        text-gray-700
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-4
+                                        rounded-md
+                                        px-2
+                                        py-1.5
+                                        text-sm
+                                        hover:bg-gray-50
+                                        dark:hover:bg-gray-700/40
                                     "
                                 >
+
+                                    <div
+                                        class="
+                                            min-w-0
+                                            truncate
+                                            pl-4
+                                            text-gray-600
+                                            dark:text-gray-300
+                                        "
+                                    >
+
+                                        <span
+                                            class="
+                                                mr-2
+                                                font-mono
+                                                text-xs
+                                                text-gray-400
+                                                dark:text-gray-500
+                                            "
+                                        >
+                                            {{ account.code }}
+                                        </span>
+
+                                        {{ account.name }}
+
+                                    </div>
+
 
                                     <span
                                         class="
-                                            font-medium
-                                            text-gray-900
+                                            shrink-0
+                                            font-mono
+                                            tabular-nums
+                                            text-gray-800
+                                            dark:text-gray-200
                                         "
                                     >
-                                        {{ account.code }}
-                                    </span>
-
-                                    <span class="ml-2">
-                                        {{ account.name }}
+                                        {{
+                                            currency(
+                                                account.balance
+                                                ?? 0
+                                            )
+                                        }}
                                     </span>
 
                                 </div>
-
-                                <span
-                                    class="
-                                        shrink-0
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        currency(
-                                            account.balance
-                                            ?? 0
-                                        )
-                                    }}
-                                </span>
 
                             </div>
 
 
                             <div
                                 class="
-                                    mt-1
+                                    mt-2
                                     flex
+                                    items-center
                                     justify-between
                                     border-t
                                     border-gray-100
-                                    pt-1
-                                    pl-5
-                                    text-sm
-                                    font-semibold
-                                    text-gray-700
+                                    pt-2
+                                    dark:border-gray-700
                                 "
                             >
 
-                                <span>
-                                    Total {{ category.category }}
+                                <span
+                                    class="
+                                        pl-2
+                                        text-xs
+                                        font-medium
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Total
+                                    {{ category.category }}
                                 </span>
 
-                                <span>
+                                <span
+                                    class="
+                                        font-mono
+                                        text-sm
+                                        font-semibold
+                                        tabular-nums
+                                        text-gray-700
+                                        dark:text-gray-200
+                                    "
+                                >
                                     {{
                                         currency(
                                             categoryTotal(
@@ -2170,6 +2931,8 @@ onUnmounted(() => {
                                 text-sm
                                 font-bold
                                 text-gray-800
+                                dark:border-gray-700
+                                dark:text-gray-200
                             "
                         >
 
@@ -2200,6 +2963,7 @@ onUnmounted(() => {
                         py-4
                         text-sm
                         text-gray-500
+                        dark:text-gray-400
                     "
                 >
                     No other expenses recorded.
@@ -2208,9 +2972,9 @@ onUnmounted(() => {
             </div>
 
 
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
             <!-- NET INCOME -->
-            <!-- ================================================= -->
+            <!-- ===================================================== -->
 
             <div
                 class="
@@ -2218,6 +2982,7 @@ onUnmounted(() => {
                     border-y-2
                     border-gray-900
                     py-5
+                    dark:border-gray-300
                 "
             >
 
@@ -2236,6 +3001,7 @@ onUnmounted(() => {
                             uppercase
                             tracking-wide
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         Net Income
@@ -2243,9 +3009,12 @@ onUnmounted(() => {
 
                     <span
                         class="
+                            font-mono
                             text-xl
                             font-bold
+                            tabular-nums
                             text-gray-900
+                            dark:text-white
                         "
                     >
                         {{
@@ -2257,31 +3026,6 @@ onUnmounted(() => {
                     </span>
 
                 </div>
-
-            </div>
-
-
-            <!-- ================================================= -->
-            <!-- PRINT -->
-            <!-- ================================================= -->
-
-            <div
-                class="
-                    mt-8
-                    flex
-                    justify-end
-                    border-t
-                    border-gray-200
-                    pt-5
-                "
-            >
-
-                <BaseButton
-                    variant="secondary"
-                    @click="printReport"
-                >
-                    Print
-                </BaseButton>
 
             </div>
 
@@ -2302,15 +3046,9 @@ onUnmounted(() => {
         background: white !important;
     }
 
-    button {
-        display: none !important;
-    }
-
+    button,
+    select,
     input,
-    select {
-        display: none !important;
-    }
-
     .no-print {
         display: none !important;
     }

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
-use App\Models\Accounting\FiscalYear;
 use App\Models\Accounting\AccountingPeriod;
+use App\Models\Accounting\FiscalYear;
 use App\Models\MasterData\Branch;
 use App\Services\Accounting\IncomeStatementService;
 use Illuminate\Http\Request;
@@ -22,6 +22,10 @@ class IncomeStatementController extends Controller
         Request $request,
         IncomeStatementService $incomeStatementService
     ) {
+        $companyId =
+            auth()->user()->company_id;
+
+
         $branchId =
             $request->integer('branch_id');
 
@@ -40,6 +44,66 @@ class IncomeStatementController extends Controller
             $request->input(
                 'date_to'
             ) ?: now()->toDateString();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Branch Belongs To Current Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $branchId
+            && ! Branch::query()
+                ->whereKey($branchId)
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+            $branchId = null;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Fiscal Year Belongs To Current Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $fiscalYearId
+            && ! FiscalYear::query()
+                ->whereKey($fiscalYearId)
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+            $fiscalYearId = null;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Accounting Period Belongs To Current Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $accountingPeriodId
+            && ! AccountingPeriod::query()
+                ->whereKey($accountingPeriodId)
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+            $accountingPeriodId = null;
+        }
 
 
         /*
@@ -97,7 +161,7 @@ class IncomeStatementController extends Controller
                 ],
 
                 ...$this->formData(
-                    $branchId
+                    $companyId
                 ),
 
             ]
@@ -112,11 +176,21 @@ class IncomeStatementController extends Controller
     */
 
     private function formData(
-        ?int $branchId = null
+        int $companyId
     ): array {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Branches
+        |--------------------------------------------------------------------------
+        */
 
         $branches =
             Branch::query()
+                ->where(
+                    'company_id',
+                    $companyId
+                )
                 ->orderBy('name')
                 ->get([
                     'id',
@@ -140,32 +214,17 @@ class IncomeStatementController extends Controller
                 ->values();
 
 
-        $companyId = null;
-
-        if ($branchId) {
-
-            $branch =
-                $branches->firstWhere(
-                    'id',
-                    $branchId
-                );
-
-            $companyId =
-                $branch['company_id']
-                ?? null;
-
-        }
-
+        /*
+        |--------------------------------------------------------------------------
+        | Fiscal Years
+        |--------------------------------------------------------------------------
+        */
 
         $fiscalYears =
             FiscalYear::query()
-                ->when(
-                    $companyId,
-                    fn ($query) =>
-                        $query->where(
-                            'company_id',
-                            $companyId
-                        )
+                ->where(
+                    'company_id',
+                    $companyId
                 )
                 ->open()
                 ->orderByDesc('year')
@@ -202,15 +261,17 @@ class IncomeStatementController extends Controller
                 ->values();
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Accounting Periods
+        |--------------------------------------------------------------------------
+        */
+
         $accountingPeriods =
             AccountingPeriod::query()
-                ->when(
-                    $companyId,
-                    fn ($query) =>
-                        $query->where(
-                            'company_id',
-                            $companyId
-                        )
+                ->where(
+                    'company_id',
+                    $companyId
                 )
                 ->open()
                 ->orderBy(
@@ -273,4 +334,246 @@ class IncomeStatementController extends Controller
 
         ];
     }
+
+    /*
+|--------------------------------------------------------------------------
+| Print
+|--------------------------------------------------------------------------
+*/
+
+public function print(
+    Request $request,
+    IncomeStatementService $incomeStatementService
+) {
+
+    $companyId =
+        auth()->user()->company_id;
+
+
+    $branchId =
+        $request->integer(
+            'branch_id'
+        );
+
+    $fiscalYearId =
+        $request->integer(
+            'fiscal_year_id'
+        );
+
+    $accountingPeriodId =
+        $request->integer(
+            'accounting_period_id'
+        );
+
+    $dateFrom =
+        $request->input(
+            'date_from'
+        );
+
+    $dateTo =
+        $request->input(
+            'date_to'
+        )
+        ?: now()->toDateString();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Branch Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $branchId
+        &&
+        ! Branch::query()
+            ->where(
+                'id',
+                $branchId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $branchId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Fiscal Year Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $fiscalYearId
+        &&
+        ! FiscalYear::query()
+            ->where(
+                'id',
+                $fiscalYearId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $fiscalYearId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Accounting Period Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $accountingPeriodId
+        &&
+        ! AccountingPeriod::query()
+            ->where(
+                'id',
+                $accountingPeriodId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $accountingPeriodId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate Report
+    |--------------------------------------------------------------------------
+    */
+
+    $result =
+        $incomeStatementService->generate(
+            $branchId,
+            $fiscalYearId,
+            $accountingPeriodId,
+            $dateFrom,
+            $dateTo
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Selected Filter Labels
+    |--------------------------------------------------------------------------
+    */
+
+    $branch =
+        $branchId
+            ? Branch::query()
+                ->where(
+                    'id',
+                    $branchId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    $fiscalYear =
+        $fiscalYearId
+            ? FiscalYear::query()
+                ->where(
+                    'id',
+                    $fiscalYearId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    $accountingPeriod =
+        $accountingPeriodId
+            ? AccountingPeriod::query()
+                ->where(
+                    'id',
+                    $accountingPeriodId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Print View
+    |--------------------------------------------------------------------------
+    */
+
+    return view(
+        'print.Accounting.income-statement',
+        [
+
+            'title' =>
+                'Income Statement',
+
+            'report' =>
+                $result['report'],
+
+            'statistics' =>
+                $result['statistics'],
+
+            'filters' => [
+
+                'branch_id' =>
+                    $branchId ?: '',
+
+                'branch_label' =>
+                    $branch?->name,
+
+                'fiscal_year_id' =>
+                    $fiscalYearId ?: '',
+
+                'fiscal_year_label' =>
+                    $fiscalYear?->year,
+
+                'accounting_period_id' =>
+                    $accountingPeriodId ?: '',
+
+                'accounting_period_label' =>
+                    $accountingPeriod?->name,
+
+                'date_from' =>
+                    $dateFrom ?: '',
+
+                'date_to' =>
+                    $dateTo,
+
+            ],
+
+        ]
+    );
+
+}
 }

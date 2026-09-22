@@ -22,19 +22,112 @@ class BalanceSheetController extends Controller
         Request $request,
         BalanceSheetService $balanceSheetService
     ) {
+
+        $companyId =
+            auth()->user()->company_id;
+
+
         $branchId =
-            $request->integer('branch_id');
+            $request->integer(
+                'branch_id'
+            );
 
         $fiscalYearId =
-            $request->integer('fiscal_year_id');
+            $request->integer(
+                'fiscal_year_id'
+            );
 
         $accountingPeriodId =
-            $request->integer('accounting_period_id');
+            $request->integer(
+                'accounting_period_id'
+            );
 
         $asOfDate =
             $request->input(
                 'as_of_date'
-            ) ?: now()->toDateString();
+            )
+            ?: now()->toDateString();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Branch Belongs To Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $branchId
+            &&
+            ! Branch::query()
+                ->where(
+                    'id',
+                    $branchId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+
+            $branchId =
+                null;
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Fiscal Year Belongs To Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $fiscalYearId
+            &&
+            ! FiscalYear::query()
+                ->where(
+                    'id',
+                    $fiscalYearId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+
+            $fiscalYearId =
+                null;
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Accounting Period Belongs To Company
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $accountingPeriodId
+            &&
+            ! AccountingPeriod::query()
+                ->where(
+                    'id',
+                    $accountingPeriodId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->exists()
+        ) {
+
+            $accountingPeriodId =
+                null;
+
+        }
 
 
         /*
@@ -88,11 +181,12 @@ class BalanceSheetController extends Controller
                 ],
 
                 ...$this->formData(
-                    $branchId
+                    $companyId
                 ),
 
             ]
         );
+
     }
 
 
@@ -103,17 +197,33 @@ class BalanceSheetController extends Controller
     */
 
     private function formData(
-        ?int $branchId = null
+        int $companyId
     ): array {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Branches
+        |--------------------------------------------------------------------------
+        */
 
         $branches =
             Branch::query()
-                ->orderBy('name')
+
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+
+                ->orderBy(
+                    'name'
+                )
+
                 ->get([
                     'id',
                     'company_id',
                     'name',
                 ])
+
                 ->map(
                     fn ($branch) => [
 
@@ -128,38 +238,30 @@ class BalanceSheetController extends Controller
 
                     ]
                 )
+
                 ->values();
 
 
-        $companyId = null;
-
-        if ($branchId) {
-
-            $branch =
-                $branches->firstWhere(
-                    'id',
-                    $branchId
-                );
-
-            $companyId =
-                $branch['company_id']
-                ?? null;
-
-        }
-
+        /*
+        |--------------------------------------------------------------------------
+        | Fiscal Years
+        |--------------------------------------------------------------------------
+        */
 
         $fiscalYears =
             FiscalYear::query()
-                ->when(
-                    $companyId,
-                    fn ($query) =>
-                        $query->where(
-                            'company_id',
-                            $companyId
-                        )
+
+                ->where(
+                    'company_id',
+                    $companyId
                 )
+
                 ->open()
-                ->orderByDesc('year')
+
+                ->orderByDesc(
+                    'year'
+                )
+
                 ->get([
                     'id',
                     'company_id',
@@ -167,6 +269,7 @@ class BalanceSheetController extends Controller
                     'start_date',
                     'end_date',
                 ])
+
                 ->map(
                     fn ($year) => [
 
@@ -190,26 +293,34 @@ class BalanceSheetController extends Controller
 
                     ]
                 )
+
                 ->values();
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Accounting Periods
+        |--------------------------------------------------------------------------
+        */
+
         $accountingPeriods =
             AccountingPeriod::query()
-                ->when(
-                    $companyId,
-                    fn ($query) =>
-                        $query->where(
-                            'company_id',
-                            $companyId
-                        )
+
+                ->where(
+                    'company_id',
+                    $companyId
                 )
+
                 ->open()
+
                 ->orderBy(
                     'fiscal_year_id'
                 )
+
                 ->orderBy(
                     'period_number'
                 )
+
                 ->get([
                     'id',
                     'company_id',
@@ -219,6 +330,7 @@ class BalanceSheetController extends Controller
                     'start_date',
                     'end_date',
                 ])
+
                 ->map(
                     fn ($period) => [
 
@@ -248,6 +360,7 @@ class BalanceSheetController extends Controller
 
                     ]
                 )
+
                 ->values();
 
 
@@ -263,5 +376,244 @@ class BalanceSheetController extends Controller
                 $accountingPeriods,
 
         ];
+
     }
+
+/*
+|--------------------------------------------------------------------------
+| Print
+|--------------------------------------------------------------------------
+*/
+
+public function print(
+    Request $request,
+    BalanceSheetService $balanceSheetService
+) {
+
+    $companyId =
+        auth()->user()->company_id;
+
+
+    $branchId =
+        $request->integer(
+            'branch_id'
+        );
+
+    $fiscalYearId =
+        $request->integer(
+            'fiscal_year_id'
+        );
+
+    $accountingPeriodId =
+        $request->integer(
+            'accounting_period_id'
+        );
+
+    $asOfDate =
+        $request->input(
+            'as_of_date'
+        )
+        ?: now()->toDateString();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Branch Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $branchId
+        &&
+        ! Branch::query()
+            ->where(
+                'id',
+                $branchId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $branchId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Fiscal Year Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $fiscalYearId
+        &&
+        ! FiscalYear::query()
+            ->where(
+                'id',
+                $fiscalYearId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $fiscalYearId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Accounting Period Belongs To Company
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $accountingPeriodId
+        &&
+        ! AccountingPeriod::query()
+            ->where(
+                'id',
+                $accountingPeriodId
+            )
+            ->where(
+                'company_id',
+                $companyId
+            )
+            ->exists()
+    ) {
+
+        $accountingPeriodId =
+            null;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate Report
+    |--------------------------------------------------------------------------
+    */
+
+    $result =
+        $balanceSheetService->generate(
+            $branchId,
+            $fiscalYearId,
+            $accountingPeriodId,
+            $asOfDate
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Selected Filter Labels
+    |--------------------------------------------------------------------------
+    */
+
+    $branch =
+        $branchId
+            ? Branch::query()
+                ->where(
+                    'id',
+                    $branchId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    $fiscalYear =
+        $fiscalYearId
+            ? FiscalYear::query()
+                ->where(
+                    'id',
+                    $fiscalYearId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    $accountingPeriod =
+        $accountingPeriodId
+            ? AccountingPeriod::query()
+                ->where(
+                    'id',
+                    $accountingPeriodId
+                )
+                ->where(
+                    'company_id',
+                    $companyId
+                )
+                ->first()
+            : null;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Print View
+    |--------------------------------------------------------------------------
+    */
+
+    return view(
+        'print.Accounting.balance-sheet',
+        [
+
+            'title' =>
+                'Balance Sheet',
+
+            'report' =>
+                $result['report'],
+
+            'statistics' =>
+                $result['statistics'],
+
+                'showZeroBalance' =>
+            $request->boolean(
+                'show_zero_balance'
+            ),
+
+            'filters' => [
+
+                'branch_id' =>
+                    $branchId ?: '',
+
+                'branch_label' =>
+                    $branch?->name,
+
+                'fiscal_year_id' =>
+                    $fiscalYearId ?: '',
+
+                'fiscal_year_label' =>
+                    $fiscalYear?->year,
+
+                'accounting_period_id' =>
+                    $accountingPeriodId ?: '',
+
+                'accounting_period_label' =>
+                    $accountingPeriod?->name,
+
+                'as_of_date' =>
+                    $asOfDate,
+
+            ],
+
+        ]
+    );
+
+}
 }

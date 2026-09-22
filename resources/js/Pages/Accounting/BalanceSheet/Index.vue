@@ -240,7 +240,7 @@ const applyFilters = () => {
     isLoading.value = true
 
     router.get(
-        route('accounting.balance-sheet.index'),
+        route('balance-sheet.index'),
         {
             branch_id:
                 form.branch_id || undefined,
@@ -358,15 +358,49 @@ const onFiscalYearChange = () => {
     }
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Export / Print
-|--------------------------------------------------------------------------
-*/
-
 const printReport = () => {
-    window.print()
+    const params = new URLSearchParams()
+
+    if (form.branch_id) {
+        params.set(
+            'branch_id',
+            form.branch_id
+        )
+    }
+
+    if (form.fiscal_year_id) {
+        params.set(
+            'fiscal_year_id',
+            form.fiscal_year_id
+        )
+    }
+
+    if (form.accounting_period_id) {
+        params.set(
+            'accounting_period_id',
+            form.accounting_period_id
+        )
+    }
+
+    if (form.as_of_date) {
+        params.set(
+            'as_of_date',
+            form.as_of_date
+        )
+    }
+
+    params.set(
+        'show_zero_balance',
+        showZeroBalance.value ? '1' : '0'
+    )
+
+    const url =
+        `${route('balance-sheet.print')}?${params.toString()}`
+
+    window.open(
+        url,
+        '_blank'
+    )
 }
 </script>
 

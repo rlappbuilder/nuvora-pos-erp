@@ -58,11 +58,20 @@ Route::middleware('auth')
         )->name('income-statement.index');
 
         Route::get(
+            'accounting/income-statement/print',
+            [IncomeStatementController::class, 'print']
+        )->name('income-statement.print');
+
+        Route::get(
             'trial-balance',
             [TrialBalanceController::class, 'index']
         )->name('trial-balance.index');
 
 
+        Route::get('/balance-sheet/print', [
+        BalanceSheetController::class,'print']
+            )->name('balance-sheet.print'
+            );
         Route::get(
             'balance-sheet',
             [BalanceSheetController::class, 'index']

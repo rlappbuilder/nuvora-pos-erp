@@ -2,10 +2,8 @@
 
 namespace App\Services\Accounting;
 
-use App\Models\Accounting\AccountingPeriod;
 use App\Models\Accounting\ChartOfAccount;
 use App\Models\Accounting\FiscalYear;
-use App\Models\MasterData\Branch;
 
 class IncomeStatementService
 {
@@ -47,34 +45,12 @@ class IncomeStatementService
 
         /*
         |--------------------------------------------------------------------------
-        | Resolve Company
+        | Company
         |--------------------------------------------------------------------------
         */
 
-        $companyId = null;
-
-        if ($branchId) {
-
-            $companyId =
-                Branch::query()
-                    ->whereKey($branchId)
-                    ->value('company_id');
-
-        } elseif ($fiscalYearId) {
-
-            $companyId =
-                FiscalYear::query()
-                    ->whereKey($fiscalYearId)
-                    ->value('company_id');
-
-        } elseif ($accountingPeriodId) {
-
-            $companyId =
-                AccountingPeriod::query()
-                    ->whereKey($accountingPeriodId)
-                    ->value('company_id');
-
-        }
+        $companyId =
+            auth()->user()->company_id;
 
 
         /*
@@ -94,13 +70,9 @@ class IncomeStatementService
 
                 ->posting()
 
-                ->when(
-                    $companyId,
-                    fn ($query) =>
-                        $query->where(
-                            'company_id',
-                            $companyId
-                        )
+                ->where(
+                    'company_id',
+                    $companyId
                 )
 
                 ->withSum(
