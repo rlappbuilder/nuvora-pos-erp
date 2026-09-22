@@ -1,8 +1,8 @@
 <script setup>
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
 const form = useForm({
 
     company_name: '',
@@ -35,19 +35,19 @@ const form = useForm({
 
 const submit = () => {
 
-   form.post(
+    form.post(
 
-    route(
-        'companies.store'
-    ),
+        route(
+            'companies.store'
+        ),
 
-    {
+        {
 
-        forceFormData: true
+            forceFormData: true
 
-    }
+        }
 
-)
+    )
 
 }
 
@@ -59,385 +59,612 @@ const submit = () => {
 
     <AppLayout>
 
-        <template #header>
+        <div class="space-y-4">
+
+            <!-- =========================================================
+                 Header
+            ========================================================== -->
 
             <div
-                class="flex items-center justify-between"
+                class="
+                    flex
+                    flex-col
+                    gap-3
+                    sm:flex-row
+                    sm:items-center
+                    sm:justify-between
+                "
             >
 
                 <div>
 
-                    <h2
-                        class="text-3xl font-bold text-gray-800"
+                    <h1
+                        class="
+                            text-xl
+                            font-semibold
+                            text-gray-900
+                        "
                     >
                         Create Company
-                    </h2>
+                    </h1>
 
                     <p
-                        class="mt-1 text-sm text-gray-500"
+                        class="
+                            mt-1
+                            text-sm
+                            text-gray-500
+                        "
                     >
-                        Create new company profile.
+                        Create a new company profile.
                     </p>
 
                 </div>
 
-                <Link
-
-                    :href="route('companies.index')"
-
-                    class="rounded-xl bg-slate-600 px-5 py-3 text-white"
-
-                >
-
-                    Back
-
-                </Link>
-
             </div>
 
-        </template>
 
-        <div
-            class="rounded-3xl bg-white p-8 shadow-sm"
-        >
+            <!-- =========================================================
+                 Form
+            ========================================================== -->
 
-            <form
-                @submit.prevent="submit"
+            <div
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
             >
 
-                <div
-                    class="grid grid-cols-1 gap-6 md:grid-cols-2"
+                <form
+                    @submit.prevent="submit"
                 >
 
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Company Name
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.company_name
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Legal Name
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.legal_name
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Director
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.director_name
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Phone
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.phone
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Email
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.email
-                            "
-
-                            type="email"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Website
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.website
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Tax Number
-                        </label>
-
-                        <input
-
-                            v-model="
-                                form.tax_number
-                            "
-
-                            type="text"
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                    <div>
-
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Logo
-                        </label>
-
-                     <input
-
-                            type="file"
-
-                            accept=".jpg,.jpeg,.png"
-
-                            @change="
-
-                                form.logo =
-
-                                $event.target.files[0]
-
-                            "
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
-
-                    </div>
-
-                </div>
-
-                <div
-                    class="mt-6"
-                >
-
-                    <label
-                        class="mb-2 block text-sm font-medium"
-                    >
-                        Address
-                    </label>
-
-                    <textarea
-
-                        v-model="
-                            form.address
+                    <div
+                        class="
+                            grid
+                            gap-6
+                            md:grid-cols-2
                         "
+                    >
 
-                        rows="4"
+                        <!-- Company Name -->
 
-                        class="w-full rounded-xl border-gray-300"
+                        <div>
 
-                    ></textarea>
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Company Name
+                            </label>
 
-                </div>
+                            <input
+                                v-model="form.company_name"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
-                <div
-                    class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3"
-                >
+                            <div
+                                v-if="form.errors.company_name"
+                                class="
+                                    mt-1
+                                    text-xs
+                                    text-red-600
+                                "
+                            >
+                                {{ form.errors.company_name }}
+                            </div>
 
-                    <div>
+                        </div>
 
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            City
-                        </label>
 
-                        <input
+                        <!-- Legal Name -->
 
-                            v-model="
-                                form.city
-                            "
+                        <div>
 
-                            class="w-full rounded-xl border-gray-300"
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Legal Name
+                            </label>
 
-                        >
+                            <input
+                                v-model="form.legal_name"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Director -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Director
+                            </label>
+
+                            <input
+                                v-model="form.director_name"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Phone -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Phone
+                            </label>
+
+                            <input
+                                v-model="form.phone"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Email -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Email
+                            </label>
+
+                            <input
+                                v-model="form.email"
+                                type="email"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Website -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Website
+                            </label>
+
+                            <input
+                                v-model="form.website"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Tax Number -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Tax Number
+                            </label>
+
+                            <input
+                                v-model="form.tax_number"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Logo -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Logo
+                            </label>
+
+                            <input
+                                type="file"
+                                accept=".jpg,.jpeg,.png"
+                                @change="
+                                    form.logo =
+                                    $event.target.files[0]
+                                "
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
 
                     </div>
 
-                    <div>
+
+                    <!-- Address -->
+
+                    <div class="mt-6">
 
                         <label
-                            class="mb-2 block text-sm font-medium"
+                            class="
+                                mb-2
+                                block
+                                text-sm
+                                font-medium
+                                text-gray-700
+                            "
                         >
-                            Province
+                            Address
                         </label>
 
-                        <input
-
-                            v-model="
-                                form.province
+                        <textarea
+                            v-model="form.address"
+                            rows="4"
+                            class="
+                                w-full
+                                rounded-lg
+                                border
+                                border-gray-200
+                                px-3
+                                py-2
+                                text-sm
                             "
-
-                            class="w-full rounded-xl border-gray-300"
-
-                        >
+                        ></textarea>
 
                     </div>
 
-                    <div>
 
-                        <label
-                            class="mb-2 block text-sm font-medium"
-                        >
-                            Postal Code
-                        </label>
+                    <!-- Location -->
 
-                        <input
+                    <div
+                        class="
+                            mt-6
+                            grid
+                            grid-cols-1
+                            gap-6
+                            md:grid-cols-3
+                        "
+                    >
 
-                            v-model="
-                                form.postal_code
-                            "
+                        <!-- City -->
 
-                            class="w-full rounded-xl border-gray-300"
+                        <div>
 
-                        >
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                City
+                            </label>
+
+                            <input
+                                v-model="form.city"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Province -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Province
+                            </label>
+
+                            <input
+                                v-model="form.province"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
+
+
+                        <!-- Postal Code -->
+
+                        <div>
+
+                            <label
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
+                            >
+                                Postal Code
+                            </label>
+
+                            <input
+                                v-model="form.postal_code"
+                                type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
+
+                        </div>
 
                     </div>
 
-                </div>
 
-                <div
-                    class="mt-6"
-                >
+                    <!-- Status -->
 
-                    <label
-                        class="flex items-center gap-3"
-                    >
+                    <div class="mt-6">
 
-                        <input
-
-                            v-model="
-                                form.status
+                        <label
+                            class="
+                                mb-2
+                                block
+                                text-sm
+                                font-medium
+                                text-gray-700
                             "
+                        >
+                            Status
+                        </label>
 
-                            type="checkbox"
-
+                        <select
+                            v-model="form.status"
+                            class="
+                                w-full
+                                rounded-lg
+                                border
+                                border-gray-200
+                                px-3
+                                py-2
+                                text-sm
+                                md:w-1/2
+                            "
                         >
 
-                        Active
+                            <option :value="true">
+                                Active
+                            </option>
 
-                    </label>
+                            <option :value="false">
+                                Inactive
+                            </option>
 
-                </div>
+                        </select>
 
-                <div
-                    class="mt-10 flex justify-end gap-3"
-                >
+                    </div>
 
-                    <Link
 
-                        :href="route('companies.index')"
+                    <!-- Action -->
 
-                        class="rounded-xl bg-slate-500 px-5 py-3 text-white"
-
+                    <div
+                        class="
+                            mt-8
+                            flex
+                            justify-end
+                            gap-3
+                        "
                     >
 
-                        Cancel
+                        <Link
+                            :href="
+                                route(
+                                    'companies.index'
+                                )
+                            "
+                            class="
+                                rounded-lg
+                                border
+                                border-gray-200
+                                bg-white
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-gray-700
+                                transition
+                                hover:bg-gray-50
+                            "
+                        >
+                            Back
+                        </Link>
 
-                    </Link>
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="
+                                rounded-lg
+                                bg-gray-900
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-white
+                                transition
+                                hover:bg-gray-800
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
+                        >
 
-                    <button
+                            {{
+                                form.processing
+                                    ? 'Saving...'
+                                    : 'Save Company'
+                            }}
 
-                        type="submit"
+                        </button>
 
-                        class="rounded-xl bg-blue-600 px-5 py-3 text-white"
+                    </div>
 
-                    >
+                </form>
 
-                        Save Company
-
-                    </button>
-
-                </div>
-
-            </form>
+            </div>
 
         </div>
 

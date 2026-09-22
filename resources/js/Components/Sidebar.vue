@@ -305,7 +305,7 @@ const toggleSidebar = () => {
 
             :href="
                 route(
-                    'opening-stock.create'
+                    'opening-stocks.create'
                 )
             "
 

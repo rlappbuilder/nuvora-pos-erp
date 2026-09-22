@@ -3,6 +3,8 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import BaseToast from '@/Components/UI/BaseToast.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Swal from 'sweetalert2'
+
 const page = usePage()
 
 const props = defineProps({
@@ -11,24 +13,26 @@ const props = defineProps({
 
 })
 
-const deleteCompany = (id) => {
+const deleteCompany = async (id) => {
 
-    if (
-        confirm(
-            'Are you sure you want to delete this company ?'
+    const result = await Swal.fire({
+        title: 'Delete Company?',
+        text: 'This company will be deleted. Are you sure?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+    })
+
+    if (!result.isConfirmed) return
+
+    router.delete(
+        route(
+            'companies.destroy',
+            id
         )
-    ) {
-
-        router.delete(
-
-            route(
-                'companies.destroy',
-                id
-            )
-
-        )
-
-    }
+    )
 
 }
 </script>
@@ -273,51 +277,51 @@ const deleteCompany = (id) => {
 
                     <!-- Future Counter -->
 
-                    <div
-                        class="grid grid-cols-2 gap-4 text-center"
-                    >
+<div
+    class="grid grid-cols-2 gap-4 text-center"
+>
 
-                        <div>
+    <div>
 
-                            <div
-                                class="text-2xl font-bold text-blue-600"
-                            >
+        <div
+            class="text-2xl font-bold text-blue-600"
+        >
 
-                                0
+            {{ company.branches_count ?? 0 }}
 
-                            </div>
+        </div>
 
-                            <div
-                                class="text-sm text-gray-500"
-                            >
+        <div
+            class="text-sm text-gray-500"
+        >
 
-                                Branches
+            Branches
 
-                            </div>
+        </div>
 
-                        </div>
+    </div>
 
-                        <div>
+    <div>
 
-                            <div
-                                class="text-2xl font-bold text-blue-600"
-                            >
+        <div
+            class="text-2xl font-bold text-blue-600"
+        >
 
-                                0
+            {{ company.warehouses_count ?? 0 }}
 
-                            </div>
+        </div>
 
-                            <div
-                                class="text-sm text-gray-500"
-                            >
+        <div
+            class="text-sm text-gray-500"
+        >
 
-                                Warehouses
+            Warehouses
 
-                            </div>
+        </div>
 
-                        </div>
+    </div>
 
-                    </div>
+</div>
 
                     <div
                         class="my-6 border-t"
@@ -380,6 +384,39 @@ const deleteCompany = (id) => {
                 </div>
 
             </div>
+
+            <!-- Add Company Card -->
+
+            <Link
+                :href="route('companies.create')"
+                class="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white p-8 text-center transition hover:border-blue-300 hover:bg-gray-50"
+            >
+
+                <div
+                    class="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl"
+                >
+
+                    +
+
+                </div>
+
+                <h3
+                    class="text-xl font-semibold text-gray-800"
+                >
+
+                    Add Company
+
+                </h3>
+
+                <p
+                    class="mt-2 text-sm text-gray-500"
+                >
+
+                    Create a new company profile.
+
+                </p>
+
+            </Link>
 
         </div>
 

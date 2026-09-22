@@ -1,8 +1,8 @@
 <script setup>
 
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
 const props = defineProps({
 
     branch: Object,
@@ -13,25 +13,35 @@ const props = defineProps({
 
 const form = useForm({
 
-    company_id: props.branch.company_id,
+    company_id:
+        props.branch.company_id,
 
-    name: props.branch.name,
+    name:
+        props.branch.name,
 
-    manager_name: props.branch.manager_name,
+    manager_name:
+        props.branch.manager_name,
 
-    phone: props.branch.phone,
+    phone:
+        props.branch.phone,
 
-    email: props.branch.email,
+    email:
+        props.branch.email,
 
-    address: props.branch.address,
+    address:
+        props.branch.address,
 
-    city: props.branch.city,
+    city:
+        props.branch.city,
 
-    province: props.branch.province,
+    province:
+        props.branch.province,
 
-    is_head_office: props.branch.is_head_office,
+    is_head_office:
+        props.branch.is_head_office,
 
-    status: props.branch.status
+    status:
+        props.branch.status
 
 })
 
@@ -40,11 +50,8 @@ const submit = () => {
     form.put(
 
         route(
-
             'branches.update',
-
             props.branch.id
-
         )
 
     )
@@ -52,44 +59,70 @@ const submit = () => {
 }
 
 </script>
+
 <template>
 
     <Head title="Edit Branch" />
 
     <AppLayout>
 
-        <template #header>
+        <div class="space-y-4">
+
+            <!-- =========================================================
+                 Header
+            ========================================================== -->
 
             <div
-                class="flex items-center justify-between"
+                class="
+                    flex
+                    flex-col
+                    gap-3
+                    sm:flex-row
+                    sm:items-center
+                    sm:justify-between
+                "
             >
 
                 <div>
 
-                    <h2
-                        class="text-3xl font-bold text-gray-800"
+                    <h1
+                        class="
+                            text-xl
+                            font-semibold
+                            text-gray-900
+                        "
                     >
                         Edit Branch
-                    </h2>
+                    </h1>
 
                     <p
-                        class="mt-1 text-sm text-gray-500"
+                        class="
+                            mt-1
+                            text-sm
+                            text-gray-500
+                        "
                     >
-                       Update branch information.
+                        Edit company branch information.
                     </p>
 
                 </div>
 
             </div>
 
-        </template>
 
-        <div
-            class="mx-auto max-w-6xl"
-        >
+            <!-- =========================================================
+                 Form
+            ========================================================== -->
 
             <div
-                class="rounded-3xl bg-white p-8 shadow-sm"
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
             >
 
                 <form
@@ -97,7 +130,11 @@ const submit = () => {
                 >
 
                     <div
-                        class="grid gap-6 md:grid-cols-2"
+                        class="
+                            grid
+                            gap-6
+                            md:grid-cols-2
+                        "
                     >
 
                         <!-- Company -->
@@ -105,19 +142,28 @@ const submit = () => {
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Company *
                             </label>
 
                             <select
-
-                                v-model="
-                                    form.company_id
+                                v-model="form.company_id"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
                                 "
-
-                                class="w-full rounded-xl border-gray-300"
-
                             >
 
                                 <option value="">
@@ -125,196 +171,272 @@ const submit = () => {
                                 </option>
 
                                 <option
-
                                     v-for="company in companies"
-
                                     :key="company.id"
-
                                     :value="company.id"
-
                                 >
-
                                     {{ company.company_name }}
-
                                 </option>
 
                             </select>
 
+                            <div
+                                v-if="form.errors.company_id"
+                                class="
+                                    mt-1
+                                    text-xs
+                                    text-red-600
+                                "
+                            >
+                                {{ form.errors.company_id }}
+                            </div>
+
                         </div>
+
 
                         <!-- Branch Name -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Branch Name *
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.name
-                                "
-
+                                v-model="form.name"
                                 type="text"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
-                                class="w-full rounded-xl border-gray-300"
-
+                            <div
+                                v-if="form.errors.name"
+                                class="
+                                    mt-1
+                                    text-xs
+                                    text-red-600
+                                "
                             >
+                                {{ form.errors.name }}
+                            </div>
 
                         </div>
+
 
                         <!-- Manager -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Manager Name
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.manager_name
-                                "
-
+                                v-model="form.manager_name"
                                 type="text"
-
-                                class="w-full rounded-xl border-gray-300"
-
-                            >
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
                         </div>
+
 
                         <!-- Phone -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Phone
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.phone
-                                "
-
+                                v-model="form.phone"
                                 type="text"
-
-                                class="w-full rounded-xl border-gray-300"
-
-                            >
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
                         </div>
+
 
                         <!-- Email -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Email
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.email
-                                "
-
+                                v-model="form.email"
                                 type="email"
-
-                                class="w-full rounded-xl border-gray-300"
-
-                            >
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
                         </div>
+
 
                         <!-- City -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 City
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.city
-                                "
-
+                                v-model="form.city"
                                 type="text"
-
-                                class="w-full rounded-xl border-gray-300"
-
-                            >
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
                         </div>
+
 
                         <!-- Province -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Province
                             </label>
 
                             <input
-
-                                v-model="
-                                    form.province
-                                "
-
+                                v-model="form.province"
                                 type="text"
-
-                                class="w-full rounded-xl border-gray-300"
-
-                            >
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
+                                "
+                            />
 
                         </div>
+
 
                         <!-- Head Office -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Office Type
                             </label>
 
                             <select
-
-                                v-model="
-                                    form.is_head_office
+                                v-model="form.is_head_office"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
                                 "
-
-                                class="w-full rounded-xl border-gray-300"
-
                             >
 
-                                <option
-                                    :value="false"
-                                >
+                                <option :value="false">
                                     Branch Office
                                 </option>
 
-                                <option
-                                    :value="true"
-                                >
+                                <option :value="true">
                                     Head Office
                                 </option>
 
@@ -322,35 +444,41 @@ const submit = () => {
 
                         </div>
 
+
                         <!-- Status -->
 
                         <div>
 
                             <label
-                                class="mb-2 block text-sm font-medium"
+                                class="
+                                    mb-2
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                "
                             >
                                 Status
                             </label>
 
                             <select
-
-                                v-model="
-                                    form.status
+                                v-model="form.status"
+                                class="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-gray-200
+                                    px-3
+                                    py-2
+                                    text-sm
                                 "
-
-                                class="w-full rounded-xl border-gray-300"
-
                             >
 
-                                <option
-                                    :value="true"
-                                >
+                                <option :value="true">
                                     Active
                                 </option>
 
-                                <option
-                                    :value="false"
-                                >
+                                <option :value="false">
                                     Inactive
                                 </option>
 
@@ -360,64 +488,97 @@ const submit = () => {
 
                     </div>
 
+
                     <!-- Address -->
 
-                    <div
-                        class="mt-6"
-                    >
+                    <div class="mt-6">
 
                         <label
-                            class="mb-2 block text-sm font-medium"
+                            class="
+                                mb-2
+                                block
+                                text-sm
+                                font-medium
+                                text-gray-700
+                            "
                         >
                             Address
                         </label>
 
                         <textarea
-
-                            v-model="
-                                form.address
-                            "
-
+                            v-model="form.address"
                             rows="4"
-
-                            class="w-full rounded-xl border-gray-300"
-
+                            class="
+                                w-full
+                                rounded-lg
+                                border
+                                border-gray-200
+                                px-3
+                                py-2
+                                text-sm
+                            "
                         ></textarea>
 
                     </div>
 
+
                     <!-- Action -->
 
                     <div
-                        class="mt-8 flex justify-end gap-3"
+                        class="
+                            mt-8
+                            flex
+                            justify-end
+                            gap-3
+                        "
                     >
 
                         <Link
-
                             :href="
                                 route(
-                                    'branches.index'
+                                    'branches.show',
+                                    props.branch.id
                                 )
                             "
-
-                            class="rounded-xl border px-5 py-3"
-
+                            class="
+                                rounded-lg
+                                border
+                                border-gray-200
+                                bg-white
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-gray-700
+                                transition
+                                hover:bg-gray-50
+                            "
                         >
-
-                            Cancel
-
+                            Back
                         </Link>
 
                         <button
-
                             type="submit"
-
-                            class="rounded-xl bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-
+                            :disabled="form.processing"
+                            class="
+                                rounded-lg
+                                bg-gray-900
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-white
+                                transition
+                                hover:bg-gray-800
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
                         >
-
-                            Edit Branch
-
+                            {{
+                                form.processing
+                                    ? 'Updating...'
+                                    : 'Update Branch'
+                            }}
                         </button>
 
                     </div>

@@ -1,9 +1,13 @@
 <script setup>
 
-import { Head, Link } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { Head, Link, usePage } from '@inertiajs/vue3'
+
+import BaseToast from '@/Components/UI/BaseToast.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
-const props = defineProps({
+
+const page = usePage()
+
+defineProps({
 
     company: Object
 
@@ -13,327 +17,684 @@ const props = defineProps({
 
 <template>
 
-    <Head
-        :title="company.company_name"
-    />
+    <Head :title="company.company_name" />
 
     <AppLayout>
 
-        <template #header>
+        <div class="space-y-4">
+
+            <!-- =========================================================
+                 Header
+            ========================================================== -->
 
             <div
-                class="flex items-center justify-between"
+                class="
+                    flex
+                    flex-col
+                    gap-3
+                    sm:flex-row
+                    sm:items-center
+                    sm:justify-between
+                "
             >
 
                 <div>
 
-                    <h2
-                        class="text-3xl font-bold text-gray-800"
+                    <h1
+                        class="
+                            text-xl
+                            font-semibold
+                            text-gray-900
+                        "
                     >
-                        Company Profile
-                    </h2>
+                        Company Detail
+                    </h1>
 
                     <p
-                        class="mt-1 text-sm text-gray-500"
+                        class="
+                            mt-1
+                            text-sm
+                            text-gray-500
+                        "
                     >
-                        View company information
+                        View company information and organization structure.
                     </p>
 
                 </div>
 
+
+                <!-- Actions -->
+
                 <div
-                    class="flex gap-3"
+                    class="
+                        flex
+                        items-center
+                        gap-2
+                    "
                 >
 
                     <Link
-
                         :href="
                             route(
                                 'companies.index'
                             )
                         "
-
-                        class="rounded-xl bg-slate-600 px-5 py-3 text-white"
-
+                        class="
+                            inline-flex
+                            items-center
+                            gap-2
+                            rounded-lg
+                            border
+                            border-gray-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            font-medium
+                            text-gray-700
+                            transition
+                            hover:bg-gray-50
+                        "
                     >
-
                         Back
-
                     </Link>
 
                     <Link
-
                         :href="
                             route(
                                 'companies.edit',
                                 company.id
                             )
                         "
-
-                        class="rounded-xl bg-amber-500 px-5 py-3 text-white"
-
+                        class="
+                            inline-flex
+                            items-center
+                            gap-2
+                            rounded-lg
+                            bg-gray-900
+                            px-3
+                            py-2
+                            text-sm
+                            font-medium
+                            text-white
+                            transition
+                            hover:bg-gray-800
+                        "
                     >
-
                         Edit
-
                     </Link>
 
                 </div>
 
             </div>
 
-        </template>
 
-        <div
-            class="mx-auto max-w-5xl"
-        >
+            <!-- =========================================================
+                 Company Header Card
+            ========================================================== -->
 
             <div
-                class="overflow-hidden rounded-3xl bg-white shadow-sm"
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
             >
 
                 <div
-                    class="h-2 bg-blue-600"
-                ></div>
-
-                <div
-                    class="p-10"
+                    class="
+                        flex
+                        items-center
+                        gap-4
+                    "
                 >
-
-                    <!-- Logo -->
-
-                    <div
-                        class="flex justify-center"
-                    >
-
-                        <div
-                            class="mb-6"
-                        >
-
-                            <img
-
-                                v-if="
-                                    company.logo
-                                "
-
-                                :src="
-                                    '/storage/' +
-                                    company.logo
-                                "
-
-                                class="h-20 w-20 rounded-full border object-cover"
-
-                            >
-
-                            <div
-
-                                v-else
-
-                                class="flex h-32 w-32 items-center justify-center rounded-full bg-slate-100 text-6xl"
-
-                            >
-
-                                🏢
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- Name -->
-
-                    <h1
-                        class="text-center text-4xl font-bold text-gray-800"
-                    >
-
-                        {{ company.company_name }}
-
-                    </h1>
-
-                    <p
-                        class="mt-2 text-center text-gray-500"
-                    >
-
-                        {{ company.company_code }}
-
-                    </p>
-
-                    <div
-                        class="my-10 border-t"
-                    ></div>
-
-                    <!-- Information -->
-
-                    <div
-                        class="grid grid-cols-1 gap-8 md:grid-cols-2"
-                    >
-
-                      <div
-                        class="rounded-2xl border border-slate-200 p-6"
-                    >
-
-                        <h3
-                            class="mb-6 text-lg font-semibold text-blue-600"
-                        >
-
-                            General Information
-
-                        </h3>
-                        
-
-                            <div class="space-y-4">
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Legal Name</div>
-        <div class="font-medium">
-            {{ company.legal_name || '-' }}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Director</div>
-        <div class="font-medium">
-            {{ company.director_name || '-' }}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Tax Number</div>
-        <div class="font-medium">
-            {{ company.tax_number || '-' }}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Status</div>
-
-        <div>
-
-            <span
-                v-if="company.status"
-                class="rounded-full bg-green-100 px-3 py-1 text-sm text-green-700"
-            >
-                Active
-            </span>
-
-            <span
-                v-else
-                class="rounded-full bg-red-100 px-3 py-1 text-sm text-red-700"
-            >
-                Inactive
-            </span>
-
-        </div>
-
-    </div>
-
-</div>
-
-                        </div>
-
-                        <div class="rounded-2xl border border-slate-200 p-6">
-
-                            <h3
-                                class="mb-6 text-lg font-semibold text-blue-600"
-                            >
-
-                                Contact Information
-
-                            </h3>
-
-                            <div class="space-y-4">
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Phone</div>
-        <div class="font-medium">
-            {{ company.phone || '-' }}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Email</div>
-        <div class="font-medium">
-            {{ company.email || '-' }}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div class="text-gray-500">Website</div>
-        <div class="font-medium">
-            {{ company.website || '-' }}
-        </div>
-    </div>
-
-</div>
-
-                        </div>
-
-                    </div>
-
-                    <div
-                        class="my-10 border-t"
-                    ></div>
-
-                    <!-- Address -->
 
                     <div>
 
-                        <h3
-                           class="mb-6 text-lg font-semibold text-blue-600"
+                        <img
+                            v-if="company.logo"
+                            :src="
+                                '/storage/' +
+                                company.logo
+                            "
+                            class="
+                                h-16
+                                w-16
+                                rounded-xl
+                                border
+                                border-gray-200
+                                object-cover
+                            "
                         >
-
-                            Address
-
-                        </h3>
 
                         <div
-                            class="rounded-2xl border border-slate-200 p-6"
+                            v-else
+                            class="
+                                flex
+                                h-16
+                                w-16
+                                items-center
+                                justify-center
+                                rounded-xl
+                                bg-blue-50
+                                text-3xl
+                            "
+                        >
+                            🏢
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <h2
+                            class="
+                                text-xl
+                                font-semibold
+                                text-gray-900
+                            "
+                        >
+                            {{ company.company_name }}
+                        </h2>
+
+                        <p
+                            class="
+                                mt-1
+                                text-sm
+                                text-gray-500
+                            "
+                        >
+                            {{ company.company_code }}
+                        </p>
+
+                        <div
+                            class="
+                                mt-2
+                                flex
+                                flex-wrap
+                                gap-2
+                            "
                         >
 
-                            <p>
-                                {{ company.address || '-' }}
-                            </p>
-
-                            <div
-                                class="mt-4 flex flex-wrap gap-6 text-sm text-gray-600"
+                            <span
+                                v-if="company.status"
+                                class="
+                                    inline-flex
+                                    rounded-full
+                                    bg-green-100
+                                    px-3
+                                    py-1
+                                    text-xs
+                                    font-medium
+                                    text-green-700
+                                "
                             >
+                                Active
+                            </span>
 
-                                <span>
-                                    City :
-                                    {{ company.city || '-' }}
-                                </span>
-
-                                <span>
-                                    Province :
-                                    {{ company.province || '-' }}
-                                </span>
-
-                                <span>
-                                    Postal :
-                                    {{ company.postal_code || '-' }}
-                                </span>
-
-                            </div>
+                            <span
+                                v-else
+                                class="
+                                    inline-flex
+                                    rounded-full
+                                    bg-red-100
+                                    px-3
+                                    py-1
+                                    text-xs
+                                    font-medium
+                                    text-red-700
+                                "
+                            >
+                                Inactive
+                            </span>
 
                         </div>
 
                     </div>
 
-                    <div
-                        class="my-10 border-t"
-                    ></div>
+                </div>
 
-                    <!-- Future Statistics -->
+            </div>
+
+
+            <!-- =========================================================
+                 General Information
+            ========================================================== -->
+
+            <div
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
+            >
+
+                <h3
+                    class="
+                        mb-5
+                        text-base
+                        font-semibold
+                        text-gray-900
+                    "
+                >
+                    General Information
+                </h3>
+
+                <div
+                    class="
+                        grid
+                        gap-5
+                        md:grid-cols-2
+                    "
+                >
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Legal Name
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.legal_name
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Director
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.director_name
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Tax Number
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.tax_number
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Website
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.website
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================================================
+                 Contact Information
+            ========================================================== -->
+
+            <div
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
+            >
+
+                <h3
+                    class="
+                        mb-5
+                        text-base
+                        font-semibold
+                        text-gray-900
+                    "
+                >
+                    Contact Information
+                </h3>
+
+                <div
+                    class="
+                        grid
+                        gap-5
+                        md:grid-cols-2
+                    "
+                >
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Phone
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.phone
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Email
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.email
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================================================
+                 Location Information
+            ========================================================== -->
+
+            <div
+                class="
+                    rounded-xl
+                    border
+                    border-gray-100
+                    bg-white
+                    p-4
+                    shadow-sm
+                "
+            >
+
+                <h3
+                    class="
+                        mb-5
+                        text-base
+                        font-semibold
+                        text-gray-900
+                    "
+                >
+                    Location Information
+                </h3>
+
+                <div
+                    class="
+                        grid
+                        gap-5
+                        md:grid-cols-2
+                    "
+                >
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            City
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.city
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Province
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.province
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
 
                     <div
-    class="grid grid-cols-2 gap-4 md:grid-cols-4"
+                        class="
+                            md:col-span-2
+                        "
+                    >
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Address
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                rounded-lg
+                                bg-gray-50
+                                p-3
+                                text-sm
+                                leading-6
+                                text-gray-700
+                            "
+                        >
+                            {{
+                                company.address
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div
+                            class="
+                                text-xs
+                                font-medium
+                                text-gray-500
+                            "
+                        >
+                            Postal Code
+                        </div>
+
+                        <div
+                            class="
+                                mt-1
+                                text-sm
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                company.postal_code
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================================================
+     Statistics
+========================================================== -->
+
+<div
+    class="
+        grid
+        gap-4
+        md:grid-cols-4
+    "
 >
 
     <!-- Branches -->
 
     <div
-        class="rounded-2xl border border-slate-200 p-5 text-center transition hover:shadow-md"
+        class="
+            rounded-xl
+            border
+            border-gray-100
+            bg-white
+            p-5
+            text-center
+            shadow-sm
+        "
     >
 
         <div class="mb-2 text-3xl">
@@ -341,23 +702,40 @@ const props = defineProps({
         </div>
 
         <div
-            class="text-3xl font-bold text-blue-600"
+            class="
+                text-3xl
+                font-semibold
+                text-blue-600
+            "
         >
-            0
+            {{ company.branches_count ?? 0 }}
         </div>
 
         <div
-            class="mt-1 text-sm text-gray-500"
+            class="
+                mt-1
+                text-sm
+                text-gray-500
+            "
         >
             Branches
         </div>
 
     </div>
 
+
     <!-- Warehouses -->
 
     <div
-        class="rounded-2xl border border-slate-200 p-5 text-center transition hover:shadow-md"
+        class="
+            rounded-xl
+            border
+            border-gray-100
+            bg-white
+            p-5
+            text-center
+            shadow-sm
+        "
     >
 
         <div class="mb-2 text-3xl">
@@ -365,23 +743,40 @@ const props = defineProps({
         </div>
 
         <div
-            class="text-3xl font-bold text-emerald-600"
+            class="
+                text-3xl
+                font-semibold
+                text-green-600
+            "
         >
-            0
+            {{ company.warehouses_count ?? 0 }}
         </div>
 
         <div
-            class="mt-1 text-sm text-gray-500"
+            class="
+                mt-1
+                text-sm
+                text-gray-500
+            "
         >
             Warehouses
         </div>
 
     </div>
 
+
     <!-- Employees -->
 
     <div
-        class="rounded-2xl border border-slate-200 p-5 text-center transition hover:shadow-md"
+        class="
+            rounded-xl
+            border
+            border-gray-100
+            bg-white
+            p-5
+            text-center
+            shadow-sm
+        "
     >
 
         <div class="mb-2 text-3xl">
@@ -389,23 +784,40 @@ const props = defineProps({
         </div>
 
         <div
-            class="text-3xl font-bold text-amber-600"
+            class="
+                text-3xl
+                font-semibold
+                text-amber-600
+            "
         >
-            0
+            -
         </div>
 
         <div
-            class="mt-1 text-sm text-gray-500"
+            class="
+                mt-1
+                text-sm
+                text-gray-500
+            "
         >
             Employees
         </div>
 
     </div>
 
+
     <!-- Products -->
 
     <div
-        class="rounded-2xl border border-slate-200 p-5 text-center transition hover:shadow-md"
+        class="
+            rounded-xl
+            border
+            border-gray-100
+            bg-white
+            p-5
+            text-center
+            shadow-sm
+        "
     >
 
         <div class="mb-2 text-3xl">
@@ -413,13 +825,21 @@ const props = defineProps({
         </div>
 
         <div
-            class="text-3xl font-bold text-purple-600"
+            class="
+                text-3xl
+                font-semibold
+                text-purple-600
+            "
         >
-            0
+            {{ company.products_count ?? 0 }}
         </div>
 
         <div
-            class="mt-1 text-sm text-gray-500"
+            class="
+                mt-1
+                text-sm
+                text-gray-500
+            "
         >
             Products
         </div>
@@ -428,9 +848,11 @@ const props = defineProps({
 
 </div>
 
-                </div>
 
-            </div>
+            <BaseToast
+                :show="page.props.flash.success"
+                :message="page.props.flash.success"
+            />
 
         </div>
 

@@ -145,9 +145,9 @@ class WarehouseController extends Controller
         return Inertia::render(
             'MasterData/Warehouses/Create',
             [
-                'branches' => Branch::query()
-                    ->where('status', true)
-                    ->get(),
+               'branches' => Branch::query()
+                ->orderBy('name')
+                ->get(),
             ]
         );
     }
@@ -206,9 +206,8 @@ class WarehouseController extends Controller
             'MasterData/Warehouses/Edit',
             [
                 'warehouse' => $warehouse,
-
                 'branches' => Branch::query()
-                    ->where('status', true)
+                    ->orderBy('name')
                     ->get(),
             ]
         );

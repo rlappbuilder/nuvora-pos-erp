@@ -9,77 +9,104 @@ use App\Models\MasterData\Company;
 use App\Http\Requests\CompanyRequest;
 
 use Inertia\Inertia;
-
+use App\Models\MasterData\Branch;
+use App\Models\MasterData\Warehouse;
+use App\Models\Inventory\ProductStock;
 class CompanyController extends Controller
 {
     /**
      * Display Company List
      */
     public function index()
-    {
-        $companies = Company::query()
+{
+    $companies = Company::query()
 
-            ->when(
-                request('search'),
-                function ($query) {
+        ->when(
+            request('search'),
+            function ($query) {
 
+                $query->where(
+                    'company_code',
+                    'like',
+                    '%' . request('search') . '%'
+                )
+
+                ->orWhere(
+                    'company_name',
+                    'like',
+                    '%' . request('search') . '%'
+                )
+
+                ->orWhere(
+                    'legal_name',
+                    'like',
+                    '%' . request('search') . '%'
+                )
+
+                ->orWhere(
+                    'phone',
+                    'like',
+                    '%' . request('search') . '%'
+                )
+
+                ->orWhere(
+                    'email',
+                    'like',
+                    '%' . request('search') . '%'
+                );
+
+            }
+        )
+
+        ->latest()
+
+        ->paginate(10)
+
+        ->withQueryString();
+
+    $companies->getCollection()->transform(function ($company) {
+
+        $company->branches_count = Branch::query()
+            ->where(
+                'company_id',
+                $company->id
+            )
+            ->count();
+
+        $company->warehouses_count = Warehouse::query()
+            ->whereHas(
+                'branch',
+                function ($query) use ($company) {
                     $query->where(
-                        'company_code',
-                        'like',
-                        '%' . request('search') . '%'
-                    )
-
-                    ->orWhere(
-                        'company_name',
-                        'like',
-                        '%' . request('search') . '%'
-                    )
-
-                    ->orWhere(
-                        'legal_name',
-                        'like',
-                        '%' . request('search') . '%'
-                    )
-
-                    ->orWhere(
-                        'phone',
-                        'like',
-                        '%' . request('search') . '%'
-                    )
-
-                    ->orWhere(
-                        'email',
-                        'like',
-                        '%' . request('search') . '%'
+                        'company_id',
+                        $company->id
                     );
-
                 }
             )
+            ->count();
 
-            ->latest()
+        return $company;
 
-            ->paginate(10)
+    });
 
-            ->withQueryString();
+    return Inertia::render(
 
-        return Inertia::render(
+        'MasterData/Companies/Index',
 
-            'MasterData/Companies/Index',
+        [
 
-            [
+            'companies' => $companies,
 
-                'companies' => $companies,
+            'filters' => [
 
-                'filters' => [
-
-                    'search' => request('search')
-
-                ]
+                'search' => request('search')
 
             ]
 
-        );
-    }
+        ]
+
+    );
+}
 
     /**
  * Create Company
@@ -231,6 +258,38 @@ public function show(
     Company $company
 )
 {
+    $company->branches_count = Branch::query()
+        ->where('company_id', $company->id)
+        ->count();
+
+    $company->warehouses_count = Warehouse::query()
+        ->whereHas(
+            'branch',
+            function ($query) use ($company) {
+                $query->where(
+                    'company_id',
+                    $company->id
+                );
+            }
+        )
+        ->count();
+
+    $company->products_count = ProductStock::query()
+        ->where(
+            'product_stocks.company_id',
+            $company->id
+        )
+        ->join(
+            'product_variants',
+            'product_variants.id',
+            '=',
+            'product_stocks.product_variant_id'
+        )
+        ->distinct()
+        ->count(
+            'product_variants.product_id'
+        );
+
     return Inertia::render(
 
         'MasterData/Companies/Show',
@@ -243,7 +302,6 @@ public function show(
 
     );
 }
-
 /**
  * Edit Company
  */
