@@ -544,6 +544,8 @@ public function print(
             'statistics' =>
                 $result['statistics'],
 
+            'showZeroAccount' => $request->boolean('show_zero_account'),
+
             'filters' => [
 
                 'branch_id' =>

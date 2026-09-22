@@ -23,6 +23,8 @@ $modules = [
     ['module' => 'warehouse',         'prefix' => 'WH',  'format' => '{PREFIX}{SEQ}',              'digit' => 4],
     ['module' => 'supplier',          'prefix' => 'SUP', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
     ['module' => 'customer',          'prefix' => 'CUS', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+      ['module' => 'branch',          'prefix' => 'BR', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+    ['module' => 'company',          'prefix' => 'CMP', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
 
     // ==========================
     // Product

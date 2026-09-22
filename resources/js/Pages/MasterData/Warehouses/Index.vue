@@ -1,35 +1,40 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import Swal from 'sweetalert2'
 import BaseToast from '@/Components/UI/BaseToast.vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
 const page = usePage()
 
 const props = defineProps({
-
     warehouses: Object
-
 })
 
-const deletewarehouse  = (id) => {
+const deletewarehouse = async (id) => {
 
-    if (
-        confirm(
-            'Are you sure you want to delete this warehouse ?'
-        )
-    ) {
+    const result = await Swal.fire({
+        title: 'Delete Warehouse?',
+        text: 'This warehouse will be deleted. Are you sure?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+    })
 
-        router.delete(
-
-            route(
-                'warehouses.destroy',
-                id
-            )
-
-        )
-
+    if (!result.isConfirmed) {
+        return
     }
 
+    router.delete(
+        route(
+            'warehouses.destroy',
+            id
+        ),
+        {
+            preserveScroll: true,
+        }
+    )
 }
 </script>
 
@@ -61,23 +66,14 @@ const deletewarehouse  = (id) => {
 
                 </div>
 
-                <Link
-
-                    :href="route('warehouses.create')"
-
-                    class="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
-
-                >
-
-                    + Add warehouses
-
-                </Link>
-
             </div>
 
         </template>
 
-        <!-- Empty State -->
+
+        <!-- =====================================================
+             EMPTY STATE
+        ====================================================== -->
 
         <div
 
@@ -88,58 +84,75 @@ const deletewarehouse  = (id) => {
         >
 
             <div
-                class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-5xl"
+                class="
+                    mx-auto
+                    mb-6
+                    flex
+                    h-24
+                    w-24
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-slate-100
+                    text-5xl
+                "
             >
-
                 🏭
-
             </div>
 
             <h3
                 class="text-2xl font-bold text-gray-800"
             >
-
                 No warehouse available
-
             </h3>
 
             <p
                 class="mt-2 text-gray-500"
             >
-
                 Create your first warehouse
-
             </p>
 
-            <div
-                class="mt-8"
-            >
+            <div class="mt-8">
 
                 <Link
-
                     :href="route('warehouses.create')"
-
-                    class="rounded-xl bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-
+                    class="
+                        rounded-xl
+                        bg-blue-600
+                        px-6
+                        py-3
+                        text-white
+                        hover:bg-blue-700
+                    "
                 >
-
-                    + Add warehouses
-
+                    + Add Warehouse
                 </Link>
 
             </div>
 
         </div>
 
-        <!-- Company Card -->
+
+        <!-- =====================================================
+             WAREHOUSE CARDS
+        ====================================================== -->
 
         <div
 
             v-else
 
-            class="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+            class="
+                grid
+                gap-6
+                md:grid-cols-2
+                xl:grid-cols-3
+            "
 
         >
+
+            <!-- =================================================
+                 EXISTING WAREHOUSES
+            ================================================== -->
 
             <div
 
@@ -147,7 +160,15 @@ const deletewarehouse  = (id) => {
 
                 :key="warehouse.id"
 
-                class="overflow-hidden rounded-3xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                class="
+                    overflow-hidden
+                    rounded-3xl
+                    bg-white
+                    shadow-sm
+                    transition
+                    hover:-translate-y-1
+                    hover:shadow-lg
+                "
 
             >
 
@@ -157,53 +178,76 @@ const deletewarehouse  = (id) => {
                     class="h-2 bg-blue-600"
                 ></div>
 
-                    <div
-                        class="p-8"
-                    >
+
+                <div
+                    class="p-8"
+                >
 
                     <!-- Logo -->
 
                     <div
-                        class="mb-5 flex justify-center"
+                        class="
+                            mb-5
+                            flex
+                            justify-center
+                        "
                     >
 
                         <div
-
-                            class="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl"
-
+                            class="
+                                flex
+                                h-20
+                                w-20
+                                items-center
+                                justify-center
+                                rounded-full
+                                bg-slate-100
+                                text-4xl
+                            "
                         >
-
                             🏢
-
                         </div>
 
                     </div>
 
+
                     <!-- Name -->
 
                     <h3
-                        class="text-center text-2xl font-bold text-gray-800"
+                        class="
+                            text-center
+                            text-2xl
+                            font-bold
+                            text-gray-800
+                        "
                     >
-
                         {{ warehouse.name }}
-
                     </h3>
 
+
                     <p
-                        class="mt-2 text-center text-gray-500"
+                        class="
+                            mt-2
+                            text-center
+                            text-gray-500
+                        "
                     >
-
                         {{ warehouse.code }}
-
                     </p>
+
 
                     <div
                         class="my-6 border-t"
-                     >
-                    </div>
-                <div class="space-y-3">
-                    <!-- tempel card analityc-->
-                     <div
+                    ></div>
+
+
+                    <!-- Analytics -->
+
+                    <div class="space-y-3">
+
+                        <!-- Products -->
+
+                        <div
                             class="
                                 flex
                                 justify-between
@@ -212,7 +256,10 @@ const deletewarehouse  = (id) => {
                         >
 
                             <span
-                                class="text-blue-600 font-bold"
+                                class="
+                                    font-bold
+                                    text-blue-600
+                                "
                             >
                                 Products
                             </span>
@@ -220,12 +267,13 @@ const deletewarehouse  = (id) => {
                             <span
                                 class="font-semibold"
                             >
-                                {{
-                                    warehouse.total_products
-                                }}
+                                {{ warehouse.total_products }}
                             </span>
 
                         </div>
+
+
+                        <!-- Current Stock -->
 
                         <div
                             class="
@@ -236,7 +284,10 @@ const deletewarehouse  = (id) => {
                         >
 
                             <span
-                                class=text-green-600 font-bold
+                                class="
+                                    font-bold
+                                    text-green-600
+                                "
                             >
                                 Current Stock
                             </span>
@@ -247,12 +298,13 @@ const deletewarehouse  = (id) => {
                                     text-green-600
                                 "
                             >
-                                {{
-                                    warehouse.current_stock
-                                }}  PCS
+                                {{ warehouse.current_stock }} PCS
                             </span>
 
                         </div>
+
+
+                        <!-- Last Movement -->
 
                         <div
                             class="
@@ -263,7 +315,10 @@ const deletewarehouse  = (id) => {
                         >
 
                             <span
-                                class="text-red-600 font-bold"
+                                class="
+                                    font-bold
+                                    text-red-600
+                                "
                             >
                                 Last Movement
                             </span>
@@ -276,7 +331,6 @@ const deletewarehouse  = (id) => {
                             >
 
                                 {{
-
                                     warehouse.last_movement
 
                                         ? new Date(
@@ -286,176 +340,231 @@ const deletewarehouse  = (id) => {
                                         )
 
                                         : '-'
-
                                 }}
 
                             </span>
 
                         </div>
-                        <!-- status -->
-                         <div
+
+
+                        <!-- Status -->
+
+                        <div
+                            class="
+                                flex
+                                justify-between
+                                text-sm
+                            "
+                        >
+
+                            <span
                                 class="
-                                    flex
-                                    justify-between
-                                    text-sm
+                                    font-bold
+                                    text-yellow-600
                                 "
                             >
+                                Status
+                            </span>
 
-                                <span
-                                    class="text-yellow-600 font-bold"
-                                >
-                                    Status
-                                </span>
+                            <span
+                                class="
+                                    rounded-full
+                                    bg-green-100
+                                    px-2
+                                    py-1
+                                    text-xs
+                                    font-medium
+                                    text-green-700
+                                "
+                            >
+                                Active
+                            </span>
 
-                                <span
-                                    class="
-                                        rounded-full
-                                        bg-green-100
-                                        px-2
-                                        py-1
-                                        text-xs
-                                        font-medium
-                                        text-green-700
-                                    "
-                                >
+                        </div>
 
-                                    Active
+                    </div>
 
-                                </span>
 
-                            </div>
-                         <!-- end status-->
-                    <!-- card analitycs-->
-                     <hr>
-             <div class="flex">
+                    <hr class="my-4">
 
-        <div class="w-24 text-gray-500">
-            Company
-        </div>
 
-        <div>
-            {{ warehouse.branch?.company?.company_name || '-' }}
-        </div>
+                    <!-- Company -->
 
-    </div>
+                    <div class="flex">
 
-    <div class="flex">
+                        <div class="w-24 text-gray-500">
+                            Company
+                        </div>
 
-        <div class="w-24 text-gray-500">
-            Branch
-        </div>
+                        <div>
+                            {{
+                                warehouse.branch?.company?.company_name
+                                || '-'
+                            }}
+                        </div>
 
-        <div>
-            {{ warehouse.branch?.name || '-' }}
-        </div>
+                    </div>
 
-    </div>
 
-    <div class="flex">
+                    <!-- Branch -->
 
-        <div class="w-24 text-gray-500">
-            Type
-        </div>
+                    <div class="flex">
 
-        <div>
-            {{ warehouse.warehouse_type || '-' }}
-        </div>
+                        <div class="w-24 text-gray-500">
+                            Branch
+                        </div>
 
-    </div>
-<div class="flex">
+                        <div>
+                            {{
+                                warehouse.branch?.name
+                                || '-'
+                            }}
+                        </div>
 
-    <div class="w-24 text-gray-500">
-        PIC
-    </div>
+                    </div>
 
-    <div>
-        {{ warehouse.pic_name || '-' }}
-    </div>
 
-</div>
+                    <!-- Type -->
 
-<div class="flex">
+                    <div class="flex">
 
-    <div class="w-24 text-gray-500">
-        Phone
-    </div>
+                        <div class="w-24 text-gray-500">
+                            Type
+                        </div>
 
-    <div>
-        {{ warehouse.phone || '-' }}
-    </div>
+                        <div>
+                            {{
+                                warehouse.warehouse_type
+                                || '-'
+                            }}
+                        </div>
 
-</div>
+                    </div>
 
-</div>
-<div
-    class="my-6 border-t"
-></div>
 
-<div
-    class="text-center text-sm text-gray-500"
->
+                    <!-- PIC -->
 
-  {{ warehouse.warehouse_type }}
+                    <div class="flex">
 
-</div>
+                        <div class="w-24 text-gray-500">
+                            PIC
+                        </div>
 
-<div
-    class="my-6 border-t"
-></div>
-                   
-                   
-                   
+                        <div>
+                            {{
+                                warehouse.pic_name
+                                || '-'
+                            }}
+                        </div>
 
-                    <!-- Action -->
+                    </div>
+
+
+                    <!-- Phone -->
+
+                    <div class="flex">
+
+                        <div class="w-24 text-gray-500">
+                            Phone
+                        </div>
+
+                        <div>
+                            {{
+                                warehouse.phone
+                                || '-'
+                            }}
+                        </div>
+
+                    </div>
+
 
                     <div
-                        class="flex justify-center gap-3"
+                        class="my-6 border-t"
+                    ></div>
+
+
+                    <div
+                        class="
+                            text-center
+                            text-sm
+                            text-gray-500
+                        "
+                    >
+                        {{ warehouse.warehouse_type }}
+                    </div>
+
+
+                    <div
+                        class="my-6 border-t"
+                    ></div>
+
+
+                    <!-- Actions -->
+
+                    <div
+                        class="
+                            flex
+                            justify-center
+                            gap-3
+                        "
                     >
 
                         <Link
-
                             :href="route(
                                 'warehouses.show',
                                 warehouse.id
                             )"
-
-                            class="rounded-xl bg-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-700"
-
+                            class="
+                                rounded-xl
+                                bg-slate-600
+                                px-4
+                                py-2
+                                text-sm
+                                text-white
+                                hover:bg-slate-700
+                            "
                         >
-
                             View
-
                         </Link>
+
 
                         <Link
-
                             :href="route(
                                 'warehouses.edit',
-                              warehouse.id
+                                warehouse.id
                             )"
-
-                            class="rounded-xl bg-amber-500 px-4 py-2 text-sm text-white hover:bg-amber-600"
-
+                            class="
+                                rounded-xl
+                                bg-amber-500
+                                px-4
+                                py-2
+                                text-sm
+                                text-white
+                                hover:bg-amber-600
+                            "
                         >
-
                             Edit
-
                         </Link>
 
-                        <button
 
+                        <button
+                            type="button"
                             @click="
                                 deletewarehouse(
-                                  warehouse.id
+                                    warehouse.id
                                 )
                             "
-
-                            class="rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
-
+                            class="
+                                rounded-xl
+                                bg-red-500
+                                px-4
+                                py-2
+                                text-sm
+                                text-white
+                                hover:bg-red-600
+                            "
                         >
-
                             Delete
-
                         </button>
 
                     </div>
@@ -464,14 +573,123 @@ const deletewarehouse  = (id) => {
 
             </div>
 
+
+            <!-- =================================================
+                 ADD WAREHOUSE CARD
+                 PALING AKHIR
+            ================================================== -->
+
+            <Link
+
+                :href="route('warehouses.create')"
+
+                class="
+                    group
+                    flex
+                    min-h-full
+                    flex-col
+                    overflow-hidden
+                    rounded-3xl
+                    bg-white
+                    shadow-sm
+                    transition
+                    hover:-translate-y-1
+                    hover:shadow-lg
+                "
+
+            >
+
+                <div
+                    class="h-2 bg-blue-600"
+                ></div>
+
+
+                <div
+                    class="
+                        flex
+                        flex-1
+                        flex-col
+                        items-center
+                        justify-center
+                        p-8
+                        text-center
+                    "
+                >
+
+                    <!-- Logo -->
+
+                    <div
+                        class="
+                            mb-5
+                            flex
+                            h-20
+                            w-20
+                            items-center
+                            justify-center
+                            rounded-full
+                            bg-slate-100
+                            text-4xl
+                            transition
+                            group-hover:bg-blue-50
+                        "
+                    >
+                        ➕
+                    </div>
+
+
+                    <!-- Title -->
+
+                    <h3
+                        class="
+                            text-2xl
+                            font-bold
+                            text-gray-800
+                            transition
+                            group-hover:text-blue-600
+                        "
+                    >
+                        Add Warehouse
+                    </h3>
+
+
+                    <p
+                        class="
+                            mt-2
+                            text-sm
+                            text-gray-500
+                        "
+                    >
+                        Create a new warehouse for your company.
+                    </p>
+
+
+                    <div
+                        class="
+                            mt-8
+                            rounded-xl
+                            bg-blue-600
+                            px-6
+                            py-3
+                            text-sm
+                            font-medium
+                            text-white
+                            transition
+                            group-hover:bg-blue-700
+                        "
+                    >
+                        + Add Warehouse
+                    </div>
+
+                </div>
+
+            </Link>
+
         </div>
 
+
         <BaseToast
-
             :show="page.props.flash.success"
-
             :message="page.props.flash.success"
-
         />
 
     </AppLayout>
