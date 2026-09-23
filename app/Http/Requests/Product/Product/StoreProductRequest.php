@@ -89,10 +89,16 @@ class StoreProductRequest extends FormRequest
                 'min:0',
             ],
 
-            'is_active' => [
+           'is_active' => [
                 'required',
                 'boolean',
             ],
+
+            'attribute_ids' => [
+                'nullable',
+                'array',
+            ],
+
             'attribute_ids.*' => [
                 'distinct',
                 'exists:product_attributes,id',

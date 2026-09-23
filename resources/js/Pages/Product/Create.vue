@@ -2,13 +2,7 @@
 
 import { router } from '@inertiajs/vue3'
 
-import {
-
-    success,
-
-    focusFirst,
-
-} from '@/Utils'
+import {success, focusFirst,} from '@/Utils'
 
 import { useCrudForm } from '@/Composables/useCrudForm'
 
@@ -62,6 +56,8 @@ const form = useForm({
     description: props.duplicate?.description ?? '',
 
     is_active: props.duplicate?.is_active ?? true,
+
+    attribute_ids: [],
 });
 
 const { save: post } = useCrudForm(form)

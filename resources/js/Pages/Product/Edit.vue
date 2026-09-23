@@ -29,9 +29,12 @@ const props = defineProps({
 
     units: Array,
 
+    attributes: Array,
+
     errors: Object,
 
 })
+
 const form = useForm({
 
     category_id: props.product.category_id,
@@ -61,6 +64,10 @@ const form = useForm({
     description: props.product.description,
 
     is_active: props.product.is_active,
+
+    attribute_ids: props.product.attributes
+    ? props.product.attributes.map(attribute => attribute.id)
+    : [],
 
 })
 const { save: post } = useCrudForm(form)
@@ -121,16 +128,17 @@ function cancel()
                 subtitle="Manage your products."
             />
 
-  <Form
-    :form="form"
-    :categories="categories"
-    :brands="brands"
-    :units="units"
-    :preview-code="product.code"
-    mode="edit"
-    @submit="save"
-    @cancel="cancel"
-/>
+             <Form
+                :form="form"
+                :categories="categories"
+                :brands="brands"
+                :units="units"
+                :attributes="attributes"
+                :preview-code="product.code"
+                mode="edit"
+                @submit="save"
+                @cancel="cancel"
+            />
 
 </AppLayout>
 

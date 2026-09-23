@@ -179,16 +179,11 @@ $statistics = [
 
         foreach ($data['attribute_ids'] ?? [] as $attributeId) {
 
-            ProductAttributeAssignment::create([
-
-                'company_id' => $product->company_id,
-
+           ProductAttributeAssignment::create([
+                'company_id' => auth()->user()->company_id,
                 'product_id' => $product->id,
-
                 'product_attribute_id' => $attributeId,
-
                 'created_by' => auth()->id(),
-
             ]);
 
         }
@@ -264,6 +259,7 @@ $statistics = [
                 'category',
                 'brand',
                 'unit',
+                'attributes',
                  ]),
                 ...$this->formData(),
             ]
@@ -309,15 +305,10 @@ public function update(
         foreach ($data['attribute_ids'] ?? [] as $attributeId) {
 
             ProductAttributeAssignment::create([
-
-                'company_id' => $product->company_id,
-
+                'company_id' => auth()->user()->company_id,
                 'product_id' => $product->id,
-
                 'product_attribute_id' => $attributeId,
-
                 'created_by' => auth()->id(),
-
             ]);
 
         }

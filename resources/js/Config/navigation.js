@@ -20,6 +20,7 @@ const navigation = [
             modules.productsVariants,
             modules.productsVariantUnits,
             modules.productsPrice,
+            modules.barcodes,
             modules.customers,
             modules.suppliers,
             modules.tax,
@@ -59,6 +60,17 @@ const navigation = [
            
         ],
     },
+     {
+            title: 'PointOfSales',
+            children: [
+                 modules.dashboards,
+                 modules.PointOfSales,
+                
+                // modules.deliveryOrders,
+                // modules.salesInvoices,
+                // modules.salesReturns,
+            ],
+        },
 
     {
         title: 'Sales',

@@ -22,6 +22,7 @@ class ProductVariantValue extends Model
         'product_attribute_value_id',
     ];
 
+
     /*
     |--------------------------------------------------------------------------
     | Relationships
@@ -30,16 +31,25 @@ class ProductVariantValue extends Model
 
     public function variant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class);
+        return $this->belongsTo(
+            ProductVariant::class
+        );
     }
 
-    public function attribute(): BelongsTo
-    {
-        return $this->belongsTo(ProductAttribute::class);
-    }
 
-    public function attributeValue(): BelongsTo
-    {
-        return $this->belongsTo(ProductAttributeValue::class);
-    }
+   public function attribute(): BelongsTo
+{
+    return $this->belongsTo(
+        ProductAttribute::class,
+        'product_attribute_id'
+    );
+}
+
+public function attributeValue(): BelongsTo
+{
+    return $this->belongsTo(
+        ProductAttributeValue::class,
+        'product_attribute_value_id'
+    );
+}
 }

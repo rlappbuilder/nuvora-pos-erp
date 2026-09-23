@@ -99,6 +99,7 @@ const filteredVariants = computed(() => {
     )
 
 })
+console.log('VARIANTS:', props.variants)
 const filteredUnits = computed(() => {
 
     console.log('VARIANTS =', props.variants)

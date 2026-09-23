@@ -20,6 +20,7 @@ use App\Http\Controllers\Product\ProductAttributeValueController;
 use App\Http\Controllers\Product\ProductVariantController;
 use App\Http\Controllers\Product\ProductVariantUnitController;
 use App\Http\Controllers\MasterData\ProductVariantPriceController;
+use App\Http\Controllers\Product\BarcodeController;
 Route::middleware(
 
     'auth'
@@ -288,35 +289,41 @@ Route::middleware(
         | Product Variant
         |--------------------------------------------------------------------------
         */
-            Route::prefix('product-variants')
-                ->name('product-variants.')
-                ->group(function () {
+           Route::prefix('product-variants')
+            ->name('product-variants.')
+            ->group(function () {
 
-                Route::get(
-                    'preview/{product}',
-                    [ProductVariantController::class, 'preview']
-                )->name('preview');
-                    Route::delete(
-                        'bulk-delete',
-                        [ProductVariantController::class, 'bulkDelete']
-                    )->name('bulk-delete');
+            Route::get(
+                'preview/{product}',
+                [ProductVariantController::class, 'preview']
+            )->name('preview');
 
-                    Route::patch(
-                        'bulk-activate',
-                        [ProductVariantController::class, 'bulkActivate']
-                    )->name('bulk-activate');
+            Route::get(
+                '{productVariant}/price-history',
+                [ProductVariantController::class, 'priceHistory']
+            )->name('price-history');
 
-                    Route::patch(
-                        'bulk-deactivate',
-                        [ProductVariantController::class, 'bulkDeactivate']
-                    )->name('bulk-deactivate');
+            Route::delete(
+                'bulk-delete',
+                [ProductVariantController::class, 'bulkDelete']
+            )->name('bulk-delete');
 
-                });
+            Route::patch(
+                'bulk-activate',
+                [ProductVariantController::class, 'bulkActivate']
+            )->name('bulk-activate');
 
-            Route::resource(
-                'product-variants',
-                ProductVariantController::class
-            );
+            Route::patch(
+                'bulk-deactivate',
+                [ProductVariantController::class, 'bulkDeactivate']
+            )->name('bulk-deactivate');
+
+        });
+
+        Route::resource(
+            'product-variants',
+            ProductVariantController::class
+        );
 
         /*
 
@@ -570,7 +577,31 @@ Route::middleware(
             BrandController::class
 
         );
+        Route::prefix('barcodes')
+            ->name('barcodes.')
+            ->group(function () {
 
+                Route::get(
+                    '/',
+                    [BarcodeController::class, 'index']
+                )->name('index');
+
+                Route::post(
+                    '/generate/{productVariant}',
+                    [BarcodeController::class, 'generate']
+                )->name('generate');
+
+                Route::put(
+                    '/{productVariant}',
+                    [BarcodeController::class, 'update']
+                )->name('update');
+
+                Route::get(
+                    '/{productVariant}/preview',
+                    [BarcodeController::class, 'preview']
+                )->name('preview');
+
+            });
         /*
         |--------------------------------------------------------------------------
         | Units

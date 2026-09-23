@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Data\Product\VariantGeneratorData;
 use App\Services\Product\VariantGeneratorService;
 use App\Models\Product\Product;
+use App\Models\MasterData\ProductVariantPrice;
 class ProductVariantController extends Controller
 {
     protected VariantGeneratorService $variantGeneratorService;
@@ -165,20 +166,23 @@ $statistics = [
     StoreProductVariantRequest $request
 )
 {
-   
     $data = $request->validated();
 
-    $product = Product::with([
-        'attributes.values',
-    ])->findOrFail(
+    $product = Product::findOrFail(
         $data['product_id']
     );
-   
-
-
-    $attributes = $product->attributes
+ 
+    $attributes = $product->attributes()
+        ->with([
+            'values' => function ($query) {
+                $query->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('display_value');
+            },
+        ])
         ->where('is_variant', true)
-        ->values();
+        ->where('is_active', true)
+        ->get();
 
     $dto = new VariantGeneratorData(
 
@@ -189,21 +193,21 @@ $statistics = [
         userId: auth()->id(),
 
     );
-
+ 
     try {
 
-       if ($product->variants()->exists()) {
+        if ($product->variants()->exists()) {
 
-                $this->variantGeneratorService
-                    ->regenerate($dto);
+            $this->variantGeneratorService
+                ->regenerate($dto);
 
-            } else {
+        } else {
 
-                $this->variantGeneratorService
-                    ->generate($dto);
+            $this->variantGeneratorService
+                ->generate($dto);
 
-            }
-           
+        }
+
         return redirect()
             ->route('product-variants.index')
             ->with(
@@ -228,107 +232,127 @@ $statistics = [
      * Display the specified resource.
      * lanjut disini 
      */ 
-  public function show(ProductVariant $variant)
+public function show(ProductVariant $product_variant)
 {
-   $variant->load([
-    'product:id,code,name',
-    'values.attribute:id,name',
-    'values.attributeValue:id,name',
-    'creator:id,name',
-    'updater:id,name',
-    'deleter:id,name',
-]);
+    $product_variant->load([
+        'product:id,code,name',
+
+        'values.attribute:id,name,display_name',
+
+        'values.attributeValue:id,value,display_value',
+
+        'creator:id,name',
+        'updater:id,name',
+        'deleter:id,name',
+
+        'activities.performer',
+    ]);
 
     return Inertia::render(
         'MasterData/ProductVariant/Show',
         [
-            'title' => 'Detail Product variant',
-            'variant' => $variant,
+            'title' => 'Product Variant Detail',
+            'variant' => $product_variant,
+        ]
+    );
+}
+    /**
+     * Show the form for editing the specified resource.
+     */
+public function edit(ProductVariant $product_variant)
+{
+    $product_variant->load([
+        'product',
+        'values.attribute',
+        'values.attributeValue',
+    ]);
+
+    return Inertia::render(
+        'MasterData/ProductVariant/Edit',
+        [
+            'title' => 'Edit Product Variant',
+            'variant' => $product_variant,
+            ...$this->formData(),
         ]
     );
 }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-   public function edit(ProductVariant $variant)
-    {
-        return Inertia::render(
-            'MasterData/ProductVariant/Edit',
-            [
-                'title' => 'Edit Product Variant',
-                 'variant' => $variant->load([
-                    'product',
-                    'values.attribute',
-                    'values.attributeValue',
-                ]),
-                ...$this->formData(),
-            ]
-        );
-    }
-
-    /**
      * Update the specified resource.
      */
-      public function update(
+     public function update(
     UpdateProductVariantRequest $request,
-    ProductVariant $variant
+    ProductVariant $product_variant
 ) {
     $data = $request->validated();
 
-        try {
+    try {
+
         DB::beginTransaction();
 
         $data['updated_by'] = auth()->id();
 
-        $variant->update($data);
+        $product_variant->update($data);
 
         DB::commit();
 
         return redirect()
             ->route('product-variants.index')
-            ->with('success', 'Product Variant berhasil diperbarui.');
+            ->with(
+                'success',
+                'Product Variant berhasil diperbarui.'
+            );
+
     } catch (\Throwable $e) {
+
         DB::rollBack();
 
         report($e);
 
-        throw $e; // sementara untuk melihat error asli
+        throw $e;
     }
 }
-    /**
-     * Remove the specified resource.
-     */
-    public function destroy(ProductVariant $variant)
+public function destroy(ProductVariant $product_variant)
 {
-    if (! $variant->canDelete()) {
+    if (! $product_variant->canDelete()) {
+
         return back()->with(
             'error',
             'Product variant tidak dapat dihapus karena masih digunakan.'
         );
+
     }
 
     try {
+
         DB::beginTransaction();
 
-        $variant->update([
+        $product_variant->update([
             'deleted_by' => auth()->id(),
         ]);
 
-        $variant->delete();
+        $product_variant->delete();
 
         DB::commit();
 
         return redirect()
             ->route('product-variants.index')
-            ->with('success', 'Product Variant berhasil dihapus.');
+            ->with(
+                'success',
+                'Product Variant berhasil dihapus.'
+            );
+
     } catch (\Throwable $e) {
+
         DB::rollBack();
 
         report($e);
 
-        return back()
-            ->with('error', 'Gagal menghapus Product Variant.');
+        return back()->with(
+            'error',
+            'Gagal menghapus Product Variant.'
+        );
+
     }
 }
    
@@ -504,5 +528,20 @@ public function preview(
             ->preview($product)
 
     );
+}
+public function priceHistory(ProductVariant $productVariant)
+{
+    $history = \App\Models\MasterData\ProductVariantPrice::query()
+        ->with([
+            'branch:id,name',
+            'variant.product:id,code,name',
+            'unit:id,name',
+            'priceType:id,name',
+        ])
+        ->where('product_variant_id', $productVariant->id)
+        ->orderByDesc('effective_from')
+        ->get();
+
+    return response()->json($history);
 }
 }

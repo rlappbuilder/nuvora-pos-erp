@@ -7,7 +7,11 @@ const props = defineProps({
 
     categories: Array,
 
-    brands: Array
+    brands: Array,
+
+    units: Array,
+
+    attributes: Array
 
 })
 
@@ -35,7 +39,9 @@ const form = useForm({
 
     description: '',
 
-    status: true
+    status: true,
+    
+    attribute_ids: []
 
 })
 
@@ -211,6 +217,43 @@ const submit = () => {
     </select>
 
 </div>
+<!-- Record Variant Attribute -->
+
+<div class="mt-6">
+
+    <label
+        class="mb-3 block text-sm font-medium"
+    >
+        Record Variant Attribute
+    </label>
+
+    <div
+        class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+    >
+
+        <label
+            v-for="attribute in attributes"
+            :key="attribute.id"
+            class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 hover:bg-gray-50"
+        >
+
+            <input
+                v-model="form.attribute_ids"
+                type="checkbox"
+                :value="attribute.id"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+
+            <span class="text-sm text-gray-700">
+                {{ attribute.display_name || attribute.name }}
+            </span>
+
+        </label>
+
+    </div>
+
+</div>
+
 <div>
 
     <label

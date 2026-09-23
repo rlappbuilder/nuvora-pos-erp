@@ -3,19 +3,19 @@
 namespace App\Models\Product;
 
 use App\Models\User;
+use App\Models\Core\DocumentActivity;
 use App\Models\MasterData\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Product\ProductVariantUnit;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Product\ProductVariantUnit;
 
 class ProductVariant extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     /*
     |--------------------------------------------------------------------------
@@ -24,7 +24,7 @@ class ProductVariant extends Model
     */
 
     protected $fillable = [
-        
+
         'product_id',
 
         'sku',
@@ -40,7 +40,9 @@ class ProductVariant extends Model
         'created_by',
         'updated_by',
         'deleted_by',
+
     ];
+
 
     /*
     |--------------------------------------------------------------------------
@@ -49,10 +51,15 @@ class ProductVariant extends Model
     */
 
     protected $casts = [
+
         'is_default' => 'boolean',
-        'is_active'  => 'boolean',
+
+        'is_active' => 'boolean',
+
         'sort_order' => 'integer',
+
     ];
+
 
     /*
     |--------------------------------------------------------------------------
@@ -62,33 +69,91 @@ class ProductVariant extends Model
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(
+            Company::class
+        );
     }
+
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(
+            Product::class
+        );
     }
+
 
     public function values(): HasMany
     {
-        return $this->hasMany(ProductVariantValue::class);
+        return $this->hasMany(
+            ProductVariantValue::class
+        );
     }
+
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(
+            ProductVariantUnit::class
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Audit Relationships
+    |--------------------------------------------------------------------------
+    */
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(
+            User::class,
+            'created_by'
+        );
     }
+
 
     public function updater(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(
+            User::class,
+            'updated_by'
+        );
     }
+
 
     public function deleter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'deleted_by');
+        return $this->belongsTo(
+            User::class,
+            'deleted_by'
+        );
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Document Activities
+    |--------------------------------------------------------------------------
+    */
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(
+            DocumentActivity::class,
+            'document_id'
+        )
+        ->where(
+            'document_type',
+            class_basename($this)
+        )
+        ->orderBy(
+            'performed_at',
+            'asc'
+        );
+    }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -96,23 +161,52 @@ class ProductVariant extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive(
+        Builder $query
+    ): Builder
     {
-        return $query->where('is_active', true);
+        return $query->where(
+            'is_active',
+            true
+        );
     }
 
-    public function scopeSearch(Builder $query, ?string $search): Builder
+
+    public function scopeSearch(
+        Builder $query,
+        ?string $search
+    ): Builder
     {
         if (blank($search)) {
+
             return $query;
+
         }
 
-        return $query->where(function (Builder $query) use ($search) {
-            $query->where('sku', 'like', "%{$search}%")
-                ->orWhere('barcode', 'like', "%{$search}%")
-                ->orWhere('name', 'like', "%{$search}%");
-        });
+        return $query->where(
+            function (Builder $query) use ($search) {
+
+                $query
+                    ->where(
+                        'sku',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'barcode',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'name',
+                        'like',
+                        "%{$search}%"
+                    );
+
+            }
+        );
     }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -125,20 +219,24 @@ class ProductVariant extends Model
         return false;
     }
 
+
     public function canDelete(): bool
     {
         return ! $this->isUsed();
     }
+
 
     public function canActivate(): bool
     {
         return ! $this->is_active;
     }
 
+
     public function canDeactivate(): bool
     {
         return $this->is_active;
     }
+
 
     public function activate(): bool
     {
@@ -147,16 +245,12 @@ class ProductVariant extends Model
         ]);
     }
 
+
     public function deactivate(): bool
     {
         return $this->update([
             'is_active' => false,
         ]);
     }
-    public function units(): HasMany
-{
-    return $this->hasMany(
-        ProductVariantUnit::class
-    );
-}
+
 }

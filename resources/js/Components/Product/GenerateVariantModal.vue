@@ -152,6 +152,8 @@ watch(productId, async (id) => {
         flex
         flex-col
     ">
+
+    <!--
         <div
             v-if="attributes.length"
             class="grid grid-cols-2 gap-3"
@@ -177,7 +179,7 @@ watch(productId, async (id) => {
 
             </div>
 
-        </div>
+        </div> -->
         <div
     class="
         -mx-6

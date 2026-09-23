@@ -20,7 +20,7 @@ import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
 import Swal from 'sweetalert2'
 import BaseButton from '@/Components/Button/BaseButton.vue'
-
+import PriceHistory from './PriceHistory.vue'
 
 import {
     ArrowPathIcon,
@@ -323,24 +323,20 @@ await nextTick()
 function showVariant(variant)
 {
     router.visit(
-
         route(
             'product-variants.show',
-            product.id
+            variant.id
         )
-
     )
 }
 
 function editVariant(variant)
 {
     router.visit(
-
         route(
             'product-variants.edit',
-            product.id
+            variant.id
         )
-
     )
 }
 
@@ -667,6 +663,24 @@ const exportCsv = () => {
             openBulkDelete()
             break
     }
+}
+const showPriceHistory = ref(false)
+
+const selectedVariantForHistory = ref(null)
+const openPriceHistory = (variant) => {
+
+    selectedVariantForHistory.value = variant
+
+    showPriceHistory.value = true
+
+}
+
+const closePriceHistory = () => {
+
+    showPriceHistory.value = false
+
+    selectedVariantForHistory.value = null
+
 }
 </script>
 <template>
@@ -1005,7 +1019,53 @@ const exportCsv = () => {
                                     </DataTableCell>
                                     <DataTableCell>
 
+                                    <div
+                                        v-if="item.values?.length"
+                                        class="space-y-1"
+                                    >
+
+                                        <div
+                                            v-for="
+                                                value in item.values
+                                            "
+                                            :key="value.id"
+                                            class="
+                                                inline-flex
+                                                items-center
+                                                rounded-md
+                                                bg-slate-50
+                                                px-2.5
+                                                py-1
+                                                text-sm
+                                                font-medium
+                                                text-slate-700
+                                                mr-1
+                                            "
+                                        >
+
+                                            {{
+                                                value.attribute?.display_name
+                                                ?? value.attribute?.name
+                                                ?? '-'
+                                            }}
+
+                                            <span class="mx-1 text-gray-400">
+                                                :
+                                            </span>
+
+                                            {{
+                                                value.attribute_value?.display_value
+                                                ?? value.attribute_value?.value
+                                                ?? '-'
+                                            }}
+
+                                        </div>
+
+                                    </div>
+
+
                                     <span
+                                        v-else
                                         class="
                                             inline-flex
                                             items-center
@@ -1018,20 +1078,7 @@ const exportCsv = () => {
                                             text-slate-700
                                         "
                                     >
-
-                                        {{
-                                            item.values?.length
-
-                                                ? item.values
-                                                    .map(
-                                                        value =>
-                                                            value.attributeValue?.name
-                                                    )
-                                                    .join(' / ')
-
-                                                : 'Default'
-                                        }}
-
+                                        Default
                                     </span>
 
                                 </DataTableCell>
@@ -1049,13 +1096,14 @@ const exportCsv = () => {
                                         align="center"
                                     >
 
-                                        <ActionDropdown
-                                            @view="showProduct(item)"
-
-                                            @edit="editProduct(item)"
-
-                                            @delete="openDelete(item)"
-                                        />
+                                     <ActionDropdown
+                                        :show-duplicate="false"
+                                        :show-export="false"
+                                        @view="showVariant(item)"
+                                        @history="openPriceHistory(item)"
+                                        @edit="editVariant(item)"
+                                        @delete="openDelete(item)"
+                                    />
                                     </DataTableCell>
                                 </DataTableRow>
                             </DataTableBody>
@@ -1134,6 +1182,12 @@ const exportCsv = () => {
     :products="products"
     @close="showGenerateModal = false"
     @generate="generateVariant"
+/>
+
+<PriceHistory
+    :show="showPriceHistory"
+    :variant="selectedVariantForHistory"
+    @close="closePriceHistory"
 />
 </template>
 

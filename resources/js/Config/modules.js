@@ -126,6 +126,14 @@ const modules = {
           route: 'product-variant-prices.index',
         permission: 'product-variant-prices.view',
      },
+       barcodes: {
+       key: 'barcodes',
+       title: 'Barcodes',
+          icon: CubeIcon,
+          route: 'barcodes.index',
+        permission: 'barcodes.view',
+     },
+     
      tax: {
         key: 'tax',
         title: 'Tax',
@@ -155,6 +163,25 @@ const modules = {
         route: 'customers.index',
         permission: 'customers.view',
     },
+
+    // Point Of sales //
+                 dashboards: {
+                key: 'dashboards',
+                title: 'Dashboard',
+                icon: UsersIcon,
+                route: 'opening-stocks.index',
+                permission: 'opening-stocks.view',
+                  },
+
+                   PointOfSales: {
+                key: 'PointOfSales',
+                title: 'Poin Of Sales',
+                icon: UsersIcon,
+                route: 'opening-stocks.index',
+                permission: 'opening-stocks.view',
+                  },
+
+
         // inventory //
                  openingStock: {
                 key: 'openingStock',

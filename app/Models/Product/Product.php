@@ -22,6 +22,7 @@ use App\Traits\HasSlug;
 use App\Models\Product\ProductAttribute;
 use App\Models\Product\ProductAttributeAssignment;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Product\ProductImage;
 class Product extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity,HasSlug;
@@ -219,5 +220,17 @@ public function attributes(): BelongsToMany
         ProductAttribute::class,
         'product_attribute_assignments'
     );
+}
+public function images(): HasMany
+{
+    return $this->hasMany(
+        ProductImage::class
+    )->orderBy('sort_order');
+}
+public function primaryImage()
+{
+    return $this->hasOne(
+        ProductImage::class
+    )->where('is_primary', true);
 }
 }

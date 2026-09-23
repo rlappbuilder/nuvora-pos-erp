@@ -89,7 +89,7 @@ private function generateVariantSku(
 {
     return sprintf(
         '%s-%03d',
-        $product->sku,
+        $product->code,
         $sequence
     );
 }
@@ -97,60 +97,14 @@ public function regenerate(VariantGeneratorData $data): void
 {
     DB::transaction(function () use ($data) {
 
-        $this->syncVariants($data);
+        ProductVariant::where('product_id', $data->product->id)
+            ->get()
+            ->each(function ($variant) {
+                $variant->forceDelete();
+            });
 
+        $this->generate($data);
     });
-}
-private function syncVariants(VariantGeneratorData $data): void
-{
-    if ($data->attributes->isEmpty()) {
-        return;
-    }
-
-    $combinations = $this->generateCombinations(
-        $data->attributes->all()
-    );
-
-    foreach ($combinations as $values) {
-
-        $name = $this->generateVariantName($values);
-
-        $existingVariant = ProductVariant::where(
-            'product_id',
-            $data->product->id
-        )
-        ->where('name', $name)
-        ->first();
-
-        if ($existingVariant) {
-            continue;
-        }
-
-        $sequence = (
-            ProductVariant::where(
-                'product_id',
-                $data->product->id
-            )->max('sort_order') ?? 0
-        ) + 1;
-
-        $variant = ProductVariant::create([
-            'product_id' => $data->product->id,
-            'sku' => $this->generateVariantSku(
-                $data->product,
-                $sequence
-            ),
-            'name' => $name,
-            'is_default' => false,
-            'is_active' => true,
-            'sort_order' => $sequence,
-            'created_by' => $data->userId,
-        ]);
-
-        $this->storeVariantValues(
-            $variant,
-            $values
-        );
-    }
 }
     /*
     |--------------------------------------------------------------------------
