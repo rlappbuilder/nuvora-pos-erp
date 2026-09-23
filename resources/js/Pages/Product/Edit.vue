@@ -128,12 +128,14 @@ function cancel()
                 subtitle="Manage your products."
             />
 
-             <Form
+           <Form
                 :form="form"
                 :categories="categories"
                 :brands="brands"
                 :units="units"
                 :attributes="attributes"
+                :product-id="product.id"
+                :images="product.images ?? []"
                 :preview-code="product.code"
                 mode="edit"
                 @submit="save"

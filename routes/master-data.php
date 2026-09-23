@@ -21,6 +21,9 @@ use App\Http\Controllers\Product\ProductVariantController;
 use App\Http\Controllers\Product\ProductVariantUnitController;
 use App\Http\Controllers\MasterData\ProductVariantPriceController;
 use App\Http\Controllers\Product\BarcodeController;
+use App\Http\Controllers\Product\ProductImageController;
+
+
 Route::middleware(
 
     'auth'
@@ -672,7 +675,30 @@ Route::middleware(
             ColorController::class
 
         );
+        Route::prefix('products/{product}/images')
+        ->name('products.images.')
+        ->group(function () {
 
+            Route::post('/', [
+                ProductImageController::class,
+                'store',
+            ])->name('store');
+
+            Route::post('/reorder', [
+                ProductImageController::class,
+                'reorder',
+            ])->name('reorder');
+
+            Route::put('/{productImage}/primary', [
+                ProductImageController::class,
+                'setPrimary',
+            ])->name('primary');
+
+            Route::delete('/{productImage}', [
+                ProductImageController::class,
+                'destroy',
+            ])->name('destroy');
+        });
         /*
         |--------------------------------------------------------------------------
         | Sizes

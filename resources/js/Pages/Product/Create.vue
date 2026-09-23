@@ -183,6 +183,7 @@ onBeforeUnmount(() => {
     :brands="brands"
     :units="units"
     :attributes="attributes"
+    :images="[]"
     :preview-code="previewCode"
     :mode="props.duplicate ? 'duplicate' : 'create'"
     @submit="save"

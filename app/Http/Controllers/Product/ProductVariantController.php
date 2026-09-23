@@ -24,7 +24,7 @@ class ProductVariantController extends Controller
   
     $query = ProductVariant::query()
         ->with([
-            'product',
+            'product.primaryImage',
             'values.attribute',
             'values.attributeValue',
         ])

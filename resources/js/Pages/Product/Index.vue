@@ -1014,38 +1014,98 @@ const exportCsv = () => {
 
                                     </DataTableCell>
 
-                                    <DataTableCell class="min-w-[340px]">
-                                        <div class="flex items-center gap-3">
-                                            <div
-                                                class="flex h-16 w-16 items-center justify-center rounded-xl bg-yellow-200"
-                                            >
-                                                <CubeIcon class="h-10 w-10 text-red-600" />
-                                            </div>
+                               <DataTableCell class="min-w-[340px]">
+    <div class="flex items-center gap-3">
 
-                                            <div class="min-w-0">
-                                               <Link
-                                                :href="route('products.show', item.id)"
-                                                class="truncate text-sm font-semibold text-blue-700 transition-all duration-200 hover:text-blue-700 hover:underline"
-                                            >
-                                                {{ item.name }}
-                                            </Link>
-                                            <p class="mt-1 truncate text-xs font-medium text-slate-500">
-                                                {{ item.code }}
-                                                <span class="mx-1 text-slate-300">•</span>
-                                                {{ item.sku }}
-                                            </p>
+        <div
+            class="
+                flex
+                h-16
+                w-16
+                shrink-0
+                items-center
+                justify-center
+                overflow-hidden
+                rounded-xl
+                bg-gray-100
+            "
+        >
+            <img
+                v-if="item.primary_image?.image"
+                :src="`/storage/${item.primary_image.image}`"
+                :alt="item.name"
+                class="h-full w-full object-cover"
+            />
 
-                                            <p
-                                            class="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600"
-                                            >
-                                                <ClockIcon class="h-3 w-3" />
+            <CubeIcon
+                v-else
+                class="h-10 w-10 text-gray-400"
+            />
+        </div>
 
-                                                {{ item.created_at_human }}
-                                            </p>
-                                            </div>
-                                            
-                                        </div>
-                                    </DataTableCell>
+        <div class="min-w-0">
+
+            <Link
+                :href="route(
+                    'products.show',
+                    item.id
+                )"
+                class="
+                    truncate
+                    text-sm
+                    font-semibold
+                    text-blue-700
+                    transition-all
+                    duration-200
+                    hover:text-blue-700
+                    hover:underline
+                "
+            >
+                {{ item.name }}
+            </Link>
+
+            <p
+                class="
+                    mt-1
+                    truncate
+                    text-xs
+                    font-medium
+                    text-slate-500
+                "
+            >
+                {{ item.code }}
+
+                <span class="mx-1 text-slate-300">
+                    •
+                </span>
+
+                {{ item.sku }}
+            </p>
+
+            <p
+                class="
+                    mt-1
+                    inline-flex
+                    items-center
+                    gap-1
+                    rounded-full
+                    bg-emerald-50
+                    px-2
+                    py-0.5
+                    text-[11px]
+                    font-medium
+                    text-emerald-600
+                "
+            >
+                <ClockIcon class="h-3 w-3" />
+
+                {{ item.created_at_human }}
+            </p>
+
+        </div>
+
+    </div>
+</DataTableCell>
                                     <DataTableCell>
                                         <span
                                             class="inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-sm font-medium text-slate-700"

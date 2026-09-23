@@ -983,40 +983,135 @@ const closePriceHistory = () => {
 
                                     </DataTableCell>
 
-                                    <DataTableCell class="min-w-[340px]">
-                                        <div class="flex items-center gap-3">
-                                            <div
-                                                class="flex h-16 w-16 items-center justify-center rounded-xl bg-indigo-100"
-                                            >
-                                                <QrCodeIcon class="h-10 w-10 text-indigo-600" />
-                                            </div>
+                                 <DataTableCell class="min-w-[340px]">
+    <div class="flex items-center gap-3">
 
-                                            <div class="min-w-0">
-                                               <Link
-                                                :href="route('product-variants.show', item.id)"
-                                                class="truncate text-sm font-semibold text-blue-700 transition-all duration-200 hover:text-blue-700 hover:underline"
-                                            >
-                                                {{ item.product?.name }}
-                                            </Link>
-                                            <p class="mt-1 truncate text-xs font-medium text-slate-500">
-                                                SKU : {{ item.sku }}
+        <!-- Product Image -->
 
-                                                <span class="mx-1 text-slate-300">•</span>
+        <div
+            class="
+                flex
+                h-16
+                w-16
+                shrink-0
+                items-center
+                justify-center
+                overflow-hidden
+                rounded-xl
+                bg-gray-100
+            "
+        >
 
-                                                Barcode : {{ item.barcode ?? '-' }}
-                                            </p>
+            <img
+                v-if="
+                    item.product?.primary_image?.image
+                "
+                :src="
+                    `/storage/${item.product.primary_image.image}`
+                "
+                :alt="
+                    item.product?.name
+                "
+                class="
+                    h-full
+                    w-full
+                    object-cover
+                "
+            />
 
-                                            <p
-                                            class="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600"
-                                            >
-                                                <ClockIcon class="h-3 w-3" />
 
-                                                {{ item.created_at_human }}
-                                            </p>
-                                            </div>
-                                            
-                                        </div>
-                                    </DataTableCell>
+            <CubeIcon
+                v-else
+                class="
+                    h-10
+                    w-10
+                    text-gray-400
+                "
+            />
+
+        </div>
+
+
+        <!-- Product Information -->
+
+        <div class="min-w-0">
+
+            <Link
+                :href="
+                    route(
+                        'product-variants.show',
+                        item.id
+                    )
+                "
+                class="
+                    truncate
+                    text-sm
+                    font-semibold
+                    text-blue-700
+                    transition-all
+                    duration-200
+                    hover:text-blue-700
+                    hover:underline
+                "
+            >
+                {{ item.product?.name ?? '-' }}
+            </Link>
+
+
+            <p
+                class="
+                    mt-1
+                    truncate
+                    text-xs
+                    font-medium
+                    text-slate-500
+                "
+            >
+
+                SKU : {{ item.sku ?? '-' }}
+
+                <span
+                    class="
+                        mx-1
+                        text-slate-300
+                    "
+                >
+                    •
+                </span>
+
+                Barcode : {{ item.barcode ?? '-' }}
+
+            </p>
+
+
+            <p
+                class="
+                    mt-1
+                    inline-flex
+                    items-center
+                    gap-1
+                    rounded-full
+                    bg-emerald-50
+                    px-2
+                    py-0.5
+                    text-[11px]
+                    font-medium
+                    text-emerald-600
+                "
+            >
+
+                <ClockIcon
+                    class="h-3 w-3"
+                />
+
+                {{ item.created_at_human }}
+
+            </p>
+
+        </div>
+
+    </div>
+</DataTableCell>
                                     <DataTableCell>
 
                                     <div

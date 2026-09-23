@@ -30,6 +30,7 @@ class ProductController extends Controller
             'category',
             'brand',
             'unit',
+            'primaryImage',
         ])
         ->search($request->search);
         $allowedSorts = [
@@ -235,6 +236,8 @@ $statistics = [
     'creator:id,name',
     'updater:id,name',
     'deleter:id,name',
+    'images',
+    'primaryImage',
 ]);
 
     return Inertia::render(
@@ -260,6 +263,7 @@ $statistics = [
                 'brand',
                 'unit',
                 'attributes',
+                'images',
                  ]),
                 ...$this->formData(),
             ]
@@ -297,21 +301,64 @@ public function update(
             'deleted_by' => auth()->id(),
         ]);
 
-        ProductAttributeAssignment::where(
-            'product_id',
-            $product->id
-        )->delete();
+        $attributeIds = $data['attribute_ids'] ?? [];
 
-        foreach ($data['attribute_ids'] ?? [] as $attributeId) {
+ProductAttributeAssignment::withTrashed()
+    ->where('product_id', $product->id)
+    ->whereNotIn(
+        'product_attribute_id',
+        $attributeIds
+    )
+    ->get()
+    ->each(function (
+        ProductAttributeAssignment $assignment
+    ) {
+        $assignment->update([
+            'deleted_by' => auth()->id(),
+        ]);
 
-            ProductAttributeAssignment::create([
-                'company_id' => auth()->user()->company_id,
-                'product_id' => $product->id,
-                'product_attribute_id' => $attributeId,
-                'created_by' => auth()->id(),
+        $assignment->delete();
+    });
+
+foreach ($attributeIds as $attributeId) {
+
+    $assignment = ProductAttributeAssignment::withTrashed()
+        ->where('product_id', $product->id)
+        ->where(
+            'product_attribute_id',
+            $attributeId
+        )
+        ->first();
+
+    if ($assignment) {
+
+        if ($assignment->trashed()) {
+
+            $assignment->restore();
+
+            $assignment->update([
+                'deleted_by' => null,
+                'updated_by' => auth()->id(),
+            ]);
+
+        } else {
+
+            $assignment->update([
+                'updated_by' => auth()->id(),
             ]);
 
         }
+
+        continue;
+    }
+
+    ProductAttributeAssignment::create([
+        'company_id' => auth()->user()->company_id,
+        'product_id' => $product->id,
+        'product_attribute_id' => $attributeId,
+        'created_by' => auth()->id(),
+    ]);
+}
 
         DB::commit();
 
