@@ -22,7 +22,7 @@ use App\Http\Controllers\Product\ProductVariantUnitController;
 use App\Http\Controllers\MasterData\ProductVariantPriceController;
 use App\Http\Controllers\Product\BarcodeController;
 use App\Http\Controllers\Product\ProductImageController;
-
+use App\Http\Controllers\MasterData\EmployeeController;
 
 Route::middleware(
 
@@ -745,7 +745,30 @@ Route::middleware(
             CompanyController::class
 
         );
+        /*
+        |--------------------------------------------------------------------------
+        | Employees
+        |--------------------------------------------------------------------------
+        */
 
+        Route::prefix('employees')
+            ->name('employees.')
+            ->group(function () {
+
+                Route::get(
+                    'preview-code',
+                    [
+                        EmployeeController::class,
+                        'previewCode',
+                    ]
+                )->name('preview-code');
+
+            });
+
+        Route::resource(
+            'employees',
+            EmployeeController::class
+        );
         /*
         |--------------------------------------------------------------------------
         | Suppliers

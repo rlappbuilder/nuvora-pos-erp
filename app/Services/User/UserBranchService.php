@@ -184,4 +184,88 @@ class UserBranchService
             )
             ->first();
     }
+
+    /**
+     * Get current branch user.
+     *
+     * Jika current branch belum ada,
+     * gunakan default branch.
+     */
+    public function getCurrentBranch(
+        User $user
+    ): ?Branch {
+        $currentBranchId =
+            session('current_branch_id');
+
+        if ($currentBranchId) {
+            $branch = $user->branches()
+                ->where(
+                    'branches.id',
+                    $currentBranchId
+                )
+                ->first();
+
+            if ($branch) {
+                return $branch;
+            }
+
+            /*
+             * Current branch sudah tidak valid
+             * atau user sudah tidak memiliki akses.
+             */
+            session()->forget(
+                'current_branch_id'
+            );
+        }
+
+        $defaultBranch =
+            $this->getDefaultBranch($user);
+
+        if ($defaultBranch) {
+            session([
+                'current_branch_id' =>
+                    $defaultBranch->id,
+            ]);
+        }
+
+        return $defaultBranch;
+    }
+
+    /**
+     * Set current branch user.
+     */
+    public function setCurrentBranch(
+        User $user,
+        int $branchId
+    ): Branch {
+        $branch = $user->branches()
+            ->where(
+                'branches.id',
+                $branchId
+            )
+            ->first();
+
+        if (! $branch) {
+            throw new RuntimeException(
+                'User tidak memiliki akses ke cabang tersebut.'
+            );
+        }
+
+        session([
+            'current_branch_id' =>
+                $branch->id,
+        ]);
+
+        return $branch;
+    }
+
+    /**
+     * Clear current branch.
+     */
+    public function clearCurrentBranch(): void
+    {
+        session()->forget(
+            'current_branch_id'
+        );
+    }
 }

@@ -4,7 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
+use App\Http\Controllers\User\UserContextController;
 Route::get('/', function () {
 
     return Inertia::render('Welcome', [
@@ -98,6 +98,11 @@ Route::middleware(
         'profile.destroy'
 
     );
+
+    Route::post('user/context/branch',[
+                UserContextController::class,
+                'switchBranch',
+            ] )->name('user.context.branch');
 
 });
 

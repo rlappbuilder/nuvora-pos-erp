@@ -32,4 +32,6 @@ Route::middleware(['auth'])
             UserController::class,
             'destroy',
         ])->name('destroy');
+
+        
     });

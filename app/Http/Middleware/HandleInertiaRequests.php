@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Middleware;
-
+use App\Services\User\UserBranchService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -27,51 +27,110 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
- public function share(Request $request): array
-{
+public function share(
+    Request $request
+): array {
+    $user = $request->user();
+
+    $currentBranch = null;
+
+    if ($user) {
+        $userBranchService =
+            app(UserBranchService::class);
+
+        $currentBranch =
+            $userBranchService
+                ->getCurrentBranch($user);
+    }
+
     return [
 
         ...parent::share($request),
 
         'auth' => [
 
-            'user' => $request->user()
-
+            'user' => $user
                 ? [
 
-                    'id' => $request->user()->id,
+                    'id' =>
+                        $user->id,
 
-                    'name' => $request->user()->name,
+                    'name' =>
+                        $user->name,
 
-                    'email' => $request->user()->email,
+                    'email' =>
+                        $user->email,
 
                 ]
-
                 : null,
+
+            'current_branch' =>
+                $currentBranch
+                    ? [
+                        'id' =>
+                            $currentBranch->id,
+
+                        'company_id' =>
+                            $currentBranch->company_id,
+
+                        'code' =>
+                            $currentBranch->code,
+
+                        'name' =>
+                            $currentBranch->name,
+                    ]
+                    : null,
+
+            'branches' => $user
+                ? $user->branches()
+                    ->where(
+                        'branches.is_active',
+                        true
+                    )
+                    ->orderBy('name')
+                    ->get([
+                        'branches.id',
+                        'branches.company_id',
+                        'branches.code',
+                        'branches.name',
+                    ])
+                : [],
 
         ],
 
         'app' => [
 
-            'name' => config('app.name'),
+            'name' =>
+                config('app.name'),
 
-            'version' => '1.0.0',
+            'version' =>
+                '1.0.0',
 
         ],
 
-       'flash' => [
+        'flash' => [
 
             'success' => fn () =>
-                $request->session()->get('success'),
+                $request
+                    ->session()
+                    ->get('success'),
 
             'warning' => fn () =>
-                $request->session()->get('warning'),
+                $request
+                    ->session()
+                    ->get('warning'),
 
             'error' => fn () =>
-                $request->session()->get('error'),
+                $request
+                    ->session()
+                    ->get('error'),
 
             'settlement_success' => fn () =>
-                $request->session()->get('settlement_success'),
+                $request
+                    ->session()
+                    ->get(
+                        'settlement_success'
+                    ),
         ],
     ];
 }

@@ -68,6 +68,14 @@ const modules = {
         permission: 'companies.view',
     },
 
+     employee: {
+        key: 'employee',
+        title: 'Employee',
+        icon: BuildingOfficeIcon,
+        route: 'employees.index',
+        permission: 'employees.view',
+    },
+
   
      warehouse: {
         key: 'warehouse',

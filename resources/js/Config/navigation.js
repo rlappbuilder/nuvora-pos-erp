@@ -12,6 +12,7 @@ const navigation = [
             modules.colors,
             modules.size,
             modules.companies,
+            modules.employee,
             modules.warehouse,
             modules.branches,
             modules.products,
