@@ -10,11 +10,14 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Models\MasterData\Company;
+use App\Models\MasterData\Branch;
+use Spatie\Permission\Traits\HasRoles;
+use App\Models\MasterData\Employee;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -58,4 +61,15 @@ class User extends Authenticatable
             Company::class
         );
     }
+    public function branches()
+{
+    return $this->belongsToMany(
+        Branch::class,
+        'user_branches'
+    )->withPivot('is_default');
+}
+public function employee()
+{
+    return $this->hasOne(Employee::class);
+}
 }

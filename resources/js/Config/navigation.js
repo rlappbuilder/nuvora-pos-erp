@@ -115,7 +115,17 @@ const navigation = [
            
         ].filter(Boolean),
     },
-
+{
+        title: 'User',
+        children: [
+            modules.User,
+            //modules.fifoengin,
+            // modules.generalLedgers,
+            // modules.trialBalances,
+            // modules.profitLosses,
+            // modules.balanceSheets,
+        ].filter(Boolean),
+    },
      {
         title: 'Settings',
         children: [

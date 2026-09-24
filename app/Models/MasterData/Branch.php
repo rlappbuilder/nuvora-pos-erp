@@ -5,7 +5,7 @@ namespace App\Models\MasterData;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Models\User;
 class Branch extends Model
 {
     use HasFactory;
@@ -57,5 +57,12 @@ class Branch extends Model
     public function scopeActive($query)
 {
     return $query->where('is_active', true);
+}
+public function users()
+{
+    return $this->belongsToMany(
+        User::class,
+        'user_branches'
+    )->withPivot('is_default');
 }
 }

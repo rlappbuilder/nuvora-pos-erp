@@ -463,6 +463,14 @@ const modules = {
                 permission: 'consignment-reports.view',
             },
         // End Settings //
+            // User managment //
+            User: {
+                key: 'User',
+                title: 'User Config',
+                icon: UsersIcon,
+                route: 'users.index',
+                permission: 'users.view',
+            },
         // settings
             Settings: {
                 key: 'Settings',

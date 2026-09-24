@@ -6,13 +6,14 @@ use App\Models\User;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-
+use Database\Seeders\User\PermissionSeeder;
 use Database\Seeders\Core\CodeGeneratorSeeder;
 use Database\Seeders\MasterData\TaxSeeder;
 use Database\Seeders\MasterData\CurrencySeeder;
 use Database\Seeders\MasterData\PriceTypeSeeder;
 use Database\Seeders\MasterData\PaymentTermSeeder;
-
+use Database\Seeders\User\PermissionSeeder;
+use Database\Seeders\User\RoleSeeder;
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
@@ -35,6 +36,11 @@ class DatabaseSeeder extends Seeder
             PriceTypeSeeder::class,
 
             PaymentTermSeeder::class,
+
+            PermissionSeeder::class,
+
+            RoleSeeder::class,
+
 
         ]);
     }

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\MasterData;
+
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
+
 class Employee extends Model
 {
     use HasFactory;
@@ -23,6 +23,8 @@ class Employee extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(
+            User::class
+        );
     }
 }
