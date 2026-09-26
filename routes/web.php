@@ -5,6 +5,11 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\User\UserContextController;
+use App\Http\Controllers\POS\CashierDepositController;
+use App\Http\Controllers\POS\CashierSessionController;
+use App\Http\Controllers\POS\CashierController;
+use App\Http\Controllers\POS\PosTransactionController;
+
 Route::get('/', function () {
 
     return Inertia::render('Welcome', [
@@ -103,6 +108,71 @@ Route::middleware(
                 UserContextController::class,
                 'switchBranch',
             ] )->name('user.context.branch');
+
+    Route::prefix('pos/cashier-deposits')
+    ->name('pos.cashier-deposits.')
+    ->group(function () {
+
+        Route::post(
+            '/',
+            [
+                CashierDepositController::class,
+                'store',
+            ]
+        )->name('store');
+
+           Route::post(
+            '{cashierDeposit}/post',
+            [
+                CashierDepositController::class,
+                'post',
+            ]
+        )->name('post');
+
+    });
+    Route::get(
+        'pos/cashier',
+        [
+            CashierController::class,
+            'index',
+        ]
+    )->name('pos.cashier.index');
+    Route::prefix('pos/cashier-sessions')
+    ->name('pos.cashier-sessions.')
+    ->group(function () {
+
+        Route::post(
+            '/',
+            [
+                CashierSessionController::class,
+                'store',
+            ]
+        )->name('store');
+
+        Route::post(
+            '/close',
+            [
+                CashierSessionController::class,
+                'close',
+            ]
+        )->name('close');
+
+    });
+
+    Route::prefix('pos/transactions')
+    ->name('pos.transactions.')
+    ->group(function () {
+
+        Route::get('/', [
+            PosTransactionController::class,
+            'index'
+        ])->name('index');
+
+        Route::post('/', [
+            PosTransactionController::class,
+            'store'
+        ])->name('store');
+    });
 
 });
 

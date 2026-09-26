@@ -26,6 +26,15 @@ $modules = [
       ['module' => 'branch',          'prefix' => 'BR', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
     ['module' => 'company',          'prefix' => 'CMP', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
      ['module' => 'employee',          'prefix' => 'EMP', 'format' => '{PREFIX}{SEQ}',              'digit' => 4],
+     ['module' => 'cashier_session', 'prefix' => 'CS','format' => '{PREFIX}-{YYYY}-{MM}-{SEQ}',
+    'digit' => 6,
+    [
+    'module' => 'pos_receipt',
+    'prefix' => 'RCP',
+    'format' => '{PREFIX}-{YYYY}-{MM}-{SEQ}',
+    'digit' => 6,
+],
+],
 
 
     // ==========================

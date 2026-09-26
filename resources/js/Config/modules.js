@@ -177,16 +177,16 @@ const modules = {
                 key: 'dashboards',
                 title: 'Dashboard',
                 icon: UsersIcon,
-                route: 'opening-stocks.index',
-                permission: 'opening-stocks.view',
+                route: 'pos.cashier.index',
+                permission: 'pos.cashier.index.view',
                   },
 
                    PointOfSales: {
                 key: 'PointOfSales',
                 title: 'Poin Of Sales',
                 icon: UsersIcon,
-                route: 'opening-stocks.index',
-                permission: 'opening-stocks.view',
+                route: 'pos.transactions.index',
+                permission: 'pos.transactions.view',
                   },
 
 

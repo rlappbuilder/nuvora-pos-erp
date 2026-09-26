@@ -10,7 +10,7 @@ class ChartOfAccountSeeder extends Seeder
 {
     public function run(): void
     {
-        $companyId = 1;
+        $companyId = 2;
 
         $accounts = [
 
@@ -96,6 +96,66 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+
+            [
+            'code' => '110108',
+            'name' => 'COH Lbb Store',
+            'category' => 'Cash & Bank',
+            'parent' => '110100',
+            'normal_balance' => 'Debit',
+            'is_header' => true,
+            'is_posting' => false,
+        ],
+
+        [
+            'code' => '110109',
+            'name' => 'COH Lbb Konv',
+            'category' => 'Cash & Bank',
+            'parent' => '110100',
+            'normal_balance' => 'Debit',
+            'is_header' => true,
+            'is_posting' => false,
+        ],
+
+        [
+            'code' => '110110',
+            'name' => 'COH Cab.Ps. Raya',
+            'category' => 'Cash & Bank',
+            'parent' => '110100',
+            'normal_balance' => 'Debit',
+            'is_header' => true,
+            'is_posting' => false,
+        ],
+
+        [
+            'code' => '110111',
+            'name' => 'Cashier Drawer - Lbb Store',
+            'category' => 'Cash & Bank',
+            'parent' => '110108',
+            'normal_balance' => 'Debit',
+            'is_header' => false,
+            'is_posting' => true,
+        ],
+
+        [
+            'code' => '110112',
+            'name' => 'Cashier Drawer - Lbb Konv',
+            'category' => 'Cash & Bank',
+            'parent' => '110109',
+            'normal_balance' => 'Debit',
+            'is_header' => false,
+            'is_posting' => true,
+        ],
+
+        [
+            'code' => '110113',
+            'name' => 'Cashier Drawer - Cab.Ps. Raya',
+            'category' => 'Cash & Bank',
+            'parent' => '110110',
+            'normal_balance' => 'Debit',
+            'is_header' => false,
+            'is_posting' => true,
+        ],
 
             // ----------------------------------------------------------
             // Accounts Receivable
