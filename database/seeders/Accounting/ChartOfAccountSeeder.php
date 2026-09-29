@@ -15,147 +15,224 @@ class ChartOfAccountSeeder extends Seeder
         $accounts = [
 
             // ==========================================================
-            // CURRENT ASSETS
-            // ==========================================================
+// CURRENT ASSETS
+// ==========================================================
 
-            [
-                'code' => '110100',
-                'name' => 'Cash & Bank',
-                'category' => 'Cash & Bank',
-                'parent' => null,
-                'normal_balance' => 'Debit',
-                'is_header' => true,
-                'is_posting' => false,
-            ],
+[
+    'code' => '110100',
+    'name' => 'Cash & Bank',
+    'category' => 'Cash & Bank',
+    'parent' => null,
+    'normal_balance' => 'Debit',
+    'is_header' => true,
+    'is_posting' => false,
+],
 
-            [
-                'code' => '110101',
-                'name' => 'Cash On Hand',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110101',
+    'name' => 'Cash On Hand',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-                'code' => '110102',
-                'name' => 'Bank',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110102',
+    'name' => 'Bank',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-                'code' => '110103',
-                'name' => 'Bank BRI - Reno Sri Wahyuni',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110103',
+    'name' => 'Bank BRI - Reno Sri Wahyuni',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-                'code' => '110104',
-                'name' => 'Petty Cash',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110104',
+    'name' => 'Petty Cash',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-                'code' => '110105',
-                'name' => 'Bank - BCA',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110105',
+    'name' => 'Bank - BCA',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-                'code' => '110106',
-                'name' => 'Bank - Mandiri',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
-            [
-                'code' => '110107',
-                'name' => 'Consignment Cash',
-                'category' => 'Cash & Bank',
-                'parent' => '110100',
-                'normal_balance' => 'Debit',
-                'is_header' => false,
-                'is_posting' => true,
-            ],
+[
+    'code' => '110106',
+    'name' => 'Bank - Mandiri',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-            [
-            'code' => '110108',
-            'name' => 'COH Lbb Store',
-            'category' => 'Cash & Bank',
-            'parent' => '110100',
-            'normal_balance' => 'Debit',
-            'is_header' => true,
-            'is_posting' => false,
-        ],
+[
+    'code' => '110107',
+    'name' => 'Consignment Cash',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-        [
-            'code' => '110109',
-            'name' => 'COH Lbb Konv',
-            'category' => 'Cash & Bank',
-            'parent' => '110100',
-            'normal_balance' => 'Debit',
-            'is_header' => true,
-            'is_posting' => false,
-        ],
+// ----------------------------------------------------------
+// COH Lbb Store
+// ----------------------------------------------------------
 
-        [
-            'code' => '110110',
-            'name' => 'COH Cab.Ps. Raya',
-            'category' => 'Cash & Bank',
-            'parent' => '110100',
-            'normal_balance' => 'Debit',
-            'is_header' => true,
-            'is_posting' => false,
-        ],
+[
+    'code' => '110108',
+    'name' => 'COH Lbb Store',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => true,
+    'is_posting' => false,
+],
 
-        [
-            'code' => '110111',
-            'name' => 'Cashier Drawer - Lbb Store',
-            'category' => 'Cash & Bank',
-            'parent' => '110108',
-            'normal_balance' => 'Debit',
-            'is_header' => false,
-            'is_posting' => true,
-        ],
+[
+    'code' => '110111',
+    'name' => 'Cashier Drawer - Lbb Store',
+    'category' => 'Cash & Bank',
+    'parent' => '110108',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-        [
-            'code' => '110112',
-            'name' => 'Cashier Drawer - Lbb Konv',
-            'category' => 'Cash & Bank',
-            'parent' => '110109',
-            'normal_balance' => 'Debit',
-            'is_header' => false,
-            'is_posting' => true,
-        ],
+[
+    'code' => '110114',
+    'name' => 'Cash COH Lbb Store',
+    'category' => 'Cash & Bank',
+    'parent' => '110108',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
-        [
-            'code' => '110113',
-            'name' => 'Cashier Drawer - Cab.Ps. Raya',
-            'category' => 'Cash & Bank',
-            'parent' => '110110',
-            'normal_balance' => 'Debit',
-            'is_header' => false,
-            'is_posting' => true,
-        ],
+// ----------------------------------------------------------
+// COH Lbb Konv
+// ----------------------------------------------------------
+
+[
+    'code' => '110109',
+    'name' => 'COH Lbb Konv',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => true,
+    'is_posting' => false,
+],
+
+[
+    'code' => '110112',
+    'name' => 'Cashier Drawer - Lbb Konv',
+    'category' => 'Cash & Bank',
+    'parent' => '110109',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+[
+    'code' => '110115',
+    'name' => 'Cash COH Lbb Konv',
+    'category' => 'Cash & Bank',
+    'parent' => '110109',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+// ----------------------------------------------------------
+// COH Cab.Ps. Raya
+// ----------------------------------------------------------
+
+[
+    'code' => '110110',
+    'name' => 'COH Cab.Ps. Raya',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => true,
+    'is_posting' => false,
+],
+
+[
+    'code' => '110113',
+    'name' => 'Cashier Drawer - Cab.Ps. Raya',
+    'category' => 'Cash & Bank',
+    'parent' => '110110',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+[
+    'code' => '110116',
+    'name' => 'Cash COH Cab.Ps. Raya',
+    'category' => 'Cash & Bank',
+    'parent' => '110110',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+// ----------------------------------------------------------
+// POS RECEIVABLES
+// ----------------------------------------------------------
+
+[
+    'code' => '110120',
+    'name' => 'QRIS Receivable',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+[
+    'code' => '110121',
+    'name' => 'Debit Card Receivable',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
+
+[
+    'code' => '110122',
+    'name' => 'E-Wallet Receivable',
+    'category' => 'Cash & Bank',
+    'parent' => '110100',
+    'normal_balance' => 'Debit',
+    'is_header' => false,
+    'is_posting' => true,
+],
 
             // ----------------------------------------------------------
             // Accounts Receivable
@@ -512,6 +589,16 @@ class ChartOfAccountSeeder extends Seeder
             [
                 'code' => '210102',
                 'name' => 'Other Payable',
+                'category' => 'Accounts Payable',
+                'parent' => '210100',
+                'normal_balance' => 'Credit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
+
+            [
+                'code' => '210103',
+                'name' => 'Goods Received Not Invoiced',
                 'category' => 'Accounts Payable',
                 'parent' => '210100',
                 'normal_balance' => 'Credit',

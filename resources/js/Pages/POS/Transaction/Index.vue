@@ -1,7 +1,12 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import Swal from 'sweetalert2'
 import VariantModal from './VariantModal.vue'
+import CustomerModal from './CustomerModal.vue'
+import DiscountModal from './DiscountModal.vue'
+import PaymentModal from './PaymentModal.vue'
+
 const page = usePage()
 
 const props = defineProps({
@@ -229,6 +234,12 @@ const grandTotal = computed(() => {
 })
 
 const addProduct = (product) => {
+    console.log('ADD PRODUCT:', {
+        sessionOpen: sessionOpen.value,
+        activeSession: activeSession.value,
+        product,
+    })
+
     if (!sessionOpen.value) {
         return
     }
@@ -708,7 +719,11 @@ const selectCustomer = (customer) => {
 
     closeCustomer()
 }
+const clearCustomer = () => {
+    selectedCustomer.value = null
 
+    closeCustomer()
+}
 /*
 |--------------------------------------------------------------------------
 | Payment
@@ -744,6 +759,27 @@ const submitPayment = (payment) => {
 
     processing.value = true
 
+    /*
+    |--------------------------------------------------------------------------
+    | Save receipt items before starting new transaction
+    |--------------------------------------------------------------------------
+    */
+
+    const receiptItems = cart.value.map((item) => ({
+        product_name: item.product_name,
+        variant_name: item.variant_name,
+        sku: item.sku,
+        unit_name: item.unit_name,
+        qty: Number(item.qty),
+        unit_price: Number(item.unit_price),
+        discount_amount: Number(item.discount_amount),
+        subtotal: Number(item.subtotal),
+    }))
+
+    const receiptCustomer =
+        selectedCustomer.value?.name ??
+        'Walk-in Customer'
+
     router.post(
         route('pos.transactions.store'),
         {
@@ -777,19 +813,22 @@ const submitPayment = (payment) => {
         {
             preserveScroll: true,
 
-            onSuccess: () => {
-                cart.value = []
-
-                selectedCustomer.value = null
-                selectedProduct.value = null
-
+            onSuccess: (page) => {
                 showPaymentModal.value = false
 
-                search.value = ''
+                const sale =
+                    page.props.flash?.pos_sale_success
 
-                nextTick(() => {
-                    searchInput.value?.focus()
-                })
+                if (!sale) {
+                    return
+                }
+
+                showPaymentSuccess(
+                    sale,
+                    receiptItems,
+                    receiptCustomer,
+                    payment
+                )
             },
 
             onFinish: () => {
@@ -798,7 +837,425 @@ const submitPayment = (payment) => {
         }
     )
 }
+/*
+|--------------------------------------------------------------------------
+| Payment Success
+|--------------------------------------------------------------------------
+*/
 
+const showPaymentSuccess = (
+    sale,
+    receiptItems,
+    receiptCustomer,
+    payment
+) => {
+    Swal.fire({
+        icon: 'success',
+
+        title: 'Payment Successful',
+
+        html: `
+            <div class="text-left">
+                <div class="mb-4 rounded-lg bg-slate-50 p-3">
+                    <div class="text-xs text-slate-500">
+                        Invoice
+                    </div>
+
+                    <div class="mt-1 text-sm font-semibold text-slate-900">
+                        ${sale.sale_number}
+                    </div>
+                </div>
+
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <span class="text-slate-500">
+                            Total
+                        </span>
+
+                        <span class="font-semibold text-slate-900">
+                            ${formatCurrency(sale.grand_total)}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-4">
+                        <span class="text-slate-500">
+                            Paid
+                        </span>
+
+                        <span class="font-semibold text-slate-900">
+                            ${formatCurrency(sale.paid_amount)}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-4">
+                        <span class="text-slate-500">
+                            Change
+                        </span>
+
+                        <span class="font-semibold text-emerald-600">
+                            ${formatCurrency(sale.change_amount)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `,
+
+        showDenyButton: true,
+
+        showCancelButton: false,
+
+        confirmButtonText: 'New Transaction',
+
+        denyButtonText: 'Print Receipt',
+
+        reverseButtons: true,
+
+        allowOutsideClick: false,
+
+        allowEscapeKey: false,
+
+
+      
+
+     }).then((result) => {
+        const restorePosAccessibility = () => {
+            document.activeElement?.blur()
+
+            const app = document.getElementById('app')
+
+            if (app) {
+                app.removeAttribute('aria-hidden')
+            }
+        }
+
+        if (result.isDenied) {
+                startNewTransaction()
+
+                printReceipt(
+                    sale,
+                    receiptItems,
+                    receiptCustomer,
+                    payment
+                )
+
+                return
+            }
+
+        if (result.isConfirmed) {
+            restorePosAccessibility()
+
+            startNewTransaction()
+        }
+    })
+    }
+const formatTransactionDateTime = (value) => {
+    if (!value) {
+        return '-'
+    }
+
+    const date = new Date(value)
+
+    return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).format(date)
+}
+/*
+|--------------------------------------------------------------------------
+| Print Receipt
+|--------------------------------------------------------------------------
+*/
+
+const printReceipt = (
+    sale,
+    items,
+    customer,
+    payment
+) => {
+    const receiptWindow = window.open(
+        '',
+        '_blank',
+        'width=420,height=700'
+    )
+
+    if (!receiptWindow) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Print Blocked',
+            text: 'Browser memblokir popup print. Silakan izinkan popup untuk Nuvora POS.',
+            confirmButtonText: 'OK',
+        })
+
+        return
+    }
+
+    const itemRows = items
+        .map((item) => {
+            const itemName = [
+                item.product_name,
+                item.variant_name &&
+                item.variant_name !== 'Default'
+                    ? item.variant_name
+                    : null,
+            ]
+                .filter(Boolean)
+                .join(' ')
+
+            return `
+                <tr>
+                    <td>
+                        ${itemName}
+                        <br>
+                        <small>
+                            ${item.qty} x ${formatCurrency(item.unit_price)}
+                        </small>
+                    </td>
+
+                    <td class="right">
+                        ${formatCurrency(item.subtotal)}
+                    </td>
+                </tr>
+            `
+        })
+        .join('')
+
+    const paymentRows = payment.payments
+        .map((item) => {
+            return `
+                <tr>
+                    <td>
+                        ${item.payment_method}
+                    </td>
+
+                    <td class="right">
+                        ${formatCurrency(item.amount)}
+                    </td>
+                </tr>
+            `
+        })
+        .join('')
+
+    receiptWindow.document.write(`
+        <!DOCTYPE html>
+
+        <html>
+        <head>
+
+            <title>${sale.sale_number}</title>
+
+            <style>
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    padding: 20px;
+                    font-family: Arial, sans-serif;
+                    color: #111827;
+                    font-size: 12px;
+                }
+
+                .receipt {
+                    width: 100%;
+                    max-width: 360px;
+                    margin: 0 auto;
+                }
+
+                .center {
+                    text-align: center;
+                }
+
+                .brand {
+                    font-size: 20px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                }
+
+                .muted {
+                    color: #6b7280;
+                }
+
+                .divider {
+                    border-top: 1px dashed #9ca3af;
+                    margin: 12px 0;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                td {
+                    padding: 4px 0;
+                    vertical-align: top;
+                }
+
+                .right {
+                    text-align: right;
+                    white-space: nowrap;
+                }
+
+                .total {
+                    font-size: 15px;
+                    font-weight: 700;
+                }
+
+                .footer {
+                    margin-top: 20px;
+                    text-align: center;
+                }
+
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+
+                    .receipt {
+                        max-width: none;
+                    }
+                }
+
+            </style>
+
+        </head>
+
+        <body>
+
+            <div class="receipt">
+
+                <div class="center">
+                    <div class="brand">
+                        Ralisa Homedress
+                    </div>
+
+                    <div class="muted">
+                    ${sale.sale_number}
+                    </div>
+
+                    <div class="muted">
+                        ${formatTransactionDateTime(sale.sale_date)}
+                    </div>
+
+                    <div class="muted">
+                        ${customer}
+                    </div>
+
+                </div>
+
+                <div class="divider"></div>
+
+                <table>
+                    <tbody>
+                        ${itemRows}
+                    </tbody>
+                </table>
+
+                <div class="divider"></div>
+
+                <table>
+
+                    <tr>
+                        <td>Subtotal</td>
+                        <td class="right">
+                            ${formatCurrency(sale.subtotal)}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Discount</td>
+                        <td class="right">
+                            ${formatCurrency(sale.discount_amount)}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="total">
+                            Total
+                        </td>
+
+                        <td class="right total">
+                            ${formatCurrency(sale.grand_total)}
+                        </td>
+                    </tr>
+
+                </table>
+
+                <div class="divider"></div>
+
+                <table>
+                    <tbody>
+                        ${paymentRows}
+                    </tbody>
+                </table>
+
+                <table>
+
+                    <tr>
+                        <td>Paid</td>
+                        <td class="right">
+                            ${formatCurrency(sale.paid_amount)}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Change</td>
+                        <td class="right">
+                            ${formatCurrency(sale.change_amount)}
+                        </td>
+                    </tr>
+
+                </table>
+
+                <div class="footer">
+                    Terima kasih telah berbelanja.
+                    <br>
+                    <span class="muted">
+                        Ralisa Homedress
+                        081268986925
+                    </span>
+                </div>
+
+            </div>
+
+     <script>
+    window.onload = function () {
+        window.print()
+    }
+
+    window.onafterprint = function () {
+        if (window.opener && !window.opener.closed) {
+            window.opener.location.reload()
+        }
+
+        window.close()
+    }
+<\/script>
+        </body>
+        </html>
+    `)
+
+    receiptWindow.document.close()
+}
+const startNewTransaction = () => {
+    processing.value = false
+    showPaymentModal.value = false
+    cart.value = []
+    selectedCustomer.value = null
+    selectedProduct.value = null
+    search.value = ''
+
+       console.log(
+        'APP ARIA AFTER RESET:',
+        document.getElementById('app')?.getAttribute('aria-hidden')
+    )
+}
 /*
 |--------------------------------------------------------------------------
 | Clear Cart
@@ -896,34 +1353,60 @@ const handleKeyboard = (event) => {
 
 /*
 |--------------------------------------------------------------------------
-| Lifecycle
-|--------------------------------------------------------------------------
+
+Lifecycle
 */
 
+const handlePrintFinished = (event) => {
+if (
+event.origin !== window.location.origin ||
+event.data?.type !== 'nuvora-pos-print-finished'
+) {
+return
+}
+
+startNewTransaction()
+
+window.location.reload()
+
+}
+
 onMounted(() => {
-    clockTimer = setInterval(() => {
-        currentTime.value = new Date()
-    }, 1000)
+clockTimer = setInterval(() => {
+currentTime.value = new Date()
+}, 1000)
 
-    window.addEventListener(
-        'keydown',
-        handleKeyboard
-    )
+window.addEventListener(
+    'keydown',
+    handleKeyboard
+)
 
-    nextTick(() => {
-        searchInput.value?.focus()
-    })
+window.addEventListener(
+    'message',
+    handlePrintFinished
+)
+
+nextTick(() => {
+    searchInput.value?.focus()
+})
+
 })
 
 onBeforeUnmount(() => {
-    if (clockTimer) {
-        clearInterval(clockTimer)
-    }
+if (clockTimer) {
+clearInterval(clockTimer)
+}
 
-    window.removeEventListener(
-        'keydown',
-        handleKeyboard
-    )
+window.removeEventListener(
+    'keydown',
+    handleKeyboard
+)
+
+window.removeEventListener(
+    'message',
+    handlePrintFinished
+)
+
 })
 </script>
 <template>
@@ -1682,5 +2165,27 @@ onBeforeUnmount(() => {
     :product="selectedProductForVariant"
     @close="closeVariantModal"
     @select="selectVariant"
-/>
+    />
+
+    <CustomerModal
+    :show="showCustomerModal"
+    :customers="customers"
+    @close="closeCustomer"
+    @select="selectCustomer"
+    @clear="clearCustomer"
+    />
+
+    <DiscountModal
+    :show="!!discountModalItem"
+    :item="discountModalItem"
+    @close="closeDiscount"
+    @apply="applyDiscount"
+    />
+    <PaymentModal
+    :show="showPaymentModal"
+    :total="grandTotal"
+    :processing="processing"
+    @close="closePayment"
+    @submit="submitPayment"
+    />
 </template>

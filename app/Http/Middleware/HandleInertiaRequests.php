@@ -131,7 +131,12 @@ public function share(
                     ->get(
                         'settlement_success'
                     ),
-        ],
+
+            'pos_sale_success' => fn () =>
+                $request
+                    ->session()
+                    ->get('pos_sale_success'),
+                    ],
     ];
 }
 }

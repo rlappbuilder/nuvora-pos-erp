@@ -30,6 +30,11 @@ class AccountMappingSeeder extends Seeder
             'settlement_revenue' => '410101',
             'settlement_cogs' => '510101',
             'consignment_cash' => '110107',
+            // POS Payment
+            'pos_qris' => '110120',
+            'pos_debit_card' => '110121',
+            'pos_transfer' => '110102',
+            'pos_e_wallet' => '110122',
         ];
 
         foreach ($companies as $company) {

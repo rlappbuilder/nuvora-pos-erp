@@ -57,8 +57,10 @@ class PosTransactionController extends Controller
                 'id',
                 'customer_code',
                 'name',
+                'phone',
+                'address',
+                'city',
             ]);
-
 
         /*
         |--------------------------------------------------------------------------
@@ -76,12 +78,7 @@ class PosTransactionController extends Controller
             ]);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | POS Products
-        |--------------------------------------------------------------------------
-        */
-
+    
         /*
 |--------------------------------------------------------------------------
 | POS Products
@@ -419,22 +416,27 @@ if ($activeSession) {
     |--------------------------------------------------------------------------
     */
 
-    public function store(
-        PosSaleRequest $request
-    ) {
-        $sale = $this
-            ->posTransactionService
-            ->createSale(
-                $request->validated()
-            );
+public function store(
+    PosSaleRequest $request
+) {
+  
 
-        return redirect()
-            ->route(
-                'pos.transactions.index'
-            )
-            ->with(
-                'success',
-                "Transaction {$sale->sale_number} completed successfully."
-            );
-    }
+    $sale = $this
+        ->posTransactionService
+        ->create(
+            $request->validated(),
+            $request->user()
+        );
+
+    return redirect()
+        ->route('pos.transactions.index')
+        ->with('pos_sale_success', [
+            'sale_number' => $sale->sale_number,
+            'subtotal' => (float) $sale->subtotal,
+            'discount_amount' => (float) $sale->discount_amount,
+            'grand_total' => (float) $sale->grand_total,
+            'paid_amount' => (float) $sale->paid_amount,
+            'change_amount' => (float) $sale->change_amount,
+        ]);
+}
 }
