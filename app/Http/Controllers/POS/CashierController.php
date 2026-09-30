@@ -1,14 +1,14 @@
 <?php
 
 namespace App\Http\Controllers\POS;
-
+use Carbon\Carbon;
 use App\Http\Controllers\Controller;
-use App\Models\Accounting\ChartOfAccount;
+//use App\Models\Accounting\ChartOfAccount;
 use App\Models\MasterData\Warehouse;
 use App\Services\POS\CashierSessionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use App\Models\Accounting\BranchAccountMapping;
 class CashierController extends Controller
 {
     protected CashierSessionService $cashierSessionService;
@@ -21,97 +21,203 @@ class CashierController extends Controller
     }
 
     public function index(
-        Request $request
-    ) {
-        $user = $request->user();
+    Request $request
+) {
+    $user = $request->user();
 
-        $currentBranchId =
-            session('current_branch_id');
+    /*
+    |--------------------------------------------------------------------------
+    | Current Branch
+    |--------------------------------------------------------------------------
+    */
 
-        $activeSession =
-            $this->cashierSessionService
-                ->getActiveSession($user);
+    $currentBranchId =
+        session('current_branch_id');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Warehouses
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Session Report
+    |--------------------------------------------------------------------------
+    */
 
-        $warehouses = Warehouse::query()
-            ->where(
-                'branch_id',
-                $currentBranchId
-            )
-            ->where(
-                'status',
-                true
-            )
-            ->orderBy('code')
-            ->get([
-                'id',
-                'code',
-                'name',
-            ]);
+    $dateFrom = $request->input(
+        'date_from',
+        now()->startOfMonth()->toDateString()
+    );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Cash Accounts
-        |--------------------------------------------------------------------------
-        */
+    $dateTo = $request->input(
+        'date_to',
+        now()->toDateString()
+    );
 
-        $cashAccounts = ChartOfAccount::query()
+    if ($dateFrom > $dateTo) {
+        [$dateFrom, $dateTo] = [
+            $dateTo,
+            $dateFrom,
+        ];
+    }
+
+    $sessionReport =
+        $this->cashierSessionService
+            ->getSessionReport(
+                $user,
+                $dateFrom,
+                $dateTo
+            );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Active Session
+    |--------------------------------------------------------------------------
+    */
+
+    $activeSession =
+        $this->cashierSessionService
+            ->getActiveSession($user);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Summary
+    |--------------------------------------------------------------------------
+    */
+
+    $dashboardSummary =
+        $this->cashierSessionService
+            ->getDashboardSummary($user);
+
+    $dashboardAnalytics =
+      $this->cashierSessionService
+        ->getDashboardAnalytics($user);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Close Summary
+    |--------------------------------------------------------------------------
+    */
+
+    $closeSummary = $activeSession
+        ? $this->cashierSessionService
+            ->getCloseSummary($activeSession)
+        : null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Opening Context
+    |--------------------------------------------------------------------------
+    */
+
+    $openingContext =
+        $this->cashierSessionService
+            ->getOpeningContext($user);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouses
+    |--------------------------------------------------------------------------
+    */
+
+    $warehouses = Warehouse::query()
+        ->where(
+            'branch_id',
+            $currentBranchId
+        )
+        ->where(
+            'status',
+            true
+        )
+        ->orderBy('code')
+        ->get([
+            'id',
+            'code',
+            'name',
+        ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cash Account
+    |--------------------------------------------------------------------------
+    */
+
+    $cashAccountMapping =
+        BranchAccountMapping::query()
+            ->with('account')
             ->where(
                 'company_id',
                 $user->company_id
             )
             ->where(
-                'status',
-                true
+                'branch_id',
+                $currentBranchId
             )
             ->where(
-                'is_posting',
+                'key',
+                'cashier_drawer'
+            )
+            ->where(
+                'is_active',
                 true
             )
-            ->whereHas(
-                'accountCategory',
-                function ($query) {
-                    $query
-                        ->where(
-                            'code',
-                            '110100'
-                        )
-                        ->where(
-                            'status',
-                            true
-                        );
-                }
-            )
-            ->orderBy('code')
-            ->get([
-                'id',
-                'code',
-                'name',
-            ]);
+            ->first();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Response
-        |--------------------------------------------------------------------------
-        */
+    $cashAccounts = collect();
 
-        return Inertia::render(
-            'POS/Cashier/Index',
+    if (
+        $cashAccountMapping &&
+        $cashAccountMapping->account
+    ) {
+        $cashAccounts = collect([
             [
-                'activeSession' =>
-                    $activeSession,
+                'id' =>
+                    $cashAccountMapping
+                        ->account
+                        ->id,
 
-                'cashAccounts' =>
-                    $cashAccounts,
+                'code' =>
+                    $cashAccountMapping
+                        ->account
+                        ->code,
 
-                'warehouses' =>
-                    $warehouses,
-            ]
-        );
+                'name' =>
+                    $cashAccountMapping
+                        ->account
+                        ->name,
+            ],
+        ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+
+    return Inertia::render(
+        'POS/Cashier/Index',
+        [
+            'activeSession' =>
+                $activeSession,
+
+            'cashAccounts' =>
+                $cashAccounts,
+
+            'warehouses' =>
+                $warehouses,
+
+            'openingContext' =>
+                $openingContext,
+
+            'closeSummary' =>
+                $closeSummary,
+
+            'sessionReport' =>
+                $sessionReport,
+
+            'dashboardSummary' =>
+                $dashboardSummary,
+
+            'dashboardAnalytics' =>
+                 $dashboardAnalytics,
+        ]
+    );
+}
 }

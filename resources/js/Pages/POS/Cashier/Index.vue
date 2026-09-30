@@ -1,9 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref} from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import OpenSessionModal from './OpenSessionModal.vue'
 import CloseSessionModal from './CloseSessionModal.vue'
+import CloseSessionSuccessModal from './CloseSessionSuccessModal.vue'
+import SessionReport from './SessionReport.vue'
+
 const page = usePage()
 
 const props = defineProps({
@@ -17,9 +20,62 @@ const props = defineProps({
         default: () => [],
     },
 
-        warehouses: {
+    warehouses: {
         type: Array,
         default: () => [],
+    },
+
+    closeSummary: {
+    type: Object,
+    default: null,
+    },
+
+    openingContext: {
+        type: Object,
+        default: () => ({
+            previous_session: null,
+            previous_closing_balance: 0,
+            posted_deposits: 0,
+            carry_forward: 0,
+        }),
+    },
+
+        sessionReport: {
+        type: Object,
+        default: () => ({
+            filters: {
+                date_from: '',
+                date_to: '',
+            },
+            summary: {
+                sessions: 0,
+                open_sessions: 0,
+                closed_sessions: 0,
+                total_sales: 0,
+                cash_sales: 0,
+            },
+            rows: [],
+        }),
+    },
+    dashboardSummary: {
+        type: Object,
+        default: () => ({
+            today: {
+                sales: 0,
+                cash: 0,
+                payments: 0,
+                returns: 0,
+            },
+            recent_transactions: [],
+        }),
+    },
+
+    dashboardAnalytics: {
+    type: Object,
+    default: () => ({
+        sales_by_hour: [],
+        top_products: [],
+    }),
     },
 })
 
@@ -36,6 +92,11 @@ const currentBranch = computed(() => page.props.auth?.current_branch ?? null)
 
 const cashAccounts = computed(() => props.cashAccounts ?? [])
 
+const showCloseSuccessModal = ref(false)
+
+//const closedSessionId = ref(null)
+
+const closedSessionNumber = ref('-')
 /*
 |--------------------------------------------------------------------------
 | Dashboard Tabs
@@ -97,7 +158,74 @@ const closingForm = ref({
 
 const openingProcessing = ref(false)
 const closingProcessing = ref(false)
+const closedSessionId = ref(null)
+/*
+|--------------------------------------------------------------------------
+| Close Open Session Modal
+|--------------------------------------------------------------------------
+*/
 
+const closeOpenSessionModal = () => {
+    if (openingProcessing.value) {
+        return
+    }
+
+    showOpenSessionModal.value = false
+}
+
+const submitOpenSession = () => {
+    if (openingProcessing.value) {
+        return
+    }
+
+    if (!openingForm.value.warehouse_id) {
+        return
+    }
+
+    openingProcessing.value = true
+
+    router.post(
+        route('pos.cashier-sessions.store'),
+        {
+            warehouse_id:
+                openingForm.value.warehouse_id,
+
+            opening_balance:
+                openingForm.value.opening_balance,
+        },
+        {
+            preserveScroll: true,
+
+            onFinish: () => {
+                openingProcessing.value = false
+            },
+
+            onSuccess: () => {
+                showOpenSessionModal.value = false
+            },
+        }
+    )
+}
+const openCloseSession = () => {
+    if (!props.activeSession) {
+        return
+    }
+
+    closingForm.value = {
+        closing_balance: 0,
+        closing_note: '',
+    }
+
+    showCloseSessionModal.value = true
+}
+
+const closeCloseSessionModal = () => {
+    if (closingProcessing.value) {
+        return
+    }
+
+    showCloseSessionModal.value = false
+}
 /*
 |--------------------------------------------------------------------------
 | Session State
@@ -106,12 +234,6 @@ const closingProcessing = ref(false)
 
 const hasActiveSession = computed(() => {
     return !!props.activeSession
-})
-
-const sessionStatus = computed(() => {
-    return hasActiveSession.value
-        ? 'Open'
-        : 'Not Open'
 })
 
 const formattedOpeningBalance = computed(() => {
@@ -135,31 +257,38 @@ const todayStats = computed(() => [
     {
         key: 'sales',
         label: 'Sales',
-        value: 0,
+        value:
+            props.dashboardSummary?.today?.sales ?? 0,
         format: 'number',
         icon: 'sales',
         accent: 'blue',
     },
+
     {
         key: 'cash',
         label: 'Cash',
-        value: 0,
+        value:
+            props.dashboardSummary?.today?.cash ?? 0,
         format: 'currency',
         icon: 'cash',
         accent: 'green',
     },
+
     {
         key: 'payments',
         label: 'Payments',
-        value: 0,
+        value:
+            props.dashboardSummary?.today?.payments ?? 0,
         format: 'currency',
         icon: 'payment',
         accent: 'indigo',
     },
+
     {
         key: 'returns',
         label: 'Returns',
-        value: 0,
+        value:
+            props.dashboardSummary?.today?.returns ?? 0,
         format: 'number',
         icon: 'return',
         accent: 'orange',
@@ -175,8 +304,21 @@ const todayStats = computed(() => [
 |
 */
 
-const recentTransactions = ref([])
+const recentTransactions = computed(() =>
+    props.dashboardSummary?.recent_transactions ?? []
+)
 
+const salesByHour = computed(() =>
+    props.dashboardAnalytics?.sales_by_hour ?? []
+)
+
+const topProducts = computed(() =>
+    props.dashboardAnalytics?.top_products ?? []
+)
+const formatQuantity = (value) =>
+    new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0))
 /*
 |--------------------------------------------------------------------------
 | Open Session
@@ -184,98 +326,55 @@ const recentTransactions = ref([])
 */
 
 const openSession = () => {
-    openingForm.value = {
-        warehouse_id: props.warehouses?.[0]?.id ?? '',
-        cash_account_id: props.cashAccounts?.[0]?.id ?? '',
-        opening_balance: 0,
-    }
-
-    showOpenSessionModal.value = true
-}
-/*
-|--------------------------------------------------------------------------
-| Submit Open Session
-|--------------------------------------------------------------------------
-*/
-
-const submitOpenSession = () => {
     if (openingProcessing.value) {
         return
     }
 
-    openingProcessing.value = true
+    openingForm.value = {
+        warehouse_id:
+            props.warehouses?.[0]?.id ?? '',
 
-    console.log(
-        'OPEN SESSION URL:',
-        route('pos.cashier-sessions.store')
-    )
+        cash_account_id:
+            props.cashAccounts?.[0]?.id ?? '',
 
-      router.post(
-        route('pos.cashier-sessions.store'),
-        {
-            warehouse_id: openingForm.value.warehouse_id,
-            cash_account_id: openingForm.value.cash_account_id,
-            opening_balance: openingForm.value.opening_balance,
-        },
-        {
-            preserveScroll: true,
-
-            onFinish: () => {
-                openingProcessing.value = false
-            },
-
-            onSuccess: () => {
-                showOpenSessionModal.value = false
-            },
-        }
-    )
-}
-
-/*
-|--------------------------------------------------------------------------
-| Close Session
-|--------------------------------------------------------------------------
-*/
-
-const openCloseSession = () => {
-    if (!props.activeSession) {
-        return
+        opening_balance:
+            props.openingContext?.carry_forward ?? 0,
     }
 
-    closingForm.value = {
-        closing_balance: 0,
-        closing_note: '',
-    }
-
-    showCloseSessionModal.value = true
+    showOpenSessionModal.value = true
 }
-
-const closeCloseSessionModal = () => {
-    if (closingProcessing.value) {
-        return
-    }
-
-    showCloseSessionModal.value = false
-}
-
-/*
-|--------------------------------------------------------------------------
-| Submit Close Session
-|--------------------------------------------------------------------------
-*/
 
 const submitCloseSession = () => {
     if (closingProcessing.value) {
         return
     }
 
+    if (!props.activeSession?.id) {
+        return
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Keep Closed Session
+    |--------------------------------------------------------------------------
+    */
+
+    closedSessionId.value =
+        props.activeSession.id
+
+    closedSessionNumber.value =
+        props.activeSession.session_number
+
     closingProcessing.value = true
 
     router.post(
         route('pos.cashier-sessions.close'),
         {
-            closing_balance: closingForm.value.closing_balance,
-            closing_note: closingForm.value.closing_note || null,
+            closing_balance:
+                closingForm.value.closing_balance,
+
+            closing_note:
+                closingForm.value.closing_note || null,
         },
         {
             preserveScroll: true,
@@ -286,6 +385,8 @@ const submitCloseSession = () => {
 
             onSuccess: () => {
                 showCloseSessionModal.value = false
+
+                showCloseSuccessModal.value = true
             },
         }
     )
@@ -315,7 +416,19 @@ const formatCurrency = (value) => {
         maximumFractionDigits: 0,
     }).format(Number(value || 0))
 }
+const formatChartCurrency = (value) => {
+    const amount = Number(value || 0)
 
+    if (amount >= 1_000_000) {
+        return `Rp ${(amount / 1_000_000).toFixed(1)}jt`
+    }
+
+    if (amount >= 1_000) {
+        return `Rp ${(amount / 1_000).toFixed(0)}rb`
+    }
+
+    return `Rp ${amount.toLocaleString('id-ID')}`
+}
 const formatNumber = (value) => {
     return new Intl.NumberFormat('id-ID').format(
         Number(value || 0)
@@ -374,6 +487,73 @@ if (!props.activeSession) {
     showOpenSessionModal.value = true
 }
 
+const printClosedSession = () => {
+    if (!closedSessionId.value){
+    return
+    }
+    window.open(
+    route(
+        'pos.cashier-sessions.print',
+        closedSessionId.value
+    ),
+    '_blank'
+    )
+}
+
+const salesChartPointData = computed(() => {
+    const data = salesByHour.value
+
+    if (!data.length) {
+        return []
+    }
+
+    const values = data.map(
+        item => Number(item.sales || 0)
+    )
+
+    const maxValue = Math.max(
+        ...values,
+        1
+    )
+
+    const chartWidth = 930
+    const chartHeight = 220
+    const startX = 50
+    const startY = 30
+
+    const step =
+        data.length > 1
+            ? chartWidth / (data.length - 1)
+            : 0
+
+    return data.map((item, index) => {
+        const x =
+            startX + (step * index)
+
+        const y =
+            startY +
+            chartHeight -
+            (
+                Number(item.sales || 0)
+                / maxValue
+            ) * chartHeight
+
+        return {
+            hour: item.hour,
+            sales: Number(item.sales || 0),
+            x,
+            y,
+        }
+    })
+})
+
+const salesChartPoints = computed(() =>
+    salesChartPointData.value
+        .map(point =>
+            `${point.x},${point.y}`
+        )
+        .join(' ')
+)
 </script>
 
 <template>
@@ -752,177 +932,345 @@ if (!props.activeSession) {
                 </section>
 
                 <!-- =================================================
-                     TODAY
+                         TODAY
+                    ================================================== -->
+                    <section class="mt-8">
+                        <div
+                            class="mb-4 flex items-end justify-between gap-4"
+                        >
+                            <div>
+                                <h2
+                                    class="text-sm font-semibold uppercase tracking-wide text-slate-700"
+                                >
+                                    Today
+                                </h2>
+
+                                <p class="mt-0.5 text-xs text-slate-500">
+                                    Overview of today's cashier activity.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                        >
+                            <div
+                                v-for="stat in todayStats"
+                                :key="stat.key"
+                                class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                            >
+                                <div
+                                    class="flex items-start justify-between gap-4"
+                                >
+                                    <div class="min-w-0">
+                                        <p
+                                            class="text-xs font-medium text-slate-500"
+                                        >
+                                            {{ stat.label }}
+                                        </p>
+
+                                        <p
+                                            class="mt-2 text-2xl font-bold tabular-nums tracking-tight text-slate-900"
+                                        >
+                                            {{ formatStatValue(stat) }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition"
+                                        :class="{
+                                            'bg-blue-50 text-blue-600 group-hover:bg-blue-100':
+                                                stat.accent === 'blue',
+
+                                            'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100':
+                                                stat.accent === 'green',
+
+                                            'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100':
+                                                stat.accent === 'indigo',
+
+                                            'bg-orange-50 text-orange-600 group-hover:bg-orange-100':
+                                                stat.accent === 'orange',
+                                        }"
+                                    >
+                                        <!-- Sales -->
+                                        <svg
+                                            v-if="stat.icon === 'sales'"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M4 19V5"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M4 19h16"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="m7 15 4-4 3 2 5-6"
+                                            />
+                                        </svg>
+
+                                        <!-- Cash -->
+                                        <svg
+                                            v-else-if="stat.icon === 'cash'"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <rect
+                                                x="3"
+                                                y="6"
+                                                width="18"
+                                                height="12"
+                                                rx="2"
+                                            />
+
+                                            <circle
+                                                cx="12"
+                                                cy="12"
+                                                r="2.5"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                d="M7 10h.01M17 14h.01"
+                                            />
+                                        </svg>
+
+                                        <!-- Payments -->
+                                        <svg
+                                            v-else-if="stat.icon === 'payment'"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <rect
+                                                x="3"
+                                                y="5"
+                                                width="18"
+                                                height="14"
+                                                rx="2"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                d="M3 10h18"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                d="M7 15h3"
+                                            />
+                                        </svg>
+
+                                        <!-- Returns -->
+                                        <svg
+                                            v-else
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M9 7H5v4"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M5 11a7 7 0 1 0 2-5"
+                                            />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- =================================================
+                     SALES CHART
                 ================================================== -->
                 <section class="mt-8">
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <h2
                             class="text-sm font-semibold uppercase tracking-wide text-slate-700"
                         >
-                            Today
+                            Sales Today
                         </h2>
 
                         <p class="mt-0.5 text-xs text-slate-500">
-                            Overview of today's cashier activity.
+                            Hourly sales performance for the current cashier session.
                         </p>
                     </div>
 
                     <div
-                        class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                     >
-                        <div
-                            v-for="stat in todayStats"
-                            :key="stat.key"
-                            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                        >
+                        <div class="p-5 sm:p-6">
                             <div
-                                class="flex items-start justify-between gap-4"
+                                v-if="salesByHour.length === 0"
+                                class="flex min-h-[280px] items-center justify-center"
                             >
-                                <div>
-                                    <p
-                                        class="text-xs font-medium text-slate-500"
+                                <div class="text-center">
+                                    <div
+                                        class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
                                     >
-                                        {{ stat.label }}
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M4 19V5"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M4 19h16"
+                                            />
+
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="m7 15 4-4 3 2 5-6"
+                                            />
+                                        </svg>
+                                    </div>
+
+                                    <p
+                                        class="mt-3 text-sm font-semibold text-slate-700"
+                                    >
+                                        No sales yet
                                     </p>
 
                                     <p
-                                        class="mt-2 text-xl font-semibold tabular-nums tracking-tight text-slate-900"
+                                        class="mt-1 text-xs text-slate-500"
                                     >
-                                        {{ formatStatValue(stat) }}
+                                        Posted sales will appear on the chart.
                                     </p>
                                 </div>
+                            </div>
 
-                                <div
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg"
-                                    :class="{
-                                        'bg-blue-50 text-blue-600':
-                                            stat.accent === 'blue',
-
-                                        'bg-emerald-50 text-emerald-600':
-                                            stat.accent === 'green',
-
-                                        'bg-indigo-50 text-indigo-600':
-                                            stat.accent === 'indigo',
-
-                                        'bg-orange-50 text-orange-600':
-                                            stat.accent === 'orange',
-                                    }"
+                            <div
+                                v-else
+                                class="h-[300px] w-full"
+                            >
+                                <svg
+                                    viewBox="0 0 1000 300"
+                                    preserveAspectRatio="none"
+                                    class="h-full w-full"
                                 >
-                                    <!-- Sales -->
-                                    <svg
-                                        v-if="stat.icon === 'sales'"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4.5 w-4.5"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
+                                    <!-- Grid -->
+                                    <line
+                                        v-for="line in 5"
+                                        :key="`grid-${line}`"
+                                        :x1="50"
+                                        :x2="980"
+                                        :y1="30 + ((line - 1) * 55)"
+                                        :y2="30 + ((line - 1) * 55)"
                                         stroke="currentColor"
-                                        stroke-width="1.8"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M4 19V5"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M4 19h16"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="m7 15 4-4 3 2 5-6"
-                                        />
-                                    </svg>
+                                        class="text-slate-100"
+                                        stroke-width="1"
+                                    />
 
-                                    <!-- Cash -->
-                                    <svg
-                                        v-else-if="stat.icon === 'cash'"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4.5 w-4.5"
-                                        viewBox="0 0 24 24"
+                                    <!-- Sales Line -->
+                                    <polyline
+                                        v-if="salesChartPoints.length > 1"
+                                        :points="salesChartPoints"
                                         fill="none"
                                         stroke="currentColor"
-                                        stroke-width="1.8"
+                                        class="text-blue-600"
+                                        stroke-width="3"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+
+                                    <!-- Points -->
+                                   <!-- Points + Sales Value -->
+                                    <g
+                                        v-for="point in salesChartPointData"
+                                        :key="point.hour"
                                     >
-                                        <rect
-                                            x="3"
-                                            y="6"
-                                            width="18"
-                                            height="12"
-                                            rx="2"
-                                        />
                                         <circle
-                                            cx="12"
-                                            cy="12"
-                                            r="2.5"
+                                            :cx="point.x"
+                                            :cy="point.y"
+                                            r="4"
+                                            class="fill-white stroke-blue-600"
+                                            stroke-width="2.5"
                                         />
-                                        <path
-                                            stroke-linecap="round"
-                                            d="M7 10h.01M17 14h.01"
-                                        />
-                                    </svg>
 
-                                    <!-- Payment -->
-                                    <svg
-                                        v-else-if="stat.icon === 'payment'"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4.5 w-4.5"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
+                                        <text
+                                            v-if="point.sales > 0"
+                                            :x="point.x"
+                                            :y="point.y - 12"
+                                            text-anchor="middle"
+                                            class="fill-slate-600 text-[10px] font-semibold"
+                                        >
+                                            {{ formatChartCurrency(point.sales) }}
+                                        </text>
+                                    </g>
+                                    <!-- X Axis -->
+                                    <line
+                                        x1="50"
+                                        x2="980"
+                                        y1="250"
+                                        y2="250"
                                         stroke="currentColor"
-                                        stroke-width="1.8"
-                                    >
-                                        <rect
-                                            x="3"
-                                            y="5"
-                                            width="18"
-                                            height="14"
-                                            rx="2"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            d="M3 10h18"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            d="M7 15h3"
-                                        />
-                                    </svg>
+                                        class="text-slate-200"
+                                        stroke-width="1"
+                                    />
 
-                                    <!-- Return -->
-                                    <svg
-                                        v-else
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4.5 w-4.5"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
+                                    <!-- X Labels -->
+                                    <text
+                                        v-for="point in salesChartPointData.filter(
+                                            (_, index) =>
+                                                index % 2 === 0
+                                        )"
+                                        :key="`label-${point.hour}`"
+                                        :x="point.x"
+                                        y="275"
+                                        text-anchor="middle"
+                                        class="fill-slate-400 text-[11px]"
                                     >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M9 7H5v4"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M5 11a7 7 0 1 0 2-5"
-                                        />
-                                    </svg>
-                                </div>
+                                        {{ point.hour }}
+                                    </text>
+                                </svg>
                             </div>
                         </div>
                     </div>
                 </section>
-
-                <!-- =================================================
+               <!-- =================================================
                      RECENT TRANSACTIONS
-                ================================================== -->
+                ================================================= -->
                 <section class="mt-8">
                     <div
-                        class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+                        class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
                     >
                         <div>
                             <h2
@@ -932,135 +1280,372 @@ if (!props.activeSession) {
                             </h2>
 
                             <p class="mt-0.5 text-xs text-slate-500">
-                                Latest posted POS transactions from this
-                                cashier session.
+                                Latest posted POS transactions from this cashier session.
                             </p>
                         </div>
 
                         <button
                             type="button"
-                            class="text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                            class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition hover:text-blue-700"
                             @click="changeTab('sales')"
                         >
                             View all Sales
+
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-3.5 w-3.5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
                         </button>
                     </div>
 
                     <!-- Empty -->
                     <div
                         v-if="recentTransactions.length === 0"
-                        class="flex min-h-[180px] items-center justify-center rounded-2xl bg-white px-6 py-10 text-center"
+                        class="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm"
                     >
-                        <div>
-                            <div
-                                class="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                        <div
+                            class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-5 w-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M8 8h8M8 12h8M8 16h5"
-                                    />
-                                </svg>
-                            </div>
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+                                />
 
-                            <p
-                                class="mt-3 text-sm font-medium text-slate-700"
-                            >
-                                No transactions yet
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs text-slate-500"
-                            >
-                                Posted POS sales will appear here.
-                            </p>
+                                <path
+                                    stroke-linecap="round"
+                                    d="M8 8h8M8 12h8M8 16h5"
+                                />
+                            </svg>
                         </div>
+
+                        <p
+                            class="mt-3 text-sm font-semibold text-slate-700"
+                        >
+                            No transactions yet
+                        </p>
+
+                        <p
+                            class="mt-1 text-xs text-slate-500"
+                        >
+                            Posted POS sales will appear here.
+                        </p>
                     </div>
 
-                    <!-- Borderless transaction list -->
+                    <!-- Transactions -->
                     <div
                         v-else
-                        class="overflow-hidden rounded-2xl bg-white"
+                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                     >
-                        <!-- Header -->
+                        <!-- Desktop Header -->
                         <div
-                            class="grid grid-cols-[minmax(180px,1.5fr)_100px_minmax(130px,1fr)_120px_110px] gap-4 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400"
+                            class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:grid"
                         >
                             <div>Transaction</div>
+
                             <div>Time</div>
-                            <div class="text-right">Amount</div>
+
+                            <div class="text-right">
+                                Amount
+                            </div>
+
                             <div>Payment</div>
+
                             <div>Status</div>
                         </div>
 
-                        <button
-                            v-for="transaction in recentTransactions"
-                            :key="transaction.id"
-                            type="button"
-                            class="group grid w-full grid-cols-[minmax(180px,1.5fr)_100px_minmax(130px,1fr)_120px_110px] gap-4 px-4 py-3.5 text-left transition hover:bg-blue-50/70"
-                        >
-                            <div
-                                class="min-w-0"
+                        <div>
+                            <button
+                                v-for="transaction in recentTransactions"
+                                :key="transaction.id"
+                                type="button"
+                                class="group w-full border-b border-slate-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-blue-50/70"
                             >
+                                <!-- Desktop -->
                                 <div
-                                    class="truncate text-sm font-semibold text-slate-800 group-hover:text-blue-700"
+                                    class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] items-center gap-4 md:grid"
                                 >
-                                    {{ transaction.number }}
+                                    <!-- Transaction -->
+                                    <div class="min-w-0">
+                                        <div
+                                            class="truncate text-sm font-semibold text-slate-800 transition group-hover:text-blue-700"
+                                        >
+                                            {{ transaction.number }}
+                                        </div>
+
+                                        <div
+                                            class="mt-0.5 truncate text-xs text-slate-400"
+                                        >
+                                            {{
+                                                transaction.customer
+                                                    ?? 'Walk-in Customer'
+                                            }}
+                                        </div>
+                                    </div>
+
+                                    <!-- Time -->
+                                    <div
+                                        class="text-xs tabular-nums text-slate-500"
+                                    >
+                                        {{ transaction.time }}
+                                    </div>
+
+                                    <!-- Amount -->
+                                    <div
+                                        class="text-right text-sm font-semibold tabular-nums text-slate-800"
+                                    >
+                                        {{ formatCurrency(transaction.amount) }}
+                                    </div>
+
+                                    <!-- Payment -->
+                                    <div
+                                        class="text-xs font-medium text-slate-600"
+                                    >
+                                        {{ transaction.payment_method }}
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div>
+                                        <span
+                                            class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                        >
+                                            <span
+                                                class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                            />
+
+                                            {{ transaction.status }}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div
-                                    class="mt-0.5 truncate text-xs text-slate-400"
-                                >
-                                    {{ transaction.customer ?? 'Walk-in Customer' }}
+                                <!-- Mobile -->
+                                <div class="md:hidden">
+                                    <div
+                                        class="flex items-start justify-between gap-4"
+                                    >
+                                        <div class="min-w-0">
+                                            <div
+                                                class="truncate text-sm font-semibold text-slate-800 group-hover:text-blue-700"
+                                            >
+                                                {{ transaction.number }}
+                                            </div>
+
+                                            <div
+                                                class="mt-0.5 truncate text-xs text-slate-400"
+                                            >
+                                                {{
+                                                    transaction.customer
+                                                        ?? 'Walk-in Customer'
+                                                }}
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="shrink-0 text-right"
+                                        >
+                                            <div
+                                                class="text-sm font-semibold tabular-nums text-slate-800"
+                                            >
+                                                {{
+                                                    formatCurrency(
+                                                        transaction.amount
+                                                    )
+                                                }}
+                                            </div>
+
+                                            <div
+                                                class="mt-0.5 text-xs text-slate-400"
+                                            >
+                                                {{ transaction.time }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="mt-3 flex items-center justify-between gap-3"
+                                    >
+                                        <span
+                                            class="text-xs font-medium text-slate-600"
+                                        >
+                                            {{ transaction.payment_method }}
+                                        </span>
+
+                                        <span
+                                            class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                        >
+                                            <span
+                                                class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                            />
+
+                                            {{ transaction.status }}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div
-                                class="self-center text-xs tabular-nums text-slate-500"
-                            >
-                                {{ transaction.time }}
-                            </div>
-
-                            <div
-                                class="self-center text-right text-sm font-semibold tabular-nums text-slate-800"
-                            >
-                                {{ formatCurrency(transaction.amount) }}
-                            </div>
-
-                            <div
-                                class="self-center text-xs font-medium text-slate-600"
-                            >
-                                {{ transaction.payment_method }}
-                            </div>
-
-                            <div
-                                class="self-center"
-                            >
-                                <span
-                                    class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
-                                >
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                                    />
-                                    {{ transaction.status }}
-                                </span>
-                            </div>
-                        </button>
+                            </button>
+                        </div>
                     </div>
                 </section>
+
+                <!-- =================================================
+     TOP PRODUCTS
+================================================== -->
+<section class="mt-8">
+    <div class="mb-4">
+        <h2
+            class="text-sm font-semibold uppercase tracking-wide text-slate-700"
+        >
+            Top Products
+        </h2>
+
+        <p class="mt-0.5 text-xs text-slate-500">
+            Best-selling products from today's cashier session.
+        </p>
+    </div>
+
+    <div
+        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    >
+        <!-- Empty -->
+        <div
+            v-if="topProducts.length === 0"
+            class="flex min-h-[180px] items-center justify-center px-6 py-10 text-center"
+        >
+            <div>
+                <div
+                    class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            d="M8 8h8M8 12h5"
+                        />
+                    </svg>
+                </div>
+
+                <p
+                    class="mt-3 text-sm font-semibold text-slate-700"
+                >
+                    No product sales yet
+                </p>
+
+                <p
+                    class="mt-1 text-xs text-slate-500"
+                >
+                    Products will appear after posted sales.
+                </p>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div v-else>
+            <!-- Header -->
+            <div
+                class="grid grid-cols-[minmax(0,1fr)_100px_140px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:px-6"
+            >
+                <div>Product</div>
+
+                <div class="text-right">
+                    Qty
+                </div>
+
+                <div class="text-right">
+                    Sales
+                </div>
+            </div>
+
+            <!-- Rows -->
+            <div>
+                <div
+                    v-for="(product, index) in topProducts"
+                    :key="product.variant_id"
+                    class="grid grid-cols-[minmax(0,1fr)_100px_140px] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:px-6"
+                >
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500"
+                        >
+                            {{ index + 1 }}
+                        </div>
+
+                        <div class="min-w-0">
+                            <div
+                                class="truncate text-sm font-semibold text-slate-800"
+                            >
+                                {{ product.product_name }}
+                            </div>
+
+                            <div
+                                class="mt-0.5 truncate text-xs text-slate-400"
+                            >
+                                {{ product.variant_name }}
+
+                                <span
+                                    v-if="product.sku"
+                                >
+                                    · {{ product.sku }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="text-right text-sm font-medium tabular-nums text-slate-600"
+                    >
+                        {{ formatQuantity(product.qty) }}
+                    </div>
+
+                    <div
+                        class="text-right text-sm font-semibold tabular-nums text-slate-900"
+                    >
+                        {{ formatCurrency(product.sales) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
             </template>
+
+            <!-- =====================================================
+                 REPORTS TAB
+            ====================================================== -->
+            <template v-else-if="activeTab === 'reports'">
+                <SessionReport
+                    :session-report="props.sessionReport"
+                />
+            </template>
+
 
             <!-- =====================================================
                  OTHER TABS
@@ -1086,6 +1671,7 @@ if (!props.activeSession) {
                                     stroke-linejoin="round"
                                     d="M4 5h16v14H4z"
                                 />
+
                                 <path
                                     stroke-linecap="round"
                                     d="M8 9h8M8 13h5"
@@ -1096,7 +1682,12 @@ if (!props.activeSession) {
                         <h3
                             class="mt-4 text-sm font-semibold text-slate-800"
                         >
-                            {{ tabs.find((tab) => tab.key === activeTab)?.label }}
+                            {{
+                                tabs.find(
+                                    (tab) =>
+                                        tab.key === activeTab
+                                )?.label
+                            }}
                         </h3>
 
                         <p
@@ -1124,12 +1715,23 @@ if (!props.activeSession) {
     @submit="submitOpenSession"
 />
 
-<CloseSessionModal
-    :show="showCloseSessionModal"
-    :session-number="sessionNumber"
-    :form="closingForm"
-    :processing="closingProcessing"
-    @close="closeCloseSessionModal"
-    @submit="submitCloseSession"
-/>
+    <CloseSessionModal
+        :show="showCloseSessionModal"
+        :session-number="sessionNumber"
+        :opening-balance="props.activeSession?.opening_balance ?? 0"
+        :summary="props.closeSummary"
+        :form="closingForm"
+        :active-session="props.activeSession"
+        :processing="closingProcessing"
+        @close="closeCloseSessionModal"
+        @submit="submitCloseSession"
+    />
+
+    <CloseSessionSuccessModal
+        :show="showCloseSuccessModal"
+        :session-number="closedSessionNumber"
+        :processing="false"
+        @close="showCloseSuccessModal = false"
+        @print="printClosedSession"
+    />
 </template>

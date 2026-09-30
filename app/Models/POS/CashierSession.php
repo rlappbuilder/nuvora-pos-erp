@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\POS\CashierDeposit;
 use App\Models\MasterData\Warehouse;
+use App\Models\POS\PosSale;
+
 class CashierSession extends Model
 {
     protected $table = 'cashier_sessions';
@@ -135,5 +137,12 @@ class CashierSession extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+    public function sales(): HasMany
+    {
+        return $this->hasMany(
+            PosSale::class,
+            'cashier_session_id'
+        );
     }
 }

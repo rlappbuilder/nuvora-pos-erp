@@ -157,6 +157,11 @@ Route::middleware(
             ]
         )->name('close');
 
+      Route::get(
+            '{session}/print',
+            [CashierSessionController::class, 'print']
+        )->name('print');
+
     });
 
     Route::prefix('pos/transactions')

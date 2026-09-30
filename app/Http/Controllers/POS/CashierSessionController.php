@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\POS\CashierSessionRequest;
 use App\Services\POS\CashierSessionService;
 use Illuminate\Http\Request;
-
+use App\Models\POS\CashierSession;
+use Inertia\Inertia;
 class CashierSessionController extends Controller
 {
     protected CashierSessionService $cashierSessionService;
@@ -29,10 +30,9 @@ class CashierSessionController extends Controller
     ) {
         $data = $request->validated();
 
-        $this->cashierSessionService->open(
+       $this->cashierSessionService->open(
             $request->user(),
             (int) $data['warehouse_id'],
-            (int) $data['cash_account_id'],
             (float) $data['opening_balance']
         );
 
@@ -96,4 +96,116 @@ class CashierSessionController extends Controller
                 'Cashier session closed successfully.'
             );
     }
+
+    /*
+|--------------------------------------------------------------------------
+| Print Close Session Report
+|--------------------------------------------------------------------------
+*/
+
+public function print(
+    Request $request,
+    CashierSession $session
+) {
+    $user = $request->user();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Session Access
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        (int) $session->company_id !==
+        (int) $user->company_id
+    ) {
+        abort(403);
+    }
+
+    if (
+        (int) $session->user_id !==
+        (int) $user->id
+    ) {
+        abort(403);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Session Must Be Closed
+    |--------------------------------------------------------------------------
+    */
+
+    if ($session->status !== 'closed') {
+        abort(422, 'Cashier session belum ditutup.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Report Data
+    |--------------------------------------------------------------------------
+    */
+
+    $summary =
+        $this->cashierSessionService
+            ->getCloseSummary($session);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reconciliation
+    |--------------------------------------------------------------------------
+    */
+
+    $actualCash =
+        (float) (
+            $session->closing_balance ?? 0
+        );
+
+    $expectedCash =
+        (float) (
+            $summary['cash_movement']['expected_cash']
+            ?? 0
+        );
+
+    $difference =
+        $actualCash - $expectedCash;
+
+    $reconciliationStatus =
+        $difference === 0.0
+            ? 'Balanced'
+            : (
+                $difference < 0
+                    ? 'Cash Short'
+                    : 'Cash Over'
+            );
+
+    return view(
+        'print.pos.cashier.close-session-report',
+        [
+            'session' =>
+                $session->fresh([
+                    'company',
+                    'branch',
+                    'warehouse',
+                    'user',
+                    'cashAccount',
+                    'previousSession',
+                ]),
+
+            'summary' =>
+                $summary,
+
+            'actualCash' =>
+                $actualCash,
+
+            'expectedCash' =>
+                $expectedCash,
+
+            'difference' =>
+                $difference,
+
+            'reconciliationStatus' =>
+                $reconciliationStatus,
+        ]
+    );
+}
 }

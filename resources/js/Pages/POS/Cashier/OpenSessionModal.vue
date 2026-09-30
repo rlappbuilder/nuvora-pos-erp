@@ -48,16 +48,18 @@ const emit = defineEmits([
             v-if="show"
             class="fixed inset-0 z-[100] flex items-center justify-center p-4"
         >
+            <!-- Backdrop -->
             <div
                 class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
                 @click="emit('close')"
             />
 
+            <!-- Modal -->
             <div
-                class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-900/20"
+                class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-900/20"
             >
                 <!-- Header -->
-                <div class="border-b border-slate-100 px-6 py-5">
+                <div class="shrink-0 border-b border-slate-100 px-6 py-5">
                     <div class="flex items-start gap-3">
                         <div
                             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
@@ -96,8 +98,9 @@ const emit = defineEmits([
                 </div>
 
                 <!-- Body -->
-                <div class="space-y-5 px-6 py-5">
-
+                <div
+                    class="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5"
+                >
                     <!-- Branch -->
                     <div>
                         <label
@@ -179,34 +182,45 @@ const emit = defineEmits([
                     <!-- Cash Account -->
                     <div>
                         <label
-                            for="cash_account_id"
                             class="mb-1.5 block text-xs font-semibold text-slate-700"
                         >
                             Cash Account
-                            <span class="text-red-500">*</span>
                         </label>
 
-                        <select
-                            id="cash_account_id"
-                            v-model="form.cash_account_id"
-                            class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        <div
+                            class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3.5 py-3"
                         >
-                            <option
-                                value=""
-                                disabled
-                            >
-                                Select cash account
-                            </option>
+                            <div class="min-w-0">
+                                <div
+                                    v-if="cashAccounts?.[0]"
+                                    class="truncate text-sm font-medium text-slate-800"
+                                >
+                                    {{ cashAccounts[0].code }} -
+                                    {{ cashAccounts[0].name }}
+                                </div>
 
-                            <option
-                                v-for="account in cashAccounts"
-                                :key="account.id"
-                                :value="account.id"
+                                <div
+                                    v-else
+                                    class="text-sm text-slate-400"
+                                >
+                                    Cash account belum dikonfigurasi.
+                                </div>
+
+                                <div
+                                    v-if="cashAccounts?.[0]"
+                                    class="mt-0.5 text-[11px] text-slate-400"
+                                >
+                                    Automatically assigned to this branch.
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="cashAccounts?.[0]"
+                                class="shrink-0 rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600"
                             >
-                                {{ account.code }} -
-                                {{ account.name }}
-                            </option>
-                        </select>
+                                Auto
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Opening Balance -->
@@ -248,7 +262,7 @@ const emit = defineEmits([
 
                 <!-- Footer -->
                 <div
-                    class="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4"
+                    class="shrink-0 flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4"
                 >
                     <button
                         type="button"
@@ -265,7 +279,7 @@ const emit = defineEmits([
                         :disabled="
                             processing ||
                             !form.warehouse_id ||
-                            !form.cash_account_id
+                            !cashAccounts?.[0]
                         "
                         @click="emit('submit')"
                     >

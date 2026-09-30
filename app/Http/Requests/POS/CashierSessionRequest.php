@@ -20,12 +20,6 @@ class CashierSessionRequest extends FormRequest
                 'exists:warehouses,id',
             ],
 
-            'cash_account_id' => [
-                'required',
-                'integer',
-                'exists:chart_of_accounts,id',
-            ],
-
             'opening_balance' => [
                 'required',
                 'numeric',
@@ -45,15 +39,6 @@ class CashierSessionRequest extends FormRequest
 
             'warehouse_id.exists' =>
                 'Warehouse tidak ditemukan.',
-
-            'cash_account_id.required' =>
-                'Cash account wajib dipilih.',
-
-            'cash_account_id.integer' =>
-                'Cash account tidak valid.',
-
-            'cash_account_id.exists' =>
-                'Cash account tidak ditemukan.',
 
             'opening_balance.required' =>
                 'Opening balance wajib diisi.',
