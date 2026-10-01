@@ -176,7 +176,12 @@ public function deleter()
 public static function generateSku(): string
 {
     do {
-        $sku = strtoupper(fake()->bothify('SKU-########'));
+        $sku = 'SKU-' . str_pad(
+            (string) random_int(0, 99999999),
+            8,
+            '0',
+            STR_PAD_LEFT
+        );
     } while (self::where('sku', $sku)->exists());
 
     return $sku;

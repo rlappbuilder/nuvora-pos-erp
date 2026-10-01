@@ -1455,4 +1455,567 @@ public function getMovements(
             ->values();
 
     }
+
+    /*
+|--------------------------------------------------------------------------
+| Consignment Stock
+|--------------------------------------------------------------------------
+*/
+
+public function getConsignmentStock(
+    array $filters = []
+): LengthAwarePaginator {
+
+    $query = ProductStock::query()
+        ->with([
+            'branch',
+            'warehouse',
+            'reseller',
+            'variant.product',
+            'variant.units' => function ($query) {
+                $query
+                    ->active()
+                    ->with('unit')
+                    ->orderBy('sort_order');
+            },
+            'unit',
+        ])
+        ->whereNotNull('reseller_id');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+    if (! empty($filters['search'])) {
+
+        $search = $filters['search'];
+
+        $query->where(function (Builder $query) use ($search) {
+
+            $query
+                ->whereHas('variant', function (Builder $variant) use ($search) {
+
+                    $variant
+                        ->where('sku', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%")
+                        ->orWhereHas('product', function (Builder $product) use ($search) {
+
+                            $product->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            );
+
+                        });
+
+                })
+                ->orWhereHas('reseller', function (Builder $reseller) use ($search) {
+
+                    $reseller
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere(
+                            'reseller_code',
+                            'like',
+                            "%{$search}%"
+                        );
+
+                })
+                ->orWhereHas('branch', function (Builder $branch) use ($search) {
+
+                    $branch->where(
+                        'name',
+                        'like',
+                        "%{$search}%"
+                    );
+
+                })
+                ->orWhereHas('warehouse', function (Builder $warehouse) use ($search) {
+
+                    $warehouse->where(
+                        'name',
+                        'like',
+                        "%{$search}%"
+                    );
+
+                });
+
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Branch
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        ! empty($filters['branch_id']),
+        fn ($query) =>
+            $query->where(
+                'branch_id',
+                $filters['branch_id']
+            )
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        ! empty($filters['warehouse_id']),
+        fn ($query) =>
+            $query->where(
+                'warehouse_id',
+                $filters['warehouse_id']
+            )
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reseller
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        ! empty($filters['reseller_id']),
+        fn ($query) =>
+            $query->where(
+                'reseller_id',
+                $filters['reseller_id']
+            )
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product Variant
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        ! empty($filters['product_variant_id']),
+        fn ($query) =>
+            $query->where(
+                'product_variant_id',
+                $filters['product_variant_id']
+            )
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unit
+    |--------------------------------------------------------------------------
+    */
+
+    $query->when(
+        ! empty($filters['unit_id']),
+        fn ($query) =>
+            $query->where(
+                'unit_id',
+                $filters['unit_id']
+            )
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get Stocks
+    |--------------------------------------------------------------------------
+    */
+
+    $stocks = $query->get();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Group
+    |--------------------------------------------------------------------------
+    */
+
+    $rows = $stocks
+        ->groupBy(function ($stock) {
+
+            return implode('-', [
+                $stock->product_variant_id,
+                $stock->branch_id,
+                $stock->warehouse_id,
+                $stock->reseller_id,
+            ]);
+
+        })
+        ->map(function ($stocks) {
+
+            $first = $stocks->first();
+
+            $onHand = $stocks->sum(
+                fn ($stock) =>
+                    (float) $stock->on_hand_qty
+            );
+
+            $reserved = $stocks->sum(
+                fn ($stock) =>
+                    (float) $stock->reserved_qty
+            );
+
+            $available = $stocks->sum(
+                fn ($stock) =>
+                    (float) $stock->available_qty
+            );
+
+            $stockValue = $stocks->sum(
+                fn ($stock) =>
+                    (float) $stock->on_hand_qty
+                    *
+                    (float) $stock->average_cost
+            );
+
+            $averageCost =
+                $onHand > 0
+                    ? $stockValue / $onHand
+                    : 0;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Consignment Value
+            |--------------------------------------------------------------------------
+            |
+            | Untuk sementara nilai consignment menggunakan
+            | nilai persediaan berdasarkan average cost.
+            |
+            */
+
+            $consignmentValue = $stockValue;
+
+            $units = $stocks
+                ->map(function ($stock) {
+
+                    return [
+
+                        'id' =>
+                            $stock->id,
+
+                        'unit_id' =>
+                            $stock->unit_id,
+
+                        'unit_name' =>
+                            $stock->unit?->name,
+
+                        'on_hand_qty' =>
+                            (float) $stock->on_hand_qty,
+
+                        'reserved_qty' =>
+                            (float) $stock->reserved_qty,
+
+                        'available_qty' =>
+                            (float) $stock->available_qty,
+
+                        'average_cost' =>
+                            (float) $stock->average_cost,
+
+                        'stock_value' =>
+                            (float) $stock->on_hand_qty
+                            *
+                            (float) $stock->average_cost,
+
+                    ];
+
+                })
+                ->values();
+
+            return [
+
+                'id' =>
+                    $first->id,
+
+                'product_variant_id' =>
+                    $first->product_variant_id,
+
+                'reseller_id' =>
+                    $first->reseller_id,
+
+                'product' => [
+
+                    'id' =>
+                        $first->variant?->product?->id,
+
+                    'name' =>
+                        $first->variant?->product?->name,
+
+                ],
+
+                'variant' => [
+
+                    'id' =>
+                        $first->variant?->id,
+
+                    'sku' =>
+                        $first->variant?->sku,
+
+                    'name' =>
+                        $first->variant?->name,
+
+                ],
+
+                'reseller' => [
+
+                    'id' =>
+                        $first->reseller?->id,
+
+                    'code' =>
+                        $first->reseller?->reseller_code,
+
+                    'name' =>
+                        $first->reseller?->name,
+
+                ],
+
+                'branch' => [
+
+                    'id' =>
+                        $first->branch?->id,
+
+                    'name' =>
+                        $first->branch?->name,
+
+                ],
+
+                'warehouse' => [
+
+                    'id' =>
+                        $first->warehouse?->id,
+
+                    'name' =>
+                        $first->warehouse?->name,
+
+                ],
+
+                'units' =>
+                    $units,
+
+                'unit_count' =>
+                    $units->count(),
+
+                'on_hand_qty' =>
+                    $onHand,
+
+                'reserved_qty' =>
+                    $reserved,
+
+                'available_qty' =>
+                    $available,
+
+                'average_cost' =>
+                    $averageCost,
+
+                'stock_value' =>
+                    $stockValue,
+
+                'consignment_value' =>
+                    $consignmentValue,
+
+            ];
+
+        })
+        ->filter(
+            fn ($row) =>
+                (float) $row['on_hand_qty'] > 0
+        )
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sorting
+    |--------------------------------------------------------------------------
+    */
+
+    $sortBy =
+        $filters['sort_by']
+        ?? 'id';
+
+    $sortDirection =
+        $filters['sort_direction']
+        ?? 'desc';
+
+    if (! in_array(
+        $sortDirection,
+        ['asc', 'desc'],
+        true
+    )) {
+        $sortDirection = 'desc';
+    }
+
+    $allowedSorts = [
+        'id',
+        'on_hand_qty',
+        'reserved_qty',
+        'available_qty',
+        'stock_value',
+        'consignment_value',
+    ];
+
+    if (! in_array(
+        $sortBy,
+        $allowedSorts,
+        true
+    )) {
+        $sortBy = 'id';
+    }
+
+    $rows = $rows
+        ->sortBy(
+            fn ($row) =>
+                $row[$sortBy] ?? 0,
+            SORT_REGULAR,
+            $sortDirection === 'desc'
+        )
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+    $perPage =
+        max(
+            1,
+            (int) (
+                $filters['per_page']
+                ?? 10
+            )
+        );
+
+    $page =
+        max(
+            1,
+            (int) (
+                $filters['page']
+                ?? 1
+            )
+        );
+
+    $total = $rows->count();
+
+    $items = $rows
+        ->slice(
+            ($page - 1) * $perPage,
+            $perPage
+        )
+        ->values();
+
+    return new \Illuminate\Pagination\LengthAwarePaginator(
+        $items,
+        $total,
+        $perPage,
+        $page,
+        [
+            'path' =>
+                request()->url(),
+
+            'query' =>
+                request()->query(),
+        ]
+    );
+}
+/*
+|--------------------------------------------------------------------------
+| Consignment Movements
+|--------------------------------------------------------------------------
+*/
+
+public function getConsignmentMovements(
+    int $productVariantId,
+    int $branchId,
+    int $warehouseId,
+    int $resellerId,
+    ?int $unitId = null
+) {
+
+    return InventoryMovement::query()
+        ->with([
+            'unit',
+        ])
+        ->where(
+            'product_variant_id',
+            $productVariantId
+        )
+        ->where(
+            'branch_id',
+            $branchId
+        )
+        ->where(
+            'warehouse_id',
+            $warehouseId
+        )
+        ->where(
+            'reseller_id',
+            $resellerId
+        )
+        ->when(
+            $unitId,
+            function ($query) use ($unitId) {
+
+                $query->where(
+                    'unit_id',
+                    $unitId
+                );
+
+            }
+        )
+        ->orderByDesc(
+            'transaction_date'
+        )
+        ->orderByDesc(
+            'id'
+        )
+        ->get()
+        ->map(
+            function ($movement) {
+
+                return [
+
+                    'id' =>
+                        $movement->id,
+
+                    'date' =>
+                        $movement->transaction_date
+                            ?->format('Y-m-d'),
+
+                    'reference_type' =>
+                        $movement->reference_type,
+
+                    'reference_number' =>
+                        $movement->reference_number,
+
+                    'qty_in' =>
+                        (float) $movement->qty_in,
+
+                    'qty_out' =>
+                        (float) $movement->qty_out,
+
+                    'balance_qty' =>
+                        (float) $movement->balance_qty,
+
+                    'unit_id' =>
+                        $movement->unit_id,
+
+                    'unit_name' =>
+                        $movement->unit?->name,
+
+                    'unit_cost' =>
+                        (float) $movement->unit_cost,
+
+                    'total_cost' =>
+                        (float) $movement->total_cost,
+
+                    'description' =>
+                        $movement->description,
+
+                ];
+
+            }
+        )
+        ->values();
+}
 }
