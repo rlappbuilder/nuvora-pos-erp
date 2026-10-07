@@ -30,7 +30,7 @@ $modules = [
 
     ['module' => 'pos_sale','prefix' => 'POS', 'format' => '{PREFIX}{SEQ}','digit' => 9],
     
-
+    ['module' => 'cashier_deposit', 'prefix' => 'CD',  'format' => '{PREFIX}-{YYYY}-{MM}-{SEQ}', 'digit' => 6],
 
 
     // ==========================

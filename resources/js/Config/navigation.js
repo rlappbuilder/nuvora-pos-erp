@@ -67,7 +67,7 @@ const navigation = [
                  modules.dashboards,
                  modules.PointOfSales,
                 
-                // modules.deliveryOrders,
+                modules.backdatesales,
                 // modules.salesInvoices,
                 // modules.salesReturns,
             ],

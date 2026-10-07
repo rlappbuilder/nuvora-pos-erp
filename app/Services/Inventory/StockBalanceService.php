@@ -3,12 +3,15 @@
 namespace App\Services\Inventory;
 use App\Models\MasterData\ProductVariantPrice;
 use App\Models\Inventory\ProductStock;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\MasterData\PriceType;
 use App\Models\Inventory\InventoryMovement;
 use App\Services\Inventory\InventoryCostingService;
 use App\Models\MasterData\Company;
+use App\Models\Reseller\ResellerStockPriceLayer;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 class StockBalanceService
 {
     protected InventoryCostingService $inventoryCostingService;
@@ -1461,7 +1464,6 @@ public function getMovements(
 | Consignment Stock
 |--------------------------------------------------------------------------
 */
-
 public function getConsignmentStock(
     array $filters = []
 ): LengthAwarePaginator {
@@ -1488,140 +1490,79 @@ public function getConsignmentStock(
     |--------------------------------------------------------------------------
     */
 
-    if (! empty($filters['search'])) {
+    if (!empty($filters['search'])) {
+        $search = trim($filters['search']);
 
-        $search = $filters['search'];
-
-        $query->where(function (Builder $query) use ($search) {
-
+        $query->where(function ($query) use ($search) {
             $query
-                ->whereHas('variant', function (Builder $variant) use ($search) {
-
-                    $variant
-                        ->where('sku', 'like', "%{$search}%")
-                        ->orWhere('name', 'like', "%{$search}%")
-                        ->orWhereHas('product', function (Builder $product) use ($search) {
-
-                            $product->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            );
-
-                        });
-
-                })
-                ->orWhereHas('reseller', function (Builder $reseller) use ($search) {
-
-                    $reseller
+                ->whereHas('variant.product', function ($query) use ($search) {
+                    $query
                         ->where('name', 'like', "%{$search}%")
-                        ->orWhere(
-                            'reseller_code',
-                            'like',
-                            "%{$search}%"
-                        );
-
+                        ->orWhere('code', 'like', "%{$search}%");
                 })
-                ->orWhereHas('branch', function (Builder $branch) use ($search) {
-
-                    $branch->where(
-                        'name',
-                        'like',
-                        "%{$search}%"
-                    );
-
+                ->orWhereHas('variant', function ($query) use ($search) {
+                    $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
                 })
-                ->orWhereHas('warehouse', function (Builder $warehouse) use ($search) {
-
-                    $warehouse->where(
-                        'name',
-                        'like',
-                        "%{$search}%"
-                    );
-
+                ->orWhereHas('reseller', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%");
                 });
-
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Branch
+    | Filters
     |--------------------------------------------------------------------------
     */
 
-    $query->when(
-        ! empty($filters['branch_id']),
-        fn ($query) =>
-            $query->where(
-                'branch_id',
-                $filters['branch_id']
-            )
-    );
+    if (!empty($filters['company_id'])) {
+        $query->where(
+            'company_id',
+            $filters['company_id']
+        );
+    }
+
+    if (!empty($filters['branch_id'])) {
+        $query->where(
+            'branch_id',
+            $filters['branch_id']
+        );
+    }
+
+    if (!empty($filters['warehouse_id'])) {
+        $query->where(
+            'warehouse_id',
+            $filters['warehouse_id']
+        );
+    }
+
+    if (!empty($filters['reseller_id'])) {
+        $query->where(
+            'reseller_id',
+            $filters['reseller_id']
+        );
+    }
+
+    if (!empty($filters['product_variant_id'])) {
+        $query->where(
+            'product_variant_id',
+            $filters['product_variant_id']
+        );
+    }
+
+    if (!empty($filters['unit_id'])) {
+        $query->where(
+            'unit_id',
+            $filters['unit_id']
+        );
+    }
 
     /*
     |--------------------------------------------------------------------------
-    | Warehouse
-    |--------------------------------------------------------------------------
-    */
-
-    $query->when(
-        ! empty($filters['warehouse_id']),
-        fn ($query) =>
-            $query->where(
-                'warehouse_id',
-                $filters['warehouse_id']
-            )
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Reseller
-    |--------------------------------------------------------------------------
-    */
-
-    $query->when(
-        ! empty($filters['reseller_id']),
-        fn ($query) =>
-            $query->where(
-                'reseller_id',
-                $filters['reseller_id']
-            )
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Product Variant
-    |--------------------------------------------------------------------------
-    */
-
-    $query->when(
-        ! empty($filters['product_variant_id']),
-        fn ($query) =>
-            $query->where(
-                'product_variant_id',
-                $filters['product_variant_id']
-            )
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Unit
-    |--------------------------------------------------------------------------
-    */
-
-    $query->when(
-        ! empty($filters['unit_id']),
-        fn ($query) =>
-            $query->where(
-                'unit_id',
-                $filters['unit_id']
-            )
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Get Stocks
+    | Get Stock Rows
     |--------------------------------------------------------------------------
     */
 
@@ -1629,38 +1570,120 @@ public function getConsignmentStock(
 
     /*
     |--------------------------------------------------------------------------
-    | Group
+    | Load Open Reseller Price Layers
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    | Do NOT use ResellerStockPriceLayerService::allocate()
+    | here because allocate() mutates remaining_qty.
+    |
+    | This method is read-only and only reads current open layers.
+    |
+    */
+
+    $priceLayers = collect();
+
+    if ($stocks->isNotEmpty()) {
+        $priceLayers = ResellerStockPriceLayer::query()
+            ->where('status', 'Open')
+            ->where('remaining_qty', '>', 0)
+            ->whereIn(
+                'company_id',
+                $stocks
+                    ->pluck('company_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->whereIn(
+                'branch_id',
+                $stocks
+                    ->pluck('branch_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->whereIn(
+                'warehouse_id',
+                $stocks
+                    ->pluck('warehouse_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->whereIn(
+                'reseller_id',
+                $stocks
+                    ->pluck('reseller_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->whereIn(
+                'product_variant_id',
+                $stocks
+                    ->pluck('product_variant_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->whereIn(
+                'unit_id',
+                $stocks
+                    ->pluck('unit_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+            )
+            ->orderBy('id')
+            ->get()
+            ->groupBy(function ($layer) {
+                return implode('-', [
+                    $layer->company_id,
+                    $layer->branch_id,
+                    $layer->warehouse_id,
+                    $layer->reseller_id,
+                    $layer->product_variant_id,
+                    $layer->unit_id,
+                ]);
+            });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Build Consignment Rows
     |--------------------------------------------------------------------------
     */
 
     $rows = $stocks
         ->groupBy(function ($stock) {
-
             return implode('-', [
                 $stock->product_variant_id,
                 $stock->branch_id,
                 $stock->warehouse_id,
                 $stock->reseller_id,
             ]);
-
         })
-        ->map(function ($stocks) {
+        ->map(function ($stocks) use ($priceLayers) {
 
             $first = $stocks->first();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Stock Summary
+            |--------------------------------------------------------------------------
+            */
+
             $onHand = $stocks->sum(
-                fn ($stock) =>
-                    (float) $stock->on_hand_qty
+                fn ($stock) => (float) $stock->on_hand_qty
             );
 
             $reserved = $stocks->sum(
-                fn ($stock) =>
-                    (float) $stock->reserved_qty
+                fn ($stock) => (float) $stock->reserved_qty
             );
 
             $available = $stocks->sum(
-                fn ($stock) =>
-                    (float) $stock->available_qty
+                fn ($stock) => (float) $stock->available_qty
             );
 
             $stockValue = $stocks->sum(
@@ -1677,32 +1700,78 @@ public function getConsignmentStock(
 
             /*
             |--------------------------------------------------------------------------
-            | Consignment Value
+            | Unit Details
             |--------------------------------------------------------------------------
-            |
-            | Untuk sementara nilai consignment menggunakan
-            | nilai persediaan berdasarkan average cost.
-            |
             */
 
-            $consignmentValue = $stockValue;
-
             $units = $stocks
-                ->map(function ($stock) {
+                ->map(function ($stock) use ($priceLayers) {
+
+                    $unitOnHand = (float) $stock->on_hand_qty;
+
+                    $unitStockValue =
+                        $unitOnHand
+                        *
+                        (float) $stock->average_cost;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Current Reseller Price Layers
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $layerKey = implode('-', [
+                        $stock->company_id,
+                        $stock->branch_id,
+                        $stock->warehouse_id,
+                        $stock->reseller_id,
+                        $stock->product_variant_id,
+                        $stock->unit_id,
+                    ]);
+
+                    $layers = $priceLayers->get(
+                        $layerKey,
+                        collect()
+                    );
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Consignment Value
+                    |--------------------------------------------------------------------------
+                    |
+                    | Current consignment value comes from the
+                    | remaining reseller price layers.
+                    |
+                    | Example:
+                    |
+                    | On Hand       = 2
+                    | Unit Price    = 28,000
+                    | Remaining Qty = 2
+                    |
+                    | Consignment Value = 56,000
+                    |
+                    */
+
+                    $unitConsignmentValue = $layers->sum(
+                        fn ($layer) =>
+                            (float) $layer->remaining_qty
+                            *
+                            (float) $layer->unit_price
+                    );
+
+                    $unitConsignmentPrice =
+                        $unitOnHand > 0
+                            ? $unitConsignmentValue / $unitOnHand
+                            : 0;
 
                     return [
+                        'id' => $stock->id,
 
-                        'id' =>
-                            $stock->id,
+                        'unit_id' => $stock->unit_id,
 
-                        'unit_id' =>
-                            $stock->unit_id,
+                        'unit_name' => $stock->unit?->name,
 
-                        'unit_name' =>
-                            $stock->unit?->name,
-
-                        'on_hand_qty' =>
-                            (float) $stock->on_hand_qty,
+                        'on_hand_qty' => $unitOnHand,
 
                         'reserved_qty' =>
                             (float) $stock->reserved_qty,
@@ -1714,19 +1783,50 @@ public function getConsignmentStock(
                             (float) $stock->average_cost,
 
                         'stock_value' =>
-                            (float) $stock->on_hand_qty
-                            *
-                            (float) $stock->average_cost,
+                            round(
+                                $unitStockValue,
+                                2
+                            ),
 
+                        'consignment_price' =>
+                            round(
+                                $unitConsignmentPrice,
+                                2
+                            ),
+
+                        'consignment_value' =>
+                            round(
+                                $unitConsignmentValue,
+                                2
+                            ),
                     ];
-
                 })
                 ->values();
 
-            return [
+            /*
+            |--------------------------------------------------------------------------
+            | Consignment Summary
+            |--------------------------------------------------------------------------
+            */
 
-                'id' =>
-                    $first->id,
+            $consignmentValue = $units->sum(
+                fn ($unit) =>
+                    (float) $unit['consignment_value']
+            );
+
+            $consignmentPrice =
+                $onHand > 0
+                    ? $consignmentValue / $onHand
+                    : 0;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Return Row
+            |--------------------------------------------------------------------------
+            */
+
+            return [
+                'id' => $first->id,
 
                 'product_variant_id' =>
                     $first->product_variant_id,
@@ -1735,63 +1835,55 @@ public function getConsignmentStock(
                     $first->reseller_id,
 
                 'product' => [
-
                     'id' =>
                         $first->variant?->product?->id,
 
+                    'code' =>
+                        $first->variant?->product?->code,
+
                     'name' =>
                         $first->variant?->product?->name,
-
                 ],
 
                 'variant' => [
-
                     'id' =>
                         $first->variant?->id,
 
                     'sku' =>
                         $first->variant?->sku,
 
+                    'barcode' =>
+                        $first->variant?->barcode,
+
                     'name' =>
                         $first->variant?->name,
-
                 ],
 
                 'reseller' => [
-
                     'id' =>
                         $first->reseller?->id,
 
-                    'code' =>
-                        $first->reseller?->reseller_code,
-
                     'name' =>
                         $first->reseller?->name,
-
                 ],
 
                 'branch' => [
-
                     'id' =>
                         $first->branch?->id,
 
                     'name' =>
                         $first->branch?->name,
-
                 ],
 
                 'warehouse' => [
-
                     'id' =>
                         $first->warehouse?->id,
 
                     'name' =>
                         $first->warehouse?->name,
-
                 ],
 
-                'units' =>
-                    $units,
+                'units' => $units,
 
                 'unit_count' =>
                     $units->count(),
@@ -1806,16 +1898,29 @@ public function getConsignmentStock(
                     $available,
 
                 'average_cost' =>
-                    $averageCost,
+                    round(
+                        $averageCost,
+                        2
+                    ),
 
                 'stock_value' =>
-                    $stockValue,
+                    round(
+                        $stockValue,
+                        2
+                    ),
+
+                'consignment_price' =>
+                    round(
+                        $consignmentPrice,
+                        2
+                    ),
 
                 'consignment_value' =>
-                    $consignmentValue,
-
+                    round(
+                        $consignmentValue,
+                        2
+                    ),
             ];
-
         })
         ->filter(
             fn ($row) =>
@@ -1831,45 +1936,75 @@ public function getConsignmentStock(
 
     $sortBy =
         $filters['sort_by']
-        ?? 'id';
+        ?? 'product_name';
 
     $sortDirection =
-        $filters['sort_direction']
-        ?? 'desc';
+        strtolower(
+            $filters['sort_direction']
+            ?? 'asc'
+        ) === 'desc'
+            ? 'desc'
+            : 'asc';
 
-    if (! in_array(
-        $sortDirection,
-        ['asc', 'desc'],
-        true
-    )) {
-        $sortDirection = 'desc';
-    }
+    $rows = $rows->sortBy(
+        function ($row) use ($sortBy) {
 
-    $allowedSorts = [
-        'id',
-        'on_hand_qty',
-        'reserved_qty',
-        'available_qty',
-        'stock_value',
-        'consignment_value',
-    ];
+            return match ($sortBy) {
 
-    if (! in_array(
-        $sortBy,
-        $allowedSorts,
-        true
-    )) {
-        $sortBy = 'id';
-    }
+                'product_name' =>
+                    strtolower(
+                        $row['product']['name'] ?? ''
+                    ),
 
-    $rows = $rows
-        ->sortBy(
-            fn ($row) =>
-                $row[$sortBy] ?? 0,
-            SORT_REGULAR,
-            $sortDirection === 'desc'
-        )
-        ->values();
+                'variant_name' =>
+                    strtolower(
+                        $row['variant']['name'] ?? ''
+                    ),
+
+                'sku' =>
+                    strtolower(
+                        $row['variant']['sku'] ?? ''
+                    ),
+
+                'reseller_name' =>
+                    strtolower(
+                        $row['reseller']['name'] ?? ''
+                    ),
+
+                'branch_name' =>
+                    strtolower(
+                        $row['branch']['name'] ?? ''
+                    ),
+
+                'warehouse_name' =>
+                    strtolower(
+                        $row['warehouse']['name'] ?? ''
+                    ),
+
+                'on_hand_qty' =>
+                    (float) $row['on_hand_qty'],
+
+                'average_cost' =>
+                    (float) $row['average_cost'],
+
+                'stock_value' =>
+                    (float) $row['stock_value'],
+
+                'consignment_price' =>
+                    (float) $row['consignment_price'],
+
+                'consignment_value' =>
+                    (float) $row['consignment_value'],
+
+                default =>
+                    strtolower(
+                        $row['product']['name'] ?? ''
+                    ),
+            };
+        },
+        SORT_REGULAR,
+        $sortDirection === 'desc'
+    )->values();
 
     /*
     |--------------------------------------------------------------------------
@@ -1878,40 +2013,38 @@ public function getConsignmentStock(
     */
 
     $perPage =
-        max(
-            1,
-            (int) (
-                $filters['per_page']
-                ?? 10
-            )
+        (int) (
+            $filters['per_page']
+            ?? 20
         );
 
-    $page =
-        max(
-            1,
-            (int) (
-                $filters['page']
-                ?? 1
+    $perPage = max(
+        1,
+        min($perPage, 100)
+    );
+
+    //$page =
+    //    LengthAwarePaginator::resolveCurrentPage();
+    $page = Paginator::resolveCurrentPage();
+    $total =
+        $rows->count();
+
+    $items =
+        $rows
+            ->slice(
+                ($page - 1) * $perPage,
+                $perPage
             )
-        );
+            ->values();
 
-    $total = $rows->count();
-
-    $items = $rows
-        ->slice(
-            ($page - 1) * $perPage,
-            $perPage
-        )
-        ->values();
-
-    return new \Illuminate\Pagination\LengthAwarePaginator(
+    return new LengthAwarePaginator(
         $items,
         $total,
         $perPage,
         $page,
         [
             'path' =>
-                request()->url(),
+                LengthAwarePaginator::resolveCurrentPath(),
 
             'query' =>
                 request()->query(),

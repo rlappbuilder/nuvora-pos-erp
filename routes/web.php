@@ -9,21 +9,9 @@ use App\Http\Controllers\POS\CashierDepositController;
 use App\Http\Controllers\POS\CashierSessionController;
 use App\Http\Controllers\POS\CashierController;
 use App\Http\Controllers\POS\PosTransactionController;
-
+use App\Http\Controllers\POS\BackdateSaleController;
 Route::get('/', function () {
-
-    return Inertia::render('Welcome', [
-
-        'canLogin' => Route::has('login'),
-
-        'canRegister' => Route::has('register'),
-
-        'laravelVersion' => Application::VERSION,
-
-        'phpVersion' => PHP_VERSION,
-
-    ]);
-
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
@@ -31,105 +19,182 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 
 })
-
 ->middleware([
-
     'auth',
-
     'verified'
-
 ])
-
 ->name('dashboard');
 
 Route::middleware(
-
     'auth'
-
 )
-
 ->group(function () {
 
     Route::get(
-
         '/profile',
-
         [
-
             ProfileController::class,
-
             'edit'
-
         ]
-
     )->name(
-
         'profile.edit'
-
     );
 
     Route::patch(
-
         '/profile',
-
         [
-
             ProfileController::class,
-
             'update'
-
         ]
-
     )->name(
-
         'profile.update'
-
     );
 
     Route::delete(
-
         '/profile',
-
         [
-
             ProfileController::class,
-
             'destroy'
-
         ]
-
     )->name(
-
         'profile.destroy'
-
     );
 
-    Route::post('user/context/branch',[
-                UserContextController::class,
-                'switchBranch',
-            ] )->name('user.context.branch');
+    Route::post(
+        'user/context/branch',
+        [
+            UserContextController::class,
+            'switchBranch',
+        ]
+    )->name('user.context.branch');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cashier Deposits
+    |--------------------------------------------------------------------------
+    */
 
     Route::prefix('pos/cashier-deposits')
-    ->name('pos.cashier-deposits.')
-    ->group(function () {
+        ->name('pos.cashier-deposits.')
+        ->group(function () {
 
-        Route::post(
-            '/',
-            [
-                CashierDepositController::class,
-                'store',
-            ]
-        )->name('store');
+            /*
+            |--------------------------------------------------------------------------
+            | Store
+            |--------------------------------------------------------------------------
+            */
 
-           Route::post(
-            '{cashierDeposit}/post',
-            [
-                CashierDepositController::class,
-                'post',
-            ]
-        )->name('post');
+            Route::post(
+                '/',
+                [
+                    CashierDepositController::class,
+                    'store',
+                ]
+            )->name('store');
 
-    });
+
+            /*
+            |--------------------------------------------------------------------------
+            | Submit
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/submit',
+                [
+                    CashierDepositController::class,
+                    'submit',
+                ]
+            )->name('submit');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Approve
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/approve',
+                [
+                    CashierDepositController::class,
+                    'approve',
+                ]
+            )->name('approve');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Reject
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/reject',
+                [
+                    CashierDepositController::class,
+                    'reject',
+                ]
+            )->name('reject');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Receive
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/receive',
+                [
+                    CashierDepositController::class,
+                    'receive',
+                ]
+            )->name('receive');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Post
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/post',
+                [
+                    CashierDepositController::class,
+                    'post',
+                ]
+            )->name('post');
+            Route::get(
+                        '{cashierDeposit}/print',
+                        [CashierDepositController::class, 'print']
+                    )->name('print');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Cancel
+            |--------------------------------------------------------------------------
+            */
+
+            Route::post(
+                '{cashierDeposit}/cancel',
+                [
+                    CashierDepositController::class,
+                    'cancel',
+                ]
+            )->name('cancel');
+
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cashier
+    |--------------------------------------------------------------------------
+    */
+
     Route::get(
         'pos/cashier',
         [
@@ -137,47 +202,89 @@ Route::middleware(
             'index',
         ]
     )->name('pos.cashier.index');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cashier Sessions
+    |--------------------------------------------------------------------------
+    */
+
     Route::prefix('pos/cashier-sessions')
-    ->name('pos.cashier-sessions.')
-    ->group(function () {
+        ->name('pos.cashier-sessions.')
+        ->group(function () {
 
-        Route::post(
-            '/',
-            [
-                CashierSessionController::class,
-                'store',
-            ]
-        )->name('store');
+            Route::post(
+                '/',
+                [
+                    CashierSessionController::class,
+                    'store',
+                ]
+            )->name('store');
 
-        Route::post(
-            '/close',
-            [
-                CashierSessionController::class,
-                'close',
-            ]
-        )->name('close');
+            Route::post(
+                '/close',
+                [
+                    CashierSessionController::class,
+                    'close',
+                ]
+            )->name('close');
 
-      Route::get(
-            '{session}/print',
-            [CashierSessionController::class, 'print']
-        )->name('print');
+            Route::get(
+                '{session}/print',
+                [
+                    CashierSessionController::class,
+                    'print'
+                ]
+            )->name('print');
 
-    });
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | POS Transactions
+    |--------------------------------------------------------------------------
+    */
 
     Route::prefix('pos/transactions')
-    ->name('pos.transactions.')
-    ->group(function () {
+        ->name('pos.transactions.')
+        ->group(function () {
 
-        Route::get('/', [
-            PosTransactionController::class,
-            'index'
-        ])->name('index');
+            Route::get('/', [
+                PosTransactionController::class,
+                'index'
+            ])->name('index');
 
-        Route::post('/', [
-            PosTransactionController::class,
-            'store'
-        ])->name('store');
-    });
+            Route::post('/', [
+                PosTransactionController::class,
+                'store'
+            ])->name('store');
+
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backdate Sales
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('pos/backdate-sales')
+        ->name('pos.backdate-sales.')
+        ->group(function () {
+
+            Route::get('/', [
+                BackdateSaleController::class,
+                'index'
+            ])->name('index');
+
+            Route::post('/', [
+                BackdateSaleController::class,
+                'store'
+            ])->name('store');
+
+        });
 
 });
 

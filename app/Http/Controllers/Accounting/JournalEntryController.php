@@ -285,25 +285,23 @@ private function formData(
         ])
         ->values();
 
-
     /*
     |--------------------------------------------------------------------------
     | Resolve Company
     |--------------------------------------------------------------------------
     */
 
-    $companyId = null;
+  //  $companyId = auth()->user()->company_id;
+    /*
+    |--------------------------------------------------------------------------
+    | Resolve Company
+    |--------------------------------------------------------------------------
+    */
 
- if ($branchId) {
+    $companyId = auth()->user()->company_id;
 
-    $branch = $branches->firstWhere(
-        'id',
-        $branchId
-    );
-
-    $companyId = $branch['company_id'] ?? null;
-
-}
+    $currentBranchId =
+        session('current_branch_id');
 
     /*
     |--------------------------------------------------------------------------
@@ -535,6 +533,9 @@ private function formData(
 
         'chartOfAccounts' =>
             $chartOfAccounts,
+
+        'activeBranchId' =>
+            $currentBranchId,
 
     ];
 }

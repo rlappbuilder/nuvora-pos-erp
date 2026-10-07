@@ -1,12 +1,15 @@
 <script setup>
-import { computed, ref} from 'vue'
+import { computed, ref,} from 'vue'
+import { success, error,} from '@/Utils'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import OpenSessionModal from './OpenSessionModal.vue'
 import CloseSessionModal from './CloseSessionModal.vue'
 import CloseSessionSuccessModal from './CloseSessionSuccessModal.vue'
 import SessionReport from './SessionReport.vue'
-
+import CashDepositModal from './CashDepositModal.vue'
+import CashierDeposit from './Deposit/Index.vue'
+import StatusBadge from '@/Components/Display/StatusBadge.vue'
 const page = usePage()
 
 const props = defineProps({
@@ -77,6 +80,17 @@ const props = defineProps({
         top_products: [],
     }),
     },
+
+    depositAccounts: {
+    type: Array,
+    default: () => [],
+    },
+
+    cashierDeposits: {
+    type: Array,
+    default: () => [],
+    },
+
 })
 
 /*
@@ -97,14 +111,7 @@ const showCloseSuccessModal = ref(false)
 //const closedSessionId = ref(null)
 
 const closedSessionNumber = ref('-')
-/*
-|--------------------------------------------------------------------------
-| Dashboard Tabs
-|--------------------------------------------------------------------------
-*/
-
 const activeTab = ref('session')
-
 const tabs = [
     {
         key: 'session',
@@ -121,6 +128,10 @@ const tabs = [
     {
         key: 'cash-movement',
         label: 'Cash Movement',
+    },
+    {
+        key: 'cash-deposit',
+        label: 'Cash Deposit',
     },
     {
         key: 'receipts',
@@ -226,6 +237,91 @@ const closeCloseSessionModal = () => {
 
     showCloseSessionModal.value = false
 }
+
+const showCashDepositModal = ref(false)
+
+const cashDepositForm = ref({
+    amount: 0,
+    destination_account_id: '',
+    deposited_at: '',
+    note: '',
+})
+const cashDepositProcessing = ref(false)
+const submitCashDeposit = () => {
+    
+
+    if (cashDepositProcessing.value) {
+        return
+    }
+
+    if (!props.activeSession?.id) {
+        
+        return
+    }
+
+    if (!cashDepositForm.value.destination_account_id) {
+        
+        return
+    }
+
+    if (
+        !cashDepositForm.value.amount ||
+        Number(cashDepositForm.value.amount) <= 0
+    ) {
+               return
+    }
+
+    cashDepositProcessing.value = true
+
+    router.post(
+        route('pos.cashier-deposits.store'),
+        {
+            destination_account_id:
+                cashDepositForm.value.destination_account_id,
+
+            amount:
+                cashDepositForm.value.amount,
+
+            deposited_at:
+                cashDepositForm.value.deposited_at || null,
+
+            note:
+                cashDepositForm.value.note || null,
+        },
+        {
+            preserveScroll: true,
+
+            onFinish: () => {
+                cashDepositProcessing.value = false
+            },
+
+          onSuccess: () => {
+            showCashDepositModal.value = false
+
+            cashDepositForm.value = {
+                amount: 0,
+                destination_account_id: '',
+                deposited_at: '',
+                note: '',
+            }
+
+            success(
+                'Success',
+                'Cash deposit submitted successfully.'
+            )
+        },
+
+            onError: (errors) => {
+                console.log('CASH DEPOSIT ERROR', errors)
+
+                error(
+                    'Failed',
+                    'Cash deposit failed.'
+                )
+            },
+        }
+    )
+}
 /*
 |--------------------------------------------------------------------------
 | Session State
@@ -314,6 +410,9 @@ const salesByHour = computed(() =>
 
 const topProducts = computed(() =>
     props.dashboardAnalytics?.top_products ?? []
+)
+const cashierDeposits = computed(() =>
+    props.cashierDeposits ?? []
 )
 const formatQuantity = (value) =>
     new Intl.NumberFormat('id-ID', {
@@ -456,7 +555,32 @@ const formatDateTime = (value) => {
         minute: '2-digit',
     }).format(new Date(value))
 }
+const formatDepositStatus = (status) => {
+    const labels = {
+        draft: 'Draft',
+        submitted: 'Submitted',
+        approved: 'Approved',
+        rejected: 'Rejected',
+        received: 'Received',
+        posted: 'Posted',
+        cancelled: 'Cancelled',
+    }
 
+    return labels[status] ?? status ?? '-'
+}
+const depositStatusClass = (status) => {
+    const classes = {
+        draft: 'bg-slate-100 text-slate-600',
+        submitted: 'bg-blue-50 text-blue-700',
+        approved: 'bg-indigo-50 text-indigo-700',
+        rejected: 'bg-red-50 text-red-700',
+        received: 'bg-amber-50 text-amber-700',
+        posted: 'bg-emerald-50 text-emerald-700',
+        cancelled: 'bg-slate-100 text-slate-500',
+    }
+
+    return classes[status] ?? 'bg-slate-100 text-slate-600'
+}
 /*
 |--------------------------------------------------------------------------
 | Session Display
@@ -555,180 +679,350 @@ const salesChartPoints = computed(() =>
         .join(' ')
 )
 </script>
-
 <template>
-<AppLayout>
-    <div class="min-h-screen bg-slate-50">
-        <!-- =========================================================
-             PAGE HEADER
-        ========================================================== -->
-        <div class="border-b border-slate-200 bg-white">
-            <div class="mx-auto max-w-[1600px] px-6 py-5">
-                <div
-                    class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-                >
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-5 w-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M3 10.5 12 3l9 7.5"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M5.5 9.5V21h13V9.5"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M9 21v-6h6v6"
-                                    />
-                                </svg>
-                            </div>
-
-                            <div>
-                                <h1
-                                    class="text-xl font-semibold tracking-tight text-slate-900"
-                                >
-                                    Cashier Dashboard
-                                </h1>
-
+    <AppLayout>
+        <div class="min-h-screen bg-slate-50">
+            <!-- =========================================================
+                 PAGE HEADER
+            ========================================================== -->
+            <div class="border-b border-slate-200 bg-white">
+                <div class="mx-auto max-w-[1600px] px-6 py-5">
+                    <div
+                        class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+                    >
+                        <div>
+                            <div class="flex items-center gap-3">
                                 <div
-                                    class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500"
+                                    class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20"
                                 >
-                                    <span>
-                                        {{ currentBranch?.code ?? '-' }}
-                                    </span>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-5 w-5"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M3 10.5 12 3l9 7.5"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M5.5 9.5V21h13V9.5"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M9 21v-6h6v6"
+                                        />
+                                    </svg>
+                                </div>
 
-                                    <span class="text-slate-300">•</span>
+                                <div>
+                                    <h1
+                                        class="text-xl font-semibold tracking-tight text-slate-900"
+                                    >
+                                        Cashier Dashboard
+                                    </h1>
 
-                                    <span>
-                                        {{
-                                            currentBranch?.name ??
-                                            'No branch selected'
-                                        }}
-                                    </span>
+                                    <div
+                                        class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500"
+                                    >
+                                        <span>
+                                            {{ currentBranch?.code ?? '-' }}
+                                        </span>
 
-                                    <span class="text-slate-300">•</span>
+                                        <span class="text-slate-300">•</span>
 
-                                    <span>
-                                        {{
-                                            authUser?.name ??
-                                            'Cashier'
-                                        }}
-                                    </span>
+                                        <span>
+                                            {{
+                                                currentBranch?.name ??
+                                                'No branch selected'
+                                            }}
+                                        </span>
+
+                                        <span class="text-slate-300">•</span>
+
+                                        <span>
+                                            {{
+                                                authUser?.name ??
+                                                'Cashier'
+                                            }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Session Status -->
-                    <div
-                        class="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
-                        :class="
-                            hasActiveSession
-                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
-                                : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
-                        "
-                    >
-                        <span
-                            class="h-2 w-2 rounded-full"
-                            :class="
-                                hasActiveSession
-                                    ? 'bg-emerald-500'
-                                    : 'bg-amber-500'
-                            "
-                        />
+                        <!-- Session Status -->
+                        <div class="flex flex-col items-start gap-1.5">
+                            <div
+                                class="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
+                                :class="
+                                    hasActiveSession
+                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
+                                        : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+                                "
+                            >
+                                <span
+                                    class="h-2 w-2 rounded-full"
+                                    :class="
+                                        hasActiveSession
+                                            ? 'bg-emerald-500'
+                                            : 'bg-amber-500'
+                                    "
+                                />
 
-                        {{
-                            hasActiveSession
-                                ? 'Session Open'
-                                : 'Session Not Open'
-                        }}
+                                {{
+                                    hasActiveSession
+                                        ? 'Session Open'
+                                        : 'Session Not Open'
+                                }}
+                            </div>
+
+                            <span
+                                v-if="hasActiveSession && sessionOpenedAt"
+                                class="pl-1 text-xs text-slate-500"
+                            >
+                                Opened {{ sessionOpenedAt }}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- =========================================================
-             MAIN
-        ========================================================== -->
-        <main class="mx-auto max-w-[1600px] px-6 py-6">
-            <!-- =====================================================
-                 TABS
-            ====================================================== -->
-            <div
-                class="mb-7 flex overflow-x-auto border-b border-slate-200"
-            >
-                <button
-                    v-for="tab in tabs"
-                    :key="tab.key"
-                    type="button"
-                    class="relative whitespace-nowrap px-4 pb-3 text-sm font-medium transition"
-                    :class="
-                        activeTab === tab.key
-                            ? 'text-blue-600'
-                            : 'text-slate-500 hover:text-slate-800'
-                    "
-                    @click="changeTab(tab.key)"
+            <!-- =========================================================
+                 MAIN
+            ========================================================== -->
+            <main class="mx-auto max-w-[1600px] px-6 py-6">
+                <!-- =====================================================
+                     TABS
+                ====================================================== -->
+                <div
+                    class="mb-7 flex overflow-x-auto border-b border-slate-200"
                 >
-                    {{ tab.label }}
-
-                    <span
-                        v-if="activeTab === tab.key"
-                        class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-blue-600"
-                    />
-                </button>
-            </div>
-
-            <!-- =====================================================
-                 SESSION TAB
-            ====================================================== -->
-            <template v-if="activeTab === 'session'">
-                <!-- =================================================
-                     SESSION
-                ================================================== -->
-                <section>
-                    <div
-                        class="mb-3 flex items-center justify-between"
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.key"
+                        type="button"
+                        class="relative whitespace-nowrap px-4 pb-3 text-sm font-medium transition"
+                        :class="
+                            activeTab === tab.key
+                                ? 'text-blue-600'
+                                : 'text-slate-500 hover:text-slate-800'
+                        "
+                        @click="changeTab(tab.key)"
                     >
-                        <div>
-                            <h2
-                                class="text-sm font-semibold uppercase tracking-wide text-slate-700"
-                            >
-                                Session
-                            </h2>
+                        {{ tab.label }}
 
-                            <p class="mt-0.5 text-xs text-slate-500">
-                                Manage your current cashier session.
-                            </p>
+                        <span
+                            v-if="activeTab === tab.key"
+                            class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-blue-600"
+                        />
+                    </button>
+                </div>
+
+                <!-- =====================================================
+                     SESSION TAB
+                ====================================================== -->
+                <template v-if="activeTab === 'session'">
+                    <!-- =================================================
+                         SESSION
+                    ================================================== -->
+                    <section>
+                        <div
+                            class="mb-3 flex items-center justify-between"
+                        >
+                            <div>
+                                <h2
+                                    class="text-sm font-semibold uppercase tracking-wide text-slate-700"
+                                >
+                                    Session
+                                </h2>
+
+                                <p class="mt-0.5 text-xs text-slate-500">
+                                    Manage your current cashier session.
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Active Session -->
-                    <div
-                        v-if="hasActiveSession"
-                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                    >
-                        <div class="p-5 sm:p-6">
+                        <!-- Active Session -->
+                        <div
+                            v-if="hasActiveSession"
+                            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                        >
+                            <div class="p-5 sm:p-6">
+                                <div
+                                    class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
+                                >
+                                    <div class="flex items-start gap-4">
+                                        <div
+                                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-5 w-5"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                            >
+                                                <circle
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="9"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    d="M12 7v5l3 2"
+                                                />
+                                            </svg>
+                                        </div>
+
+                                        <div>
+                                            <div
+                                                class="flex flex-wrap items-center gap-2"
+                                            >
+                                                <h3
+                                                    class="text-base font-semibold text-slate-900"
+                                                >
+                                                    Current Session
+                                                </h3>
+
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                                                >
+                                                    <span
+                                                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                    />
+                                                    OPEN
+                                                </span>
+                                            </div>
+
+                                            <div
+                                                class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+                                            >
+                                                <span
+                                                    class="font-medium text-slate-700"
+                                                >
+                                                    {{ sessionNumber }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+                                    >
+                                        <!-- Opening Balance -->
+                                        <div
+                                            class="flex min-h-[48px] items-center rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-inset ring-emerald-200"
+                                        >
+                                            <div>
+                                                <div
+                                                    class="text-[11px] font-medium uppercase tracking-wide text-emerald-700"
+                                                >
+                                                    Opening Balance
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 text-lg font-semibold tabular-nums text-emerald-800"
+                                                >
+                                                    {{ formattedOpeningBalance }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Close Session -->
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                                            @click="openCloseSession"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    d="M9 12h6"
+                                                />
+                                            </svg>
+
+                                            Close Session
+                                        </button>
+
+                                        <!-- Cash Deposit -->
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+                                            @click="showCashDepositModal = true"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M3 9h18"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M12 12v4"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="m10 14 2 2 2-2"
+                                                />
+                                            </svg>
+
+                                            Cash Deposit
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No Active Session -->
+                        <div
+                            v-else
+                            class="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm"
+                        >
                             <div
-                                class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
+                                class="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
                             >
                                 <div class="flex items-start gap-4">
                                     <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"
+                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"
                                     >
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
@@ -745,193 +1039,61 @@ const salesChartPoints = computed(() =>
                                             />
                                             <path
                                                 stroke-linecap="round"
-                                                d="M12 7v5l3 2"
+                                                d="M12 8v4"
+                                            />
+                                            <path
+                                                stroke-linecap="round"
+                                                d="M12 16h.01"
                                             />
                                         </svg>
                                     </div>
 
                                     <div>
-                                        <div
-                                            class="flex flex-wrap items-center gap-2"
+                                        <h3
+                                            class="text-base font-semibold text-slate-900"
                                         >
-                                            <h3
-                                                class="text-base font-semibold text-slate-900"
-                                            >
-                                                Current Session
-                                            </h3>
+                                            No Active Session
+                                        </h3>
 
-                                            <span
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
-                                            >
-                                                <span
-                                                    class="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                                                />
-                                                OPEN
-                                            </span>
-                                        </div>
-
-                                        <div
-                                            class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+                                        <p
+                                            class="mt-1 max-w-xl text-sm leading-6 text-slate-500"
                                         >
-                                            <span
-                                                class="font-medium text-slate-700"
-                                            >
-                                                {{ sessionNumber }}
-                                            </span>
-
-                                            <span
-                                                class="text-slate-300"
-                                            >
-                                                •
-                                            </span>
-
-                                            <span
-                                                class="text-slate-500"
-                                            >
-                                                Opened
-                                                {{ sessionOpenedAt }}
-                                            </span>
-                                        </div>
+                                            Open a cashier session before
+                                            processing POS transactions.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div
-                                    class="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
-                                >
-                                    <div
-                                        class="rounded-xl bg-slate-50 px-4 py-3"
-                                    >
-                                        <div
-                                            class="text-[11px] font-medium uppercase tracking-wide text-slate-500"
-                                        >
-                                            Opening Balance
-                                        </div>
-
-                                        <div
-                                            class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900"
-                                        >
-                                            {{ formattedOpeningBalance }}
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
-                                        @click="openCloseSession"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="h-4 w-4"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
-                                            />
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z"
-                                            />
-                                            <path
-                                                stroke-linecap="round"
-                                                d="M9 12h6"
-                                            />
-                                        </svg>
-
-                                        Close Session
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- No Active Session -->
-                    <div
-                        v-else
-                        class="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm"
-                    >
-                        <div
-                            class="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
-                        >
-                            <div class="flex items-start gap-4">
-                                <div
-                                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"
+                                <button
+                                    type="button"
+                                    class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                                    @click="openSession"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
-                                        class="h-5 w-5"
+                                        class="h-4 w-4"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
                                         stroke-width="1.8"
                                     >
-                                        <circle
-                                            cx="12"
-                                            cy="12"
-                                            r="9"
+                                        <path
+                                            stroke-linecap="round"
+                                            d="M12 5v14"
                                         />
                                         <path
                                             stroke-linecap="round"
-                                            d="M12 8v4"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            d="M12 16h.01"
+                                            d="M5 12h14"
                                         />
                                     </svg>
-                                </div>
 
-                                <div>
-                                    <h3
-                                        class="text-base font-semibold text-slate-900"
-                                    >
-                                        No Active Session
-                                    </h3>
-
-                                    <p
-                                        class="mt-1 max-w-xl text-sm leading-6 text-slate-500"
-                                    >
-                                        Open a cashier session before
-                                        processing POS transactions.
-                                    </p>
-                                </div>
+                                    Open Session
+                                </button>
                             </div>
-
-                            <button
-                                type="button"
-                                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                                @click="openSession"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-4 w-4"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M12 5v14"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M5 12h14"
-                                    />
-                                </svg>
-
-                                Open Session
-                            </button>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                <!-- =================================================
+                    <!-- =================================================
                          TODAY
                     ================================================== -->
                     <section class="mt-8">
@@ -1107,343 +1269,288 @@ const salesChartPoints = computed(() =>
                             </div>
                         </div>
                     </section>
+
                     <!-- =================================================
-                     SALES CHART
-                ================================================== -->
-                <section class="mt-8">
-                    <div class="mb-4">
-                        <h2
-                            class="text-sm font-semibold uppercase tracking-wide text-slate-700"
-                        >
-                            Sales Today
-                        </h2>
-
-                        <p class="mt-0.5 text-xs text-slate-500">
-                            Hourly sales performance for the current cashier session.
-                        </p>
-                    </div>
-
-                    <div
-                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                    >
-                        <div class="p-5 sm:p-6">
-                            <div
-                                v-if="salesByHour.length === 0"
-                                class="flex min-h-[280px] items-center justify-center"
-                            >
-                                <div class="text-center">
-                                    <div
-                                        class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M4 19V5"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M4 19h16"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="m7 15 4-4 3 2 5-6"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <p
-                                        class="mt-3 text-sm font-semibold text-slate-700"
-                                    >
-                                        No sales yet
-                                    </p>
-
-                                    <p
-                                        class="mt-1 text-xs text-slate-500"
-                                    >
-                                        Posted sales will appear on the chart.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div
-                                v-else
-                                class="h-[300px] w-full"
-                            >
-                                <svg
-                                    viewBox="0 0 1000 300"
-                                    preserveAspectRatio="none"
-                                    class="h-full w-full"
-                                >
-                                    <!-- Grid -->
-                                    <line
-                                        v-for="line in 5"
-                                        :key="`grid-${line}`"
-                                        :x1="50"
-                                        :x2="980"
-                                        :y1="30 + ((line - 1) * 55)"
-                                        :y2="30 + ((line - 1) * 55)"
-                                        stroke="currentColor"
-                                        class="text-slate-100"
-                                        stroke-width="1"
-                                    />
-
-                                    <!-- Sales Line -->
-                                    <polyline
-                                        v-if="salesChartPoints.length > 1"
-                                        :points="salesChartPoints"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="text-blue-600"
-                                        stroke-width="3"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-
-                                    <!-- Points -->
-                                   <!-- Points + Sales Value -->
-                                    <g
-                                        v-for="point in salesChartPointData"
-                                        :key="point.hour"
-                                    >
-                                        <circle
-                                            :cx="point.x"
-                                            :cy="point.y"
-                                            r="4"
-                                            class="fill-white stroke-blue-600"
-                                            stroke-width="2.5"
-                                        />
-
-                                        <text
-                                            v-if="point.sales > 0"
-                                            :x="point.x"
-                                            :y="point.y - 12"
-                                            text-anchor="middle"
-                                            class="fill-slate-600 text-[10px] font-semibold"
-                                        >
-                                            {{ formatChartCurrency(point.sales) }}
-                                        </text>
-                                    </g>
-                                    <!-- X Axis -->
-                                    <line
-                                        x1="50"
-                                        x2="980"
-                                        y1="250"
-                                        y2="250"
-                                        stroke="currentColor"
-                                        class="text-slate-200"
-                                        stroke-width="1"
-                                    />
-
-                                    <!-- X Labels -->
-                                    <text
-                                        v-for="point in salesChartPointData.filter(
-                                            (_, index) =>
-                                                index % 2 === 0
-                                        )"
-                                        :key="`label-${point.hour}`"
-                                        :x="point.x"
-                                        y="275"
-                                        text-anchor="middle"
-                                        class="fill-slate-400 text-[11px]"
-                                    >
-                                        {{ point.hour }}
-                                    </text>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-               <!-- =================================================
-                     RECENT TRANSACTIONS
-                ================================================= -->
-                <section class="mt-8">
-                    <div
-                        class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
-                    >
-                        <div>
+                         SALES CHART
+                    ================================================== -->
+                    <section class="mt-8">
+                        <div class="mb-4">
                             <h2
                                 class="text-sm font-semibold uppercase tracking-wide text-slate-700"
                             >
-                                Recent Transactions
+                                Sales Today
                             </h2>
 
                             <p class="mt-0.5 text-xs text-slate-500">
-                                Latest posted POS transactions from this cashier session.
+                                Hourly sales performance for the current cashier session.
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition hover:text-blue-700"
-                            @click="changeTab('sales')"
-                        >
-                            View all Sales
-
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-3.5 w-3.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M9 5l7 7-7 7"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Empty -->
-                    <div
-                        v-if="recentTransactions.length === 0"
-                        class="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm"
-                    >
                         <div
-                            class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-                                />
-
-                                <path
-                                    stroke-linecap="round"
-                                    d="M8 8h8M8 12h8M8 16h5"
-                                />
-                            </svg>
-                        </div>
-
-                        <p
-                            class="mt-3 text-sm font-semibold text-slate-700"
-                        >
-                            No transactions yet
-                        </p>
-
-                        <p
-                            class="mt-1 text-xs text-slate-500"
-                        >
-                            Posted POS sales will appear here.
-                        </p>
-                    </div>
-
-                    <!-- Transactions -->
-                    <div
-                        v-else
-                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                    >
-                        <!-- Desktop Header -->
-                        <div
-                            class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:grid"
-                        >
-                            <div>Transaction</div>
-
-                            <div>Time</div>
-
-                            <div class="text-right">
-                                Amount
-                            </div>
-
-                            <div>Payment</div>
-
-                            <div>Status</div>
-                        </div>
-
-                        <div>
-                            <button
-                                v-for="transaction in recentTransactions"
-                                :key="transaction.id"
-                                type="button"
-                                class="group w-full border-b border-slate-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-blue-50/70"
-                            >
-                                <!-- Desktop -->
+                            <div class="p-5 sm:p-6">
                                 <div
-                                    class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] items-center gap-4 md:grid"
+                                    v-if="salesByHour.length === 0"
+                                    class="flex min-h-[280px] items-center justify-center"
                                 >
-                                    <!-- Transaction -->
-                                    <div class="min-w-0">
+                                    <div class="text-center">
                                         <div
-                                            class="truncate text-sm font-semibold text-slate-800 transition group-hover:text-blue-700"
+                                            class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
                                         >
-                                            {{ transaction.number }}
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-5 w-5"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M4 19V5"
+                                                />
+
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M4 19h16"
+                                                />
+
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="m7 15 4-4 3 2 5-6"
+                                                />
+                                            </svg>
                                         </div>
 
-                                        <div
-                                            class="mt-0.5 truncate text-xs text-slate-400"
+                                        <p
+                                            class="mt-3 text-sm font-semibold text-slate-700"
                                         >
-                                            {{
-                                                transaction.customer
-                                                    ?? 'Walk-in Customer'
-                                            }}
-                                        </div>
-                                    </div>
+                                            No sales yet
+                                        </p>
 
-                                    <!-- Time -->
-                                    <div
-                                        class="text-xs tabular-nums text-slate-500"
-                                    >
-                                        {{ transaction.time }}
-                                    </div>
-
-                                    <!-- Amount -->
-                                    <div
-                                        class="text-right text-sm font-semibold tabular-nums text-slate-800"
-                                    >
-                                        {{ formatCurrency(transaction.amount) }}
-                                    </div>
-
-                                    <!-- Payment -->
-                                    <div
-                                        class="text-xs font-medium text-slate-600"
-                                    >
-                                        {{ transaction.payment_method }}
-                                    </div>
-
-                                    <!-- Status -->
-                                    <div>
-                                        <span
-                                            class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                        <p
+                                            class="mt-1 text-xs text-slate-500"
                                         >
-                                            <span
-                                                class="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                                            />
-
-                                            {{ transaction.status }}
-                                        </span>
+                                            Posted sales will appear on the chart.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <!-- Mobile -->
-                                <div class="md:hidden">
-                                    <div
-                                        class="flex items-start justify-between gap-4"
+                                <div
+                                    v-else
+                                    class="h-[300px] w-full"
+                                >
+                                    <svg
+                                        viewBox="0 0 1000 300"
+                                        preserveAspectRatio="none"
+                                        class="h-full w-full"
                                     >
+                                        <!-- Grid -->
+                                        <line
+                                            v-for="line in 5"
+                                            :key="`grid-${line}`"
+                                            :x1="50"
+                                            :x2="980"
+                                            :y1="30 + ((line - 1) * 55)"
+                                            :y2="30 + ((line - 1) * 55)"
+                                            stroke="currentColor"
+                                            class="text-slate-100"
+                                            stroke-width="1"
+                                        />
+
+                                        <!-- Sales Line -->
+                                        <polyline
+                                            v-if="salesChartPoints.length > 1"
+                                            :points="salesChartPoints"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            class="text-blue-600"
+                                            stroke-width="3"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+
+                                        <!-- Points + Sales Value -->
+                                        <g
+                                            v-for="point in salesChartPointData"
+                                            :key="point.hour"
+                                        >
+                                            <circle
+                                                :cx="point.x"
+                                                :cy="point.y"
+                                                r="4"
+                                                class="fill-white stroke-blue-600"
+                                                stroke-width="2.5"
+                                            />
+
+                                            <text
+                                                v-if="point.sales > 0"
+                                                :x="point.x"
+                                                :y="point.y - 12"
+                                                text-anchor="middle"
+                                                class="fill-slate-600 text-[10px] font-semibold"
+                                            >
+                                                {{
+                                                    formatChartCurrency(
+                                                        point.sales
+                                                    )
+                                                }}
+                                            </text>
+                                        </g>
+
+                                        <!-- X Axis -->
+                                        <line
+                                            x1="50"
+                                            x2="980"
+                                            y1="250"
+                                            y2="250"
+                                            stroke="currentColor"
+                                            class="text-slate-200"
+                                            stroke-width="1"
+                                        />
+
+                                        <!-- X Labels -->
+                                        <text
+                                            v-for="point in salesChartPointData.filter(
+                                                (_, index) =>
+                                                    index % 2 === 0
+                                            )"
+                                            :key="`label-${point.hour}`"
+                                            :x="point.x"
+                                            y="275"
+                                            text-anchor="middle"
+                                            class="fill-slate-400 text-[11px]"
+                                        >
+                                            {{ point.hour }}
+                                        </text>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =================================================
+                         RECENT TRANSACTIONS
+                    ================================================= -->
+                    <section class="mt-8">
+                        <div
+                            class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+                        >
+                            <div>
+                                <h2
+                                    class="text-sm font-semibold uppercase tracking-wide text-slate-700"
+                                >
+                                    Recent Transactions
+                                </h2>
+
+                                <p class="mt-0.5 text-xs text-slate-500">
+                                    Latest posted POS transactions from this cashier session.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                                @click="changeTab('sales')"
+                            >
+                                View all Sales
+
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-3.5 w-3.5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Empty -->
+                        <div
+                            v-if="recentTransactions.length === 0"
+                            class="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm"
+                        >
+                            <div
+                                class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-5 w-5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+                                    />
+
+                                    <path
+                                        stroke-linecap="round"
+                                        d="M8 8h8M8 12h8M8 16h5"
+                                    />
+                                </svg>
+                            </div>
+
+                            <p
+                                class="mt-3 text-sm font-semibold text-slate-700"
+                            >
+                                No transactions yet
+                            </p>
+
+                            <p
+                                class="mt-1 text-xs text-slate-500"
+                            >
+                                Posted POS sales will appear here.
+                            </p>
+                        </div>
+
+                        <!-- Transactions -->
+                        <div
+                            v-else
+                            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                        >
+                            <!-- Desktop Header -->
+                            <div
+                                class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:grid"
+                            >
+                                <div>Transaction</div>
+                                <div>Time</div>
+                                <div class="text-right">
+                                    Amount
+                                </div>
+                                <div>Payment</div>
+                                <div>Status</div>
+                            </div>
+
+                            <div>
+                                <button
+                                    v-for="transaction in recentTransactions"
+                                    :key="transaction.id"
+                                    type="button"
+                                    class="group w-full border-b border-slate-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-blue-50/70"
+                                >
+                                    <!-- Desktop -->
+                                    <div
+                                        class="hidden grid-cols-[minmax(200px,1.5fr)_110px_minmax(130px,1fr)_120px_110px] items-center gap-4 md:grid"
+                                    >
+                                        <!-- Transaction -->
                                         <div class="min-w-0">
                                             <div
-                                                class="truncate text-sm font-semibold text-slate-800 group-hover:text-blue-700"
+                                                class="truncate text-sm font-semibold text-slate-800 transition group-hover:text-blue-700"
                                             >
                                                 {{ transaction.number }}
                                             </div>
@@ -1458,251 +1565,324 @@ const salesChartPoints = computed(() =>
                                             </div>
                                         </div>
 
+                                        <!-- Time -->
                                         <div
-                                            class="shrink-0 text-right"
+                                            class="text-xs tabular-nums text-slate-500"
                                         >
-                                            <div
-                                                class="text-sm font-semibold tabular-nums text-slate-800"
-                                            >
-                                                {{
-                                                    formatCurrency(
-                                                        transaction.amount
-                                                    )
-                                                }}
-                                            </div>
-
-                                            <div
-                                                class="mt-0.5 text-xs text-slate-400"
-                                            >
-                                                {{ transaction.time }}
-                                            </div>
+                                            {{ transaction.time }}
                                         </div>
-                                    </div>
 
-                                    <div
-                                        class="mt-3 flex items-center justify-between gap-3"
-                                    >
-                                        <span
+                                        <!-- Amount -->
+                                        <div
+                                            class="text-right text-sm font-semibold tabular-nums text-slate-800"
+                                        >
+                                            {{
+                                                formatCurrency(
+                                                    transaction.amount
+                                                )
+                                            }}
+                                        </div>
+
+                                        <!-- Payment -->
+                                        <div
                                             class="text-xs font-medium text-slate-600"
                                         >
                                             {{ transaction.payment_method }}
-                                        </span>
+                                        </div>
 
-                                        <span
-                                            class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                        <!-- Status -->
+                                        <div>
+                                            <span
+                                                class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                            >
+                                                <span
+                                                    class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                />
+
+                                                {{ transaction.status }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Mobile -->
+                                    <div class="md:hidden">
+                                        <div
+                                            class="flex items-start justify-between gap-4"
+                                        >
+                                            <div class="min-w-0">
+                                                <div
+                                                    class="truncate text-sm font-semibold text-slate-800 group-hover:text-blue-700"
+                                                >
+                                                    {{ transaction.number }}
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 truncate text-xs text-slate-400"
+                                                >
+                                                    {{
+                                                        transaction.customer
+                                                            ?? 'Walk-in Customer'
+                                                    }}
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="shrink-0 text-right"
+                                            >
+                                                <div
+                                                    class="text-sm font-semibold tabular-nums text-slate-800"
+                                                >
+                                                    {{
+                                                        formatCurrency(
+                                                            transaction.amount
+                                                        )
+                                                    }}
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 text-xs text-slate-400"
+                                                >
+                                                    {{ transaction.time }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="mt-3 flex items-center justify-between gap-3"
                                         >
                                             <span
-                                                class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                class="text-xs font-medium text-slate-600"
+                                            >
+                                                {{
+                                                    transaction.payment_method
+                                                }}
+                                            </span>
+
+                                            <span
+                                                class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600"
+                                            >
+                                                <span
+                                                    class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                />
+
+                                                {{ transaction.status }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =================================================
+                         TOP PRODUCTS
+                    ================================================== -->
+                    <section class="mt-8">
+                        <div class="mb-4">
+                            <h2
+                                class="text-sm font-semibold uppercase tracking-wide text-slate-700"
+                            >
+                                Top Products
+                            </h2>
+
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                Best-selling products from today's cashier session.
+                            </p>
+                        </div>
+
+                        <div
+                            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                        >
+                            <!-- Empty -->
+                            <div
+                                v-if="topProducts.length === 0"
+                                class="flex min-h-[180px] items-center justify-center px-6 py-10 text-center"
+                            >
+                                <div>
+                                    <div
+                                        class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
                                             />
 
-                                            {{ transaction.status }}
-                                        </span>
+                                            <path
+                                                stroke-linecap="round"
+                                                d="M8 8h8M8 12h5"
+                                            />
+                                        </svg>
+                                    </div>
+
+                                    <p
+                                        class="mt-3 text-sm font-semibold text-slate-700"
+                                    >
+                                        No product sales yet
+                                    </p>
+
+                                    <p
+                                        class="mt-1 text-xs text-slate-500"
+                                    >
+                                        Products will appear after posted sales.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Products -->
+                            <div v-else>
+                                <!-- Header -->
+                                <div
+                                    class="grid grid-cols-[minmax(0,1fr)_100px_140px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:px-6"
+                                >
+                                    <div>Product</div>
+
+                                    <div class="text-right">
+                                        Qty
+                                    </div>
+
+                                    <div class="text-right">
+                                        Sales
                                     </div>
                                 </div>
-                            </button>
-                        </div>
-                    </div>
-                </section>
 
-                <!-- =================================================
-     TOP PRODUCTS
-================================================== -->
-<section class="mt-8">
-    <div class="mb-4">
-        <h2
-            class="text-sm font-semibold uppercase tracking-wide text-slate-700"
-        >
-            Top Products
-        </h2>
+                                <!-- Rows -->
+                                <div>
+                                    <div
+                                        v-for="(product, index) in topProducts"
+                                        :key="product.variant_id"
+                                        class="grid grid-cols-[minmax(0,1fr)_100px_140px] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:px-6"
+                                    >
+                                        <div
+                                            class="flex min-w-0 items-center gap-3"
+                                        >
+                                            <div
+                                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500"
+                                            >
+                                                {{ index + 1 }}
+                                            </div>
 
-        <p class="mt-0.5 text-xs text-slate-500">
-            Best-selling products from today's cashier session.
-        </p>
-    </div>
+                                            <div class="min-w-0">
+                                                <div
+                                                    class="truncate text-sm font-semibold text-slate-800"
+                                                >
+                                                    {{ product.product_name }}
+                                                </div>
 
-    <div
-        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-    >
-        <!-- Empty -->
-        <div
-            v-if="topProducts.length === 0"
-            class="flex min-h-[180px] items-center justify-center px-6 py-10 text-center"
-        >
-            <div>
-                <div
-                    class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-5 w-5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
-                        />
+                                                <div
+                                                    class="mt-0.5 truncate text-xs text-slate-400"
+                                                >
+                                                    {{ product.variant_name }}
 
-                        <path
-                            stroke-linecap="round"
-                            d="M8 8h8M8 12h5"
-                        />
-                    </svg>
-                </div>
+                                                    <span
+                                                        v-if="product.sku"
+                                                    >
+                                                        · {{ product.sku }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                <p
-                    class="mt-3 text-sm font-semibold text-slate-700"
-                >
-                    No product sales yet
-                </p>
+                                        <div
+                                            class="text-right text-sm font-medium tabular-nums text-slate-600"
+                                        >
+                                            {{ formatQuantity(product.qty) }}
+                                        </div>
 
-                <p
-                    class="mt-1 text-xs text-slate-500"
-                >
-                    Products will appear after posted sales.
-                </p>
-            </div>
-        </div>
-
-        <!-- Products -->
-        <div v-else>
-            <!-- Header -->
-            <div
-                class="grid grid-cols-[minmax(0,1fr)_100px_140px] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:px-6"
-            >
-                <div>Product</div>
-
-                <div class="text-right">
-                    Qty
-                </div>
-
-                <div class="text-right">
-                    Sales
-                </div>
-            </div>
-
-            <!-- Rows -->
-            <div>
-                <div
-                    v-for="(product, index) in topProducts"
-                    :key="product.variant_id"
-                    class="grid grid-cols-[minmax(0,1fr)_100px_140px] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:px-6"
-                >
-                    <div class="flex min-w-0 items-center gap-3">
-                        <div
-                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500"
-                        >
-                            {{ index + 1 }}
-                        </div>
-
-                        <div class="min-w-0">
-                            <div
-                                class="truncate text-sm font-semibold text-slate-800"
-                            >
-                                {{ product.product_name }}
-                            </div>
-
-                            <div
-                                class="mt-0.5 truncate text-xs text-slate-400"
-                            >
-                                {{ product.variant_name }}
-
-                                <span
-                                    v-if="product.sku"
-                                >
-                                    · {{ product.sku }}
-                                </span>
+                                        <div
+                                            class="text-right text-sm font-semibold tabular-nums text-slate-900"
+                                        >
+                                            {{ formatCurrency(product.sales) }}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
+                </template>
 
-                    <div
-                        class="text-right text-sm font-medium tabular-nums text-slate-600"
-                    >
-                        {{ formatQuantity(product.qty) }}
-                    </div>
-
-                    <div
-                        class="text-right text-sm font-semibold tabular-nums text-slate-900"
-                    >
-                        {{ formatCurrency(product.sales) }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-            </template>
-
-            <!-- =====================================================
-                 REPORTS TAB
-            ====================================================== -->
-            <template v-else-if="activeTab === 'reports'">
-                <SessionReport
-                    :session-report="props.sessionReport"
+                <!-- =====================================================
+                     REPORTS TAB
+                ====================================================== -->
+                <template v-else-if="activeTab === 'reports'">
+                    <SessionReport
+                        :session-report="props.sessionReport"
+                    />
+                </template>
+               <template v-else-if="activeTab === 'cash-deposit'">
+                <CashierDeposit
+                    :deposits="props.cashierDeposits"
+                    :active-session="props.activeSession"
                 />
             </template>
 
-
-            <!-- =====================================================
-                 OTHER TABS
-            ====================================================== -->
-            <template v-else>
-                <div
-                    class="flex min-h-[360px] items-center justify-center rounded-2xl bg-white"
-                >
-                    <div class="max-w-md px-6 text-center">
-                        <div
-                            class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-6 w-6"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M4 5h16v14H4z"
-                                />
-
-                                <path
-                                    stroke-linecap="round"
-                                    d="M8 9h8M8 13h5"
-                                />
-                            </svg>
-                        </div>
-
-                        <h3
-                            class="mt-4 text-sm font-semibold text-slate-800"
-                        >
-                            {{
-                                tabs.find(
-                                    (tab) =>
-                                        tab.key === activeTab
-                                )?.label
-                            }}
-                        </h3>
-
-                        <p
-                            class="mt-1 text-sm leading-6 text-slate-500"
-                        >
-                            This section will be connected to the
-                            corresponding POS module.
-                        </p>
-                    </div>
-                </div>
+            <template v-else-if="activeTab === 'receipts'">
+                <!-- Receipt List transaksi cashier -->
             </template>
-        </main>
-        
-    </div>
- </AppLayout>
+                <!-- =====================================================
+                     OTHER TABS
+                ====================================================== -->
+                <template v-else>
+                    <div
+                        class="flex min-h-[360px] items-center justify-center rounded-2xl bg-white"
+                    >
+                        <div class="max-w-md px-6 text-center">
+                            <div
+                                class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-6 w-6"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M4 5h16v14H4z"
+                                    />
+
+                                    <path
+                                        stroke-linecap="round"
+                                        d="M8 9h8M8 13h5"
+                                    />
+                                </svg>
+                            </div>
+
+                            <h3
+                                class="mt-4 text-sm font-semibold text-slate-800"
+                            >
+                                {{
+                                    tabs.find(
+                                        (tab) =>
+                                            tab.key === activeTab
+                                    )?.label
+                                }}
+                            </h3>
+
+                            <p
+                                class="mt-1 text-sm leading-6 text-slate-500"
+                            >
+                                This section will be connected to the
+                                corresponding POS module.
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </main>
+        </div>
+    </AppLayout>
+<
 <OpenSessionModal
     :show="showOpenSessionModal"
     :current-branch="currentBranch"
@@ -1733,5 +1913,19 @@ const salesChartPoints = computed(() =>
         :processing="false"
         @close="showCloseSuccessModal = false"
         @print="printClosedSession"
+    />
+
+     <CashDepositModal
+        :show="showCashDepositModal"
+        :session-number="activeSession?.session_number ?? '-'"
+        :active-session="activeSession"
+        :available-cash="
+            closeSummary?.cash_movement?.expected_cash ?? 0
+        "
+        :deposit-accounts="depositAccounts"
+        :form="cashDepositForm"
+        :processing="cashDepositProcessing"
+        @close="showCashDepositModal = false"
+        @submit="submitCashDeposit"
     />
 </template>

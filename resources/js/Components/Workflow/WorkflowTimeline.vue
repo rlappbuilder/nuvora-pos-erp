@@ -4,6 +4,7 @@ import {
     computed,
 } from 'vue'
 
+
 const props = defineProps({
 
     activities: {
@@ -15,6 +16,7 @@ const props = defineProps({
     },
 
 })
+
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +46,13 @@ function formatDateTime(value)
     )
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Action Label
+|--------------------------------------------------------------------------
+*/
+
 function actionLabel(action)
 {
     const labels = {
@@ -54,29 +63,20 @@ function actionLabel(action)
         UPDATED:
             'Updated',
 
-        REJECTED:
-            'Rejected',
-
-        RESUBMITTED:
-            'Resubmitted',
-
-        POSTED:
-            'Posted',
-
-        DELETED:
-            'Deleted',
-
         SUBMITTED:
             'Submitted',
 
         APPROVED:
             'Approved',
 
-        SENT:
-            'Sent',
+        REJECTED:
+            'Rejected',
 
-        CONFIRMED:
-            'Confirmed',
+        RESUBMITTED:
+            'Resubmitted',
+
+        RECEIVED:
+            'Received',
 
         PARTIAL_RECEIVED:
             'Partial Received',
@@ -84,14 +84,33 @@ function actionLabel(action)
         FULLY_RECEIVED:
             'Fully Received',
 
+        POSTED:
+            'Posted',
+
         CANCELLED:
             'Cancelled',
+
+        DELETED:
+            'Deleted',
+
+        SENT:
+            'Sent',
+
+        CONFIRMED:
+            'Confirmed',
 
     }
 
     return labels[action]
         ?? action
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Action Icon
+|--------------------------------------------------------------------------
+*/
 
 function actionIcon(action)
 {
@@ -103,37 +122,41 @@ function actionIcon(action)
         UPDATED:
             '✎',
 
-        REJECTED:
-            '×',
-
-        RESUBMITTED:
-            '↻',
-
-        POSTED:
-            '✓',
-
-        DELETED:
-            '🗑',
-
         SUBMITTED:
             '➤',
 
         APPROVED:
             '✓',
 
-        CANCELLED:
-            '⊘',
+        REJECTED:
+            '×',
+
+        RESUBMITTED:
+            '↻',
+
+        RECEIVED:
+            '✓',
+
         PARTIAL_RECEIVED:
-        '◐',
+            '◐',
 
         FULLY_RECEIVED:
-        '✓',
+            '✓',
+
+        POSTED:
+            '✓',
+
+        CANCELLED:
+            '⊘',
+
+        DELETED:
+            '🗑',
+
+        SENT:
+            '➤',
 
         CONFIRMED:
             '✓',
-
-         SENT:
-         '➤'
 
     }
 
@@ -141,6 +164,13 @@ function actionIcon(action)
         ?? '•'
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Action Color
+|--------------------------------------------------------------------------
+*/
 
 function actionColor(action)
 {
@@ -158,25 +188,22 @@ function actionColor(action)
         APPROVED:
             'bg-emerald-500',
 
-        SENT:
-            'bg-blue-500',
-
-        CONFIRMED:
-            'bg-emerald-500',
-
         REJECTED:
             'bg-red-500',
 
         RESUBMITTED:
             'bg-amber-500',
 
-        POSTED:
-            'bg-emerald-500',
+        RECEIVED:
+            'bg-indigo-500',
 
         PARTIAL_RECEIVED:
             'bg-amber-500',
 
         FULLY_RECEIVED:
+            'bg-emerald-500',
+
+        POSTED:
             'bg-emerald-500',
 
         CANCELLED:
@@ -185,65 +212,105 @@ function actionColor(action)
         DELETED:
             'bg-gray-500',
 
+        SENT:
+            'bg-blue-500',
+
+        CONFIRMED:
+            'bg-emerald-500',
+
     }
 
     return colors[action]
         ?? 'bg-gray-400'
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Action Badge
+|--------------------------------------------------------------------------
+*/
+
 function actionBadge(action)
 {
     const colors = {
 
-            CREATED:
+        CREATED:
             'bg-sky-50 text-sky-700',
 
-            UPDATED:
-                'bg-indigo-50 text-indigo-700',
+        UPDATED:
+            'bg-indigo-50 text-indigo-700',
 
-            SUBMITTED:
-                'bg-blue-50 text-blue-700',
+        SUBMITTED:
+            'bg-blue-50 text-blue-700',
 
-            APPROVED:
-                'bg-emerald-50 text-emerald-700',
+        APPROVED:
+            'bg-emerald-50 text-emerald-700',
 
-            REJECTED:
-                'bg-red-50 text-red-700',
+        REJECTED:
+            'bg-red-50 text-red-700',
 
-            RESUBMITTED:
-                'bg-amber-50 text-amber-700',
+        RESUBMITTED:
+            'bg-amber-50 text-amber-700',
 
-            POSTED:
-                'bg-emerald-50 text-emerald-700',
+        RECEIVED:
+            'bg-indigo-50 text-indigo-700',
 
-            CANCELLED:
-                'bg-orange-50 text-orange-700',
+        PARTIAL_RECEIVED:
+            'bg-amber-50 text-amber-700',
 
-            DELETED:
-                'bg-gray-100 text-gray-700',
-            
-            PARTIAL_RECEIVED:
-                'bg-amber-50 text-amber-700',
+        FULLY_RECEIVED:
+            'bg-emerald-50 text-emerald-700',
 
-            FULLY_RECEIVED:
-                'bg-emerald-50 text-emerald-700',
+        POSTED:
+            'bg-emerald-50 text-emerald-700',
+
+        CANCELLED:
+            'bg-orange-50 text-orange-700',
+
+        DELETED:
+            'bg-gray-100 text-gray-700',
+
+        SENT:
+            'bg-blue-50 text-blue-700',
+
+        CONFIRMED:
+            'bg-emerald-50 text-emerald-700',
 
     }
 
     return colors[action]
         ?? 'bg-gray-100 text-gray-700'
-
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Latest First
+|--------------------------------------------------------------------------
+*/
+
+const timelineItems = computed(() => {
+
+    return [
+        ...props.activities,
+    ].reverse()
+
+})
+
 </script>
+
 
 <template>
 
 <div>
 
+    <!-- ========================================================= -->
     <!-- Empty -->
+    <!-- ========================================================= -->
 
     <div
-        v-if="!activities.length"
+        v-if="!timelineItems.length"
         class="
             rounded-xl
             border
@@ -262,7 +329,9 @@ function actionBadge(action)
     </div>
 
 
+    <!-- ========================================================= -->
     <!-- Timeline -->
+    <!-- ========================================================= -->
 
     <div
         v-else
@@ -273,7 +342,7 @@ function actionBadge(action)
             v-for="(
                 activity,
                 index
-            ) in activities"
+            ) in timelineItems"
 
             :key="activity.id"
 
@@ -286,12 +355,14 @@ function actionBadge(action)
             "
         >
 
+            <!-- ================================================= -->
             <!-- Connector -->
+            <!-- ================================================= -->
 
             <div
                 v-if="
                     index <
-                    activities.length - 1
+                    timelineItems.length - 1
                 "
                 class="
                     absolute
@@ -304,7 +375,9 @@ function actionBadge(action)
             ></div>
 
 
+            <!-- ================================================= -->
             <!-- Icon -->
+            <!-- ================================================= -->
 
             <div
                 class="
@@ -337,7 +410,9 @@ function actionBadge(action)
             </div>
 
 
+            <!-- ================================================= -->
             <!-- Content -->
+            <!-- ================================================= -->
 
             <div
                 class="
@@ -345,6 +420,8 @@ function actionBadge(action)
                     flex-1
                 "
             >
+
+                <!-- Header -->
 
                 <div
                     class="
@@ -362,11 +439,13 @@ function actionBadge(action)
                             text-gray-900
                         "
                     >
+
                         {{
                             actionLabel(
                                 activity.action
                             )
                         }}
+
                     </h4>
 
 
@@ -384,15 +463,19 @@ function actionBadge(action)
                             )
                         "
                     >
+
                         {{
                             activity.action
                         }}
+
                     </span>
 
                 </div>
 
 
+                <!-- ================================================= -->
                 <!-- Status Change -->
+                <!-- ================================================= -->
 
                 <div
                     v-if="
@@ -441,7 +524,9 @@ function actionBadge(action)
                 </div>
 
 
+                <!-- ================================================= -->
                 <!-- Description -->
+                <!-- ================================================= -->
 
                 <p
                     v-if="
@@ -459,7 +544,9 @@ function actionBadge(action)
                 </p>
 
 
-                <!-- Rejection Reason -->
+                <!-- ================================================= -->
+                <!-- Rejection / Reason -->
+                <!-- ================================================= -->
 
                 <div
                     v-if="
@@ -493,15 +580,19 @@ function actionBadge(action)
                             text-red-800
                         "
                     >
+
                         {{
                             activity.metadata.reason
                         }}
+
                     </div>
 
                 </div>
 
 
+                <!-- ================================================= -->
                 <!-- Footer -->
+                <!-- ================================================= -->
 
                 <div
                     class="

@@ -9,6 +9,10 @@ import navigation from '@/Config/navigation'
 import SidebarItem from './SidebarItem.vue'
 import { usePage } from '@inertiajs/vue3'
 import { hasPermission } from '@/Utils'
+console.log(
+    'NAVIGATION:',
+    navigation
+)
 const {
     sidebarCollapsed,
     mobileSidebarOpen,

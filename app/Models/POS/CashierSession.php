@@ -12,6 +12,8 @@ use App\Models\POS\CashierDeposit;
 use App\Models\MasterData\Warehouse;
 use App\Models\POS\PosSale;
 
+
+use App\Models\Accounting\ChartOfAccount;
 class CashierSession extends Model
 {
     protected $table = 'cashier_sessions';

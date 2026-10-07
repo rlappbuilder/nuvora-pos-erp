@@ -36,12 +36,6 @@ class CashierDepositRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
-
-            'warehouse_id' => [
-                'required',
-                'integer',
-                'exists:warehouses,id',
-            ],
         ];
     }
 

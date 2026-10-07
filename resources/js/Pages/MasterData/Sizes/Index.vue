@@ -61,13 +61,7 @@ const perPage = ref(props.filters.per_page ?? 10)
 
 const pageTitle = computed(() => 'Size')
 const loading = ref(false)
-//const {
 
- //   loading,
-   // showLoading,
-    // hideLoading,
-
-//} = useLoading()
 
 const filters = reactive({
 

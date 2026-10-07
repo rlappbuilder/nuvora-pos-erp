@@ -625,6 +625,44 @@ public function getCloseSummary(
 
     /*
     |--------------------------------------------------------------------------
+    | Cash Movement
+    |--------------------------------------------------------------------------
+    |
+    | Only today's cash sales affect the current cashier drawer.
+    |
+    | Backdate Sale remains part of the transaction summary above,
+    | but does NOT add cash to the current session.
+    |
+    */
+
+    $cashSales =
+        (float) DB::table('pos_sale_payments')
+            ->join(
+                'pos_sales',
+                'pos_sales.id',
+                '=',
+                'pos_sale_payments.pos_sale_id'
+            )
+            ->where(
+                'pos_sales.cashier_session_id',
+                $session->id
+            )
+            ->where(
+                'pos_sales.status',
+                'posted'
+            )
+            ->where(
+                'pos_sale_payments.payment_method',
+                'cash'
+            )
+            ->whereDate(
+                'pos_sales.sale_date',
+                now()->toDateString()
+            )
+            ->sum('pos_sale_payments.amount');
+
+    /*
+    |--------------------------------------------------------------------------
     | Cash Deposit
     |--------------------------------------------------------------------------
     */
@@ -648,7 +686,7 @@ public function getCloseSummary(
 
     $expectedCash =
         $openingCash
-        + $cash['amount']
+        + $cashSales
         - $cashDeposit;
 
     return [
@@ -727,7 +765,7 @@ public function getCloseSummary(
                 $openingCash,
 
             'cash_sales' =>
-                $cash['amount'],
+                $cashSales,
 
             'cash_deposit' =>
                 $cashDeposit,

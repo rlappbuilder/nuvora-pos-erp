@@ -1,0 +1,388 @@
+<?php
+
+namespace App\Http\Controllers\POS;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\POS\BackdateSaleRequest;
+use App\Models\MasterData\Customer;
+use App\Models\Inventory\ProductStock;
+use App\Models\MasterData\PriceType;
+use App\Models\MasterData\ProductVariantPrice;
+use App\Services\POS\PosTransactionService;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class BackdateSaleController extends Controller
+{
+    protected PosTransactionService $posTransactionService;
+
+    public function __construct(
+        PosTransactionService $posTransactionService
+    ) {
+        $this->posTransactionService =
+            $posTransactionService;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Index
+    |--------------------------------------------------------------------------
+    */
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Active Session
+        |--------------------------------------------------------------------------
+        */
+
+        $activeSession =
+            $this->posTransactionService
+                ->getActiveSession($user);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Customers
+        |--------------------------------------------------------------------------
+        */
+
+        $customers = Customer::query()
+            ->where('status', true)
+            ->orderBy('name')
+            ->get([
+                'id',
+                'customer_code',
+                'name',
+                'phone',
+                'address',
+                'city',
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Price Types
+        |--------------------------------------------------------------------------
+        */
+
+        $priceTypes = PriceType::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get([
+                'id',
+                'code',
+                'name',
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Products
+        |--------------------------------------------------------------------------
+        |
+        | Backdate product list initially uses today's active price.
+        | The actual transaction price is resolved again in
+        | createBackdate() based on transaction_date.
+        |
+        */
+
+        $products = collect();
+
+        if ($activeSession) {
+
+            $products = ProductVariantPrice::query()
+                ->with([
+                    'variant.product.primaryImage',
+                    'variant.values.attribute',
+                    'variant.values.attributeValue',
+                    'unit',
+                    'priceType',
+                ])
+                ->where(
+                    'branch_id',
+                    $activeSession->branch_id
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->where(function ($query) {
+
+                    $query
+                        ->whereNull('effective_from')
+                        ->orWhereDate(
+                            'effective_from',
+                            '<=',
+                            now()->toDateString()
+                        );
+                })
+                ->where(function ($query) {
+
+                    $query
+                        ->whereNull('effective_until')
+                        ->orWhereDate(
+                            'effective_until',
+                            '>=',
+                            now()->toDateString()
+                        );
+                })
+                ->whereHas(
+                    'variant',
+                    function ($query) {
+
+                        $query
+                            ->where(
+                                'is_active',
+                                true
+                            )
+                            ->whereHas(
+                                'product',
+                                function ($query) {
+
+                                    $query
+                                        ->where(
+                                            'is_active',
+                                            true
+                                        )
+                                        ->where(
+                                            'is_sellable',
+                                            true
+                                        );
+                                }
+                            );
+                    }
+                )
+                ->orderBy('selling_price')
+                ->get()
+                ->map(function ($price) use ($activeSession) {
+
+                    $variant =
+                        $price->variant;
+
+                    $product =
+                        $variant?->product;
+
+                    $image =
+                        $product?->primaryImage;
+
+                    $variantName =
+                        $variant?->values
+                            ?->map(function ($value) {
+
+                                return
+                                    $value
+                                        ->attributeValue
+                                        ?->name;
+                            })
+                            ->filter()
+                            ->implode(' / ');
+
+                    $stock =
+                        ProductStock::query()
+                            ->where(
+                                'company_id',
+                                $activeSession->company_id
+                            )
+                            ->where(
+                                'branch_id',
+                                $activeSession->branch_id
+                            )
+                            ->where(
+                                'warehouse_id',
+                                $activeSession->warehouse_id
+                            )
+                            ->where(
+                                'product_variant_id',
+                                $variant->id
+                            )
+                            ->where(
+                                'unit_id',
+                                $price->unit_id
+                            )
+                            ->whereNull(
+                                'reseller_id'
+                            )
+                            ->first();
+
+                    return [
+                        'product_id' =>
+                            $product?->id,
+
+                        'product_name' =>
+                            $product?->name,
+
+                        'variant_id' =>
+                            $variant->id,
+
+                        'variant_name' =>
+                            $variantName ?: (
+                                $variant->name !== 'Default'
+                                    ? $variant->name
+                                    : null
+                            ),
+
+                        'sku' =>
+                            $variant->sku,
+
+                        'barcode' =>
+                            $variant->barcode,
+
+                        'unit_id' =>
+                            $price->unit_id,
+
+                        'unit_name' =>
+                            $price->unit?->name,
+
+                        'price_type_id' =>
+                            $price->price_type_id,
+
+                        'price_type_name' =>
+                            $price->priceType?->name,
+
+                        'selling_price' =>
+                            (float)
+                            $price->selling_price,
+
+                        'image' =>
+                            $image?->image
+                                ? asset(
+                                    'storage/' .
+                                    $image->image
+                                )
+                                : null,
+
+                        'available_stock' =>
+                            (float) (
+                                $stock?->available_qty
+                                ?? 0
+                            ),
+                    ];
+                })
+                ->filter(
+                    fn ($item) =>
+                        $item['product_id'] !== null
+                )
+                ->groupBy('product_id')
+                ->map(function ($variants) {
+
+                    $lowestVariant =
+                        $variants->first();
+
+                    return [
+                        'id' =>
+                            $lowestVariant['product_id'],
+
+                        'product_id' =>
+                            $lowestVariant['product_id'],
+
+                        'product_name' =>
+                            $lowestVariant['product_name'],
+
+                        'name' =>
+                            $lowestVariant['product_name'],
+
+                        'sku' =>
+                            $lowestVariant['sku'],
+
+                        'image' =>
+                            $lowestVariant['image'],
+
+                        'selling_price' =>
+                            $lowestVariant['selling_price'],
+
+                        'available_stock' =>
+                            $lowestVariant['available_stock'],
+
+                        'variants' =>
+                            $variants
+                                ->values()
+                                ->toArray(),
+                    ];
+                })
+                ->values();
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Response
+        |--------------------------------------------------------------------------
+        */
+
+        return Inertia::render(
+            'POS/BackdateSales/Index',
+            [
+                'activeSession' =>
+                    $activeSession,
+
+                'customers' =>
+                    $customers,
+
+                'priceTypes' =>
+                    $priceTypes,
+
+                'products' =>
+                    $products,
+            ]
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Store
+    |--------------------------------------------------------------------------
+    */
+
+    public function store(
+        BackdateSaleRequest $request
+    ) {
+
+        $sale =
+            $this->posTransactionService
+                ->createBackdate(
+                    $request->validated(),
+                    $request->user()
+                );
+
+        return redirect()
+            ->route(
+                'pos.backdate-sales.index'
+            )
+            ->with(
+                'pos_sale_success',
+                [
+                    'sale_number' =>
+                        $sale->sale_number,
+
+                    'sale_date' =>
+                        $sale->sale_date,
+
+                    'subtotal' =>
+                        (float)
+                        $sale->subtotal,
+
+                    'discount_amount' =>
+                        (float)
+                        $sale->discount_amount,
+
+                    'grand_total' =>
+                        (float)
+                        $sale->grand_total,
+
+                    'paid_amount' =>
+                        (float)
+                        $sale->paid_amount,
+
+                    'change_amount' =>
+                        (float)
+                        $sale->change_amount,
+                ]
+            );
+    }
+}

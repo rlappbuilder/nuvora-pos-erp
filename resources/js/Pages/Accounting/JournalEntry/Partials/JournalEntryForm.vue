@@ -1,4 +1,10 @@
 <script setup>
+import {
+    computed,
+    onMounted,
+    reactive,
+    watch,
+} from 'vue'
 
 import FormSection from '@/Components/Form/FormSection.vue'
 import FormField from '@/Components/Form/FormField.vue'
@@ -6,11 +12,9 @@ import FormInput from '@/Components/Form/FormInput.vue'
 import FormTextarea from '@/Components/Form/FormTextarea.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { computed, watch, onMounted } from 'vue'
-import { formatCurrency } from '@/Utils/currency'
+
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-
 
 /*
 |--------------------------------------------------------------------------
@@ -50,22 +54,22 @@ const props = defineProps({
         default: () => [],
     },
 
+    activeBranchId: {
+        type: [Number, String, null],
+        default: null,
+    },
+
     mode: {
         type: String,
         default: 'create',
     },
 
+    show: {
+    type: Boolean,
+    default: false,
+},
+
 })
-
-
-/*
-|--------------------------------------------------------------------------
-| Form
-|--------------------------------------------------------------------------
-*/
-
-const form = props.form
-
 
 const emit = defineEmits([
     'submit',
@@ -73,152 +77,523 @@ const emit = defineEmits([
     'cancel',
 ])
 
+/*
+|--------------------------------------------------------------------------
+| Amount Input Buffer
+|--------------------------------------------------------------------------
+|
+| Jangan langsung format value ketika user sedang mengetik.
+| Format hanya ketika blur.
+|
+*/
+
+const amountInputs = reactive({})
 
 /*
 |--------------------------------------------------------------------------
-| Detail
+| Line Key
+|--------------------------------------------------------------------------
+*/
+
+const createLineKey = () => {
+    return `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`
+}
+
+const ensureLineKey = (line) => {
+
+    if (!line._key) {
+        line._key = createLineKey()
+    }
+
+    return line._key
+}
+
+/*
+|--------------------------------------------------------------------------
+| Create Empty Line
 |--------------------------------------------------------------------------
 */
 
 const createEmptyLine = () => ({
-
+    _key: createLineKey(),
     account_id: null,
-
-    description: null,
-
     debit: 0,
-
     credit: 0,
+})
+
+/*
+|--------------------------------------------------------------------------
+| Amount Helpers
+|--------------------------------------------------------------------------
+*/
+
+const amountKey = (line, type) => {
+
+    ensureLineKey(line)
+
+    return `${line._key}-${type}`
+}
+
+/*
+|--------------------------------------------------------------------------
+| Format Amount
+|--------------------------------------------------------------------------
+|
+| Internal:
+| 1000.20
+|
+| Display:
+| 1.000,20
+|
+*/
+
+const formatAmount = (value) => {
+
+    const amount = Number(value ?? 0)
+
+    if (!Number.isFinite(amount)) {
+        return ''
+    }
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }
+    ).format(amount)
+}
+
+/*
+|--------------------------------------------------------------------------
+| Parse Amount
+|--------------------------------------------------------------------------
+|
+| Supported:
+|
+| 1000.20
+| 1,000.20
+| 1000,20
+| 1.000,20
+|
+*/
+
+const parseAmount = (value) => {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ''
+    ) {
+        return 0
+    }
+
+    let input = String(value)
+        .trim()
+        .replace(/\s/g, '')
+
+    if (!input) {
+        return 0
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dot + Comma
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        input.includes('.') &&
+        input.includes(',')
+    ) {
+
+        const lastDot =
+            input.lastIndexOf('.')
+
+        const lastComma =
+            input.lastIndexOf(',')
+
+        /*
+        | 1.000,20
+        */
+
+        if (lastComma > lastDot) {
+
+            input = input
+                .replace(/\./g, '')
+                .replace(',', '.')
+
+        }
+
+        /*
+        | 1,000.20
+        */
+
+        else {
+
+            input = input
+                .replace(/,/g, '')
+
+        }
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Comma Only
+    |--------------------------------------------------------------------------
+    */
+
+    else if (input.includes(',')) {
+
+        const parts =
+            input.split(',')
+
+        const decimalPart =
+            parts[parts.length - 1]
+
+        /*
+        | 1000,20
+        */
+
+        if (
+            decimalPart &&
+            decimalPart.length <= 2
+        ) {
+
+            input =
+                input.replace(',', '.')
+
+        }
+
+        /*
+        | 1,000
+        */
+
+        else {
+
+            input =
+                input.replace(/,/g, '')
+
+        }
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dot Only
+    |--------------------------------------------------------------------------
+    */
+
+    else if (input.includes('.')) {
+
+        const parts =
+            input.split('.')
+
+        const decimalPart =
+            parts[parts.length - 1]
+
+        /*
+        | 1000.20
+        */
+
+        if (
+            decimalPart &&
+            decimalPart.length <= 2
+        ) {
+
+            // Keep decimal
+
+        }
+
+        /*
+        | 1.000
+        */
+
+        else {
+
+            input =
+                input.replace(/\./g, '')
+
+        }
+
+    }
+
+    const amount =
+        Number(input)
+
+    return Number.isFinite(amount)
+        ? amount
+        : 0
+}
+
+/*
+|--------------------------------------------------------------------------
+| Amount Input Focus
+|--------------------------------------------------------------------------
+*/
+
+const focusAmount = (
+    line,
+    type,
+    event
+) => {
+
+    ensureLineKey(line)
+
+    const key =
+        amountKey(line, type)
+
+    const value =
+        type === 'debit'
+            ? line.debit
+            : line.credit
+
+    amountInputs[key] =
+        value > 0
+            ? String(value)
+            : ''
+
+    event.target.value =
+        amountInputs[key]
+}
+
+/*
+|--------------------------------------------------------------------------
+| Debit Input
+|--------------------------------------------------------------------------
+*/
+
+const updateDebit = (
+    line,
+    event
+) => {
+
+    ensureLineKey(line)
+
+    const value =
+        event.target.value
+
+    const key =
+        amountKey(line, 'debit')
+
+    amountInputs[key] =
+        value
+
+    const amount =
+        parseAmount(value)
+
+    line.debit =
+        amount
+
+    if (amount > 0) {
+
+        line.credit = 0
+
+        amountInputs[
+            amountKey(line, 'credit')
+        ] = ''
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Credit Input
+|--------------------------------------------------------------------------
+*/
+
+const updateCredit = (
+    line,
+    event
+) => {
+
+    ensureLineKey(line)
+
+    const value =
+        event.target.value
+
+    const key =
+        amountKey(line, 'credit')
+
+    amountInputs[key] =
+        value
+
+    const amount =
+        parseAmount(value)
+
+    line.credit =
+        amount
+
+    if (amount > 0) {
+
+        line.debit = 0
+
+        amountInputs[
+            amountKey(line, 'debit')
+        ] = ''
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Amount Blur
+|--------------------------------------------------------------------------
+*/
+
+const blurAmount = (
+    line,
+    type
+) => {
+
+    ensureLineKey(line)
+
+    const key =
+        amountKey(line, type)
+
+    const value =
+        type === 'debit'
+            ? line.debit
+            : line.credit
+
+    amountInputs[key] =
+        value > 0
+            ? formatAmount(value)
+            : ''
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Display Amount
+|--------------------------------------------------------------------------
+*/
+
+const displayAmount = (
+    line,
+    type
+) => {
+
+    ensureLineKey(line)
+
+    const key =
+        amountKey(line, type)
+
+    if (
+        Object.prototype.hasOwnProperty.call(
+            amountInputs,
+            key
+        )
+    ) {
+        return amountInputs[key]
+    }
+
+    const value =
+        type === 'debit'
+            ? line.debit
+            : line.credit
+
+    return value > 0
+        ? formatAmount(value)
+        : ''
+}
+
+/*
+|--------------------------------------------------------------------------
+| Lines
+|--------------------------------------------------------------------------
+*/
+
+const lines = computed(() => {
+
+    if (!Array.isArray(props.form.lines)) {
+        props.form.lines = []
+    }
+
+    return props.form.lines
 
 })
 
+/*
+|--------------------------------------------------------------------------
+| Add Line
+|--------------------------------------------------------------------------
+*/
 
 const addLine = () => {
 
-    form.lines.push(
+    props.form.lines.push(
         createEmptyLine()
     )
 
 }
 
+/*
+|--------------------------------------------------------------------------
+| Remove Line
+|--------------------------------------------------------------------------
+*/
 
 const removeLine = (index) => {
 
     if (
-        form.lines.length <= 1
+        props.form.lines.length <= 2
     ) {
-
         return
+    }
+
+    const line =
+        props.form.lines[index]
+
+    if (line?._key) {
+
+        delete amountInputs[
+            amountKey(line, 'debit')
+        ]
+
+        delete amountInputs[
+            amountKey(line, 'credit')
+        ]
 
     }
 
-    form.lines.splice(
+    props.form.lines.splice(
         index,
         1
     )
 
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Debit / Credit
-|--------------------------------------------------------------------------
-*/
-
-const updateDebit = (line) => {
-
-    const debit =
-        Number(line.debit ?? 0)
-
-    if (debit > 0) {
-
-        line.credit = 0
-
-    }
-
-}
-
-
-const updateCredit = (line) => {
-
-    const credit =
-        Number(line.credit ?? 0)
-
-    if (credit > 0) {
-
-        line.debit = 0
-
-    }
-
-}
-
-
 /*
 |--------------------------------------------------------------------------
 | Totals
 |--------------------------------------------------------------------------
 */
-
 const totalDebit = computed(() => {
-
-    return form.lines.reduce(
-
-        (total, line) =>
-
-            total +
-            Number(
-                line.debit ?? 0
-            ),
-
+    return lines.value.reduce(
+        (total, line) => total + Number(line.debit || 0),
         0
-
     )
-
 })
-
 
 const totalCredit = computed(() => {
-
-    return form.lines.reduce(
-
-        (total, line) =>
-
-            total +
-            Number(
-                line.credit ?? 0
-            ),
-
+    return lines.value.reduce(
+        (total, line) => total + Number(line.credit || 0),
         0
-
     )
-
 })
 
-
-const balanceDifference = computed(() => {
-
-    return (
-        totalDebit.value -
-        totalCredit.value
-    )
-
+const balance = computed(() => {
+    return totalDebit.value - totalCredit.value
 })
-
 
 const isBalanced = computed(() => {
-
-    return (
-        form.lines.length > 0 &&
-        Math.round(
-            totalDebit.value * 100
-        ) ===
-        Math.round(
-            totalCredit.value * 100
-        ) &&
-        totalDebit.value > 0
-    )
-
+    return Math.abs(balance.value) < 0.01
 })
 
 
@@ -227,291 +602,217 @@ const isBalanced = computed(() => {
 | Fiscal Year
 |--------------------------------------------------------------------------
 */
+const setFiscalYearFromEntryDate = () => {
 
-const currentYear = new Date()
-    .getFullYear()
+    if (!props.form.entry_date) {
+        return
+    }
 
+    const year = new Date(
+        props.form.entry_date
+    ).getFullYear()
 
-const currentDate = () => {
+    const fiscalYear = props.fiscalYears.find(
+        item => Number(item.year) === Number(year)
+    )
 
-    return new Date()
-        .toISOString()
-        .slice(0, 10)
-
+    if (fiscalYear) {
+        props.form.fiscal_year_id = fiscalYear.id
+    }
 }
-
-
 /*
 |--------------------------------------------------------------------------
-| Filtered Accounting Periods
+| Accounting Periods
 |--------------------------------------------------------------------------
 */
 
 const filteredAccountingPeriods = computed(() => {
 
-    if (!form.fiscal_year_id) {
-
+    if (!props.form.fiscal_year_id) {
         return []
-
     }
 
     return props.accountingPeriods.filter(
         period =>
             Number(period.fiscal_year_id) ===
-            Number(form.fiscal_year_id)
+            Number(props.form.fiscal_year_id)
     )
 
 })
+const activeBranchName = computed(() => {
+    const branchId =
+        props.form.branch_id ??
+        props.activeBranchId
 
+    const branch = props.branches.find(
+        item => Number(item.id) === Number(branchId)
+    )
 
+    return branch?.label ?? ''
+})
+
+const fiscalYearLabel = computed(() => {
+    const fiscalYear = props.fiscalYears.find(
+        item => Number(item.id) === Number(props.form.fiscal_year_id)
+    )
+
+    return fiscalYear?.label ?? ''
+})
+
+const accountingPeriodLabel = computed(() => {
+    const period = props.accountingPeriods.find(
+        item => Number(item.id) === Number(props.form.accounting_period_id)
+    )
+
+    return period?.label ?? period?.name ?? ''
+})
 /*
 |--------------------------------------------------------------------------
-| Default Fiscal Year
+| Accounting Period
 |--------------------------------------------------------------------------
 */
 
-const setDefaultFiscalYear = () => {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Do not override existing value
-    |--------------------------------------------------------------------------
-    */
-
-    if (form.fiscal_year_id) {
-
-        return
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Find Current Year
-    |--------------------------------------------------------------------------
-    */
-
-    const currentFiscalYear =
-        props.fiscalYears.find(
-            fiscalYear =>
-                Number(fiscalYear.year) ===
-                Number(currentYear)
-        )
-
-
-    if (currentFiscalYear) {
-
-        form.fiscal_year_id =
-            currentFiscalYear.id
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Default Accounting Period
-|--------------------------------------------------------------------------
-*/
-
-const setDefaultAccountingPeriod = () => {
-
-    if (
-        !form.fiscal_year_id ||
-        !props.accountingPeriods.length
-    ) {
-
-        return
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Do not override existing valid period
-    |--------------------------------------------------------------------------
-    */
-
-    const existingPeriod =
-        props.accountingPeriods.find(
-            period =>
-                Number(period.id) ===
-                Number(
-                    form.accounting_period_id
-                )
-                &&
-                Number(
-                    period.fiscal_year_id
-                ) ===
-                Number(
-                    form.fiscal_year_id
-                )
-        )
-
-
-    if (existingPeriod) {
-
-        return
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Resolve Entry Date
-    |--------------------------------------------------------------------------
-    */
+const setAccountingPeriodFromEntryDate = () => {
 
     const entryDate =
-        form.entry_date ||
-        currentDate()
+        String(
+            props.form.entry_date ?? ''
+        ).slice(0, 10)
 
+    if (
+        !entryDate ||
+        !props.form.fiscal_year_id
+    ) {
+        props.form.accounting_period_id =
+            null
 
-    /*
-    |--------------------------------------------------------------------------
-    | Find Period By Entry Date
-    |--------------------------------------------------------------------------
-    */
+        return
+    }
 
-    const currentPeriod =
-        props.accountingPeriods.find(
-            period =>
+    const period =
+        filteredAccountingPeriods.value.find(
+            item => {
 
-                Number(
-                    period.fiscal_year_id
-                ) ===
-                Number(
-                    form.fiscal_year_id
+                const start =
+                    String(
+                        item.start_date
+                    ).slice(0, 10)
+
+                const end =
+                    String(
+                        item.end_date
+                    ).slice(0, 10)
+
+                return (
+                    entryDate >= start &&
+                    entryDate <= end
                 )
 
-                &&
-
-                String(
-                    period.start_date
-                ).slice(0, 10) <=
-                entryDate
-
-                &&
-
-                String(
-                    period.end_date
-                ).slice(0, 10) >=
-                entryDate
+            }
         )
 
-
-    if (currentPeriod) {
-
-        form.accounting_period_id =
-            currentPeriod.id
-
-    }
+    props.form.accounting_period_id =
+        period?.id ?? null
 
 }
 
-
 /*
 |--------------------------------------------------------------------------
-| Fiscal Year Watch
+| Entry Date Change
 |--------------------------------------------------------------------------
 */
 
-watch(
-    () => form.fiscal_year_id,
-    (newYear, oldYear) => {
+const handleEntryDateChange = () => {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Initial hydration
-        |--------------------------------------------------------------------------
-        */
+    setFiscalYearFromEntryDate()
 
-        if (
-            newYear === oldYear
-        ) {
+    setAccountingPeriodFromEntryDate()
 
-            return
+}
 
-        }
+const setActiveBranch = () => {
+    if (props.mode !== 'create') return
 
+    const branchId = props.activeBranchId
 
-        /*
-        |--------------------------------------------------------------------------
-        | Check Existing Period
-        |--------------------------------------------------------------------------
-        */
+    console.log('SET ACTIVE BRANCH:', branchId)
 
-        const periodStillValid =
-            props.accountingPeriods.some(
+    if (!branchId) return
 
-                period =>
+    props.form.branch_id = branchId
 
-                    Number(period.id) ===
-                    Number(
-                        form.accounting_period_id
-                    )
+    console.log(
+        'FORM BRANCH AFTER SET:',
+        props.form.branch_id
+    )
 
-                    &&
+    const branch = props.branches.find(
+        item => Number(item.id) === Number(branchId)
+    )
 
-                    Number(
-                        period.fiscal_year_id
-                    ) ===
-                    Number(newYear)
+    console.log(
+        'FOUND BRANCH:',
+        branch
+    )
 
-            )
-
-
-        if (
-            !periodStillValid
-        ) {
-
-            form.accounting_period_id =
-                null
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Resolve Period For Selected Fiscal Year
-        |--------------------------------------------------------------------------
-        */
-
-        setDefaultAccountingPeriod()
-
+    if (branch?.company_id) {
+        props.form.company_id = branch.company_id
     }
-)
-
+}
 
 /*
 |--------------------------------------------------------------------------
-| Entry Date Watch
+| Entry Date Watcher
 |--------------------------------------------------------------------------
 */
 
 watch(
-    () => form.entry_date,
+    () => props.form.entry_date,
     () => {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Only resolve automatically when period
-        | is empty.
-        |--------------------------------------------------------------------------
-        */
+        setFiscalYearFromEntryDate()
 
-        if (
-            !form.accounting_period_id
-        ) {
-
-            setDefaultAccountingPeriod()
-
-        }
+        setAccountingPeriodFromEntryDate()
 
     }
 )
 
+/*
+|--------------------------------------------------------------------------
+| Active Branch Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+    () => props.activeBranchId,
+    () => {
+
+        if (props.mode === 'create') {
+            setActiveBranch()
+        }
+
+    },
+    {
+        immediate: true,
+    }
+)
+
+/*
+|--------------------------------------------------------------------------
+| Mode Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+    () => props.mode,
+    (mode) => {
+
+        if (mode === 'create') {
+            setActiveBranch()
+        }
+
+    }
+)
 
 /*
 |--------------------------------------------------------------------------
@@ -521,577 +822,772 @@ watch(
 
 const submit = () => {
 
+    if (!isBalanced.value) {
+        return
+    }
+
     emit('submit')
 
 }
 
+/*
+|--------------------------------------------------------------------------
+| Submit & New
+|--------------------------------------------------------------------------
+*/
+
+const submitAndNew = () => {
+
+    if (!isBalanced.value) {
+        return
+    }
+
+    emit('submitAndNew')
+
+}
 
 /*
 |--------------------------------------------------------------------------
-| Lifecycle
+| Cancel
+|--------------------------------------------------------------------------
+*/
+
+const cancel = () => {
+
+    emit('cancel')
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Initialize Lines
 |--------------------------------------------------------------------------
 */
 
 onMounted(() => {
+   console.log('ACTIVE BRANCH ID:', props.activeBranchId)
+    console.log('BRANCHES:', props.branches)
+    console.log('FISCAL YEARS:', props.fiscalYears)
+    console.log('FORM:', props.form)
+    if (
+        !Array.isArray(props.form.lines)
+    ) {
+        props.form.lines = []
+    }
+
+    props.form.lines.forEach(
+        line => ensureLineKey(line)
+    )
 
     /*
     |--------------------------------------------------------------------------
-    | Create Mode
+    | Create Mode Defaults
     |--------------------------------------------------------------------------
     */
 
-    if (
-        props.mode === 'create'
-    ) {
+    if (props.mode === 'create') {
 
-        setDefaultFiscalYear()
+        if (!props.form.entry_date) {
 
-        setDefaultAccountingPeriod()
+            const today =
+                new Date()
+
+            const year =
+                today.getFullYear()
+
+            const month =
+                String(
+                    today.getMonth() + 1
+                ).padStart(2, '0')
+
+            const day =
+                String(
+                    today.getDate()
+                ).padStart(2, '0')
+
+            props.form.entry_date =
+                `${year}-${month}-${day}`
+
+        }
+
+        setActiveBranch()
+
+        setFiscalYearFromEntryDate()
+
+        setAccountingPeriodFromEntryDate()
 
     }
 
 })
 
+/*
+|--------------------------------------------------------------------------
+| Expose Helpers To Template
+|--------------------------------------------------------------------------
+|
+| Semua function di <script setup> otomatis
+| tersedia di template.
+|--------------------------------------------------------------------------
+*/
 </script>
-
-
 <template>
+    <Teleport to="body">
 
-    <form
-        @submit.prevent="submit"
-    >
-
-        <!-- ========================================================= -->
-        <!-- Journal Entry Information -->
-        <!-- ========================================================= -->
-
-        <FormSection
-            icon="📒"
-            title="Journal Entry Information"
-            description="Basic information about this journal entry."
-            :columns="2"
+        <div
+            v-if="show"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4"
+            @click.self="cancel"
         >
 
-            <!-- Number -->
-
-            <FormField
-                label="Number"
-                :error="form.errors.number"
+            <div
+                class="w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
             >
 
-                <FormInput
-                    v-model="form.number"
-                    readonly
-                    placeholder="Auto generated"
-                />
+<!--
+|--------------------------------------------------------------------------
+| HEADER
+|--------------------------------------------------------------------------
+-->
 
-            </FormField>
+<div
+    class="border-b border-slate-100 px-6 py-4"
+>
 
+    <div
+        class="flex items-center gap-5"
+    >
 
-            <!-- Entry Date -->
+        <!-- TITLE -->
 
-            <FormField
-                label="Entry Date"
-                required
-                :error="form.errors.entry_date"
+        <div class="min-w-0 shrink-0">
+
+            <h2
+                class="text-lg font-semibold text-slate-900"
             >
+                {{
+                    mode === 'create'
+                        ? 'New Journal Entry'
+                        : 'Edit Journal Entry'
+                }}
+            </h2>
 
-                <FlatPickr
-                    v-model="form.entry_date"
-                    class="
-                        w-full
-                        rounded-lg
-                        border
-                        border-gray-300
-                        px-3
-                        py-2
-                        focus:border-blue-500
-                        focus:ring-1
-                        focus:ring-blue-500
-                    "
-                    :config="{
-                        dateFormat: 'Y-m-d',
-                        altInput: true,
-                        altFormat: 'd M Y',
-                        allowInput: true,
-                    }"
-                />
+            <p
+                class="mt-1 text-sm text-slate-500"
+            >
+                Record a manual accounting transaction
+            </p>
 
-            </FormField>
+        </div>
 
+
+        <!-- TRANSACTION CONTEXT -->
+
+        <div
+            class="ml-auto flex items-start gap-5"
+        >
 
             <!-- Branch -->
 
-            <FormField
-                label="Branch"
-                required
-                :error="form.errors.branch_id"
-            >
+            <div class="min-w-[140px]">
 
-                <SearchableSelect
-                    v-model="form.branch_id"
-                    :options="branches"
-                    label="label"
-                    value-key="id"
-                    placeholder="Select Branch"
-                />
+                <label
+                    class="block text-xs font-medium text-slate-500"
+                >
+                    Branch
+                </label>
 
-            </FormField>
+                <div
+                    class="mt-1 text-sm font-semibold text-slate-800"
+                >
+                    {{ activeBranchName || '-' }}
+                </div>
 
-
-            <!-- Accounting Journal -->
-
-            <FormField
-                label="Accounting Journal"
-                required
-                :error="
-                    form.errors.accounting_journal_id
-                "
-            >
-
-                <SearchableSelect
-                    v-model="
-                        form.accounting_journal_id
-                    "
-                    :options="accountingJournals"
-                    label="label"
-                    value-key="id"
-                    placeholder="Select Journal"
-                />
-
-            </FormField>
+            </div>
 
 
             <!-- Fiscal Year -->
 
-            <FormField
-                label="Fiscal Year"
-                required
-                :error="
-                    form.errors.fiscal_year_id
-                "
-            >
+            <div class="min-w-[80px]">
 
-                <SearchableSelect
-                    v-model="
-                        form.fiscal_year_id
-                    "
-                    :options="fiscalYears"
-                    label="label"
-                    value-key="id"
-                    placeholder="Select Fiscal Year"
-                />
+                <label
+                    class="block text-xs font-medium text-slate-500"
+                >
+                    Fiscal Year
+                </label>
 
-            </FormField>
+                <div
+                    class="mt-1 text-sm font-semibold text-slate-800"
+                >
+                    {{ fiscalYearLabel || '-' }}
+                </div>
+
+            </div>
 
 
             <!-- Accounting Period -->
 
-            <FormField
-                label="Accounting Period"
-                required
-                :error="
-                    form.errors.accounting_period_id
-                "
-            >
+            <div class="min-w-[120px]">
 
-                <SearchableSelect
-                    v-model="
-                        form.accounting_period_id
-                    "
-                    :options="
-                        filteredAccountingPeriods
-                    "
-                    label="label"
-                    value-key="id"
-                    placeholder="Select Period"
-                    :disabled="
-                        !form.fiscal_year_id
-                    "
-                />
-
-            </FormField>
-
-
-            <!-- Reference -->
-
-            <FormField
-                label="Reference"
-                :error="form.errors.reference"
-            >
-
-                <FormInput
-                    v-model="form.reference"
-                    placeholder="Optional reference"
-                />
-
-            </FormField>
-
-        </FormSection>
-
-
-        <!-- ========================================================= -->
-        <!-- Journal Lines -->
-        <!-- ========================================================= -->
-
-        <FormSection
-            icon="📋"
-            title="Journal Lines"
-            description="Enter the accounts and debit / credit amounts for this journal entry."
-            :columns="1"
-        >
-
-            <div class="w-full overflow-x-auto">
+                <label
+                    class="block text-xs font-medium text-slate-500"
+                >
+                    Accounting Period
+                </label>
 
                 <div
-                    class="
-                        min-w-[1100px]
-                        space-y-4
-                    "
+                    class="mt-1 text-sm font-semibold text-slate-800"
+                >
+                    {{ accountingPeriodLabel || '-' }}
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- CLOSE -->
+
+        <button
+            type="button"
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            @click="cancel"
+        >
+            ×
+        </button>
+
+    </div>
+
+</div>
+
+
+                <!--
+                |--------------------------------------------------------------------------
+                | BODY
+                |--------------------------------------------------------------------------
+                -->
+
+                <form
+                    class="max-h-[calc(90vh-145px)] overflow-y-auto px-6 py-5"
+                    @submit.prevent="submit"
                 >
 
-                    <!-- Header -->
+                    <!--
+                    |--------------------------------------------------------------------------
+                    | ENTRY INFORMATION
+                    |--------------------------------------------------------------------------
+                    -->
 
-                    <div
-                        class="
-                            hidden
-                            lg:grid
-                            lg:grid-cols-[2fr_2fr_1.2fr_1.2fr_auto]
-                            gap-3
-                            px-3
-                            text-sm
-                            font-medium
-                            text-gray-600
-                        "
-                    >
+                    <div>
 
-                        <div>
-                            Account
+                        <div class="mb-4">
+
+                            <h3
+                                class="text-sm font-semibold text-slate-900"
+                            >
+                                Entry Information
+                            </h3>
+
+                            <p
+                                class="mt-1 text-xs text-slate-500"
+                            >
+                                Basic information for this journal entry.
+                            </p>
+
                         </div>
 
-                        <div>
-                            Description
-                        </div>
-
-                        <div>
-                            Debit
-                        </div>
-
-                        <div>
-                            Credit
-                        </div>
-
-                        <div></div>
-
-                    </div>
-
-
-                    <!-- Lines -->
-
-                    <div
-                        v-for="(line, index) in form.lines"
-                        :key="index"
-                        class="
-                            rounded-xl
-                            border
-                            border-gray-200
-                            p-4
-                            space-y-4
-                            lg:grid
-                            lg:grid-cols-[2fr_2fr_1.2fr_1.2fr_auto]
-                            lg:gap-3
-                            lg:items-start
-                            lg:space-y-0
-                        "
-                    >
-
-                        <!-- Account -->
-
-                        <FormField
-                            label="Account"
-                            required
-                            :error="
-                                form.errors[
-                                    `lines.${index}.account_id`
-                                ]
-                            "
-                        >
-
-                            <SearchableSelect
-                                v-model="
-                                    line.account_id
-                                "
-                                :options="
-                                    chartOfAccounts
-                                "
-                                label="label"
-                                value-key="id"
-                                placeholder="Select Account"
-                            />
-
-                        </FormField>
-
-
-                        <!-- Description -->
-
-                        <FormField
-                            label="Description"
-                            :error="
-                                form.errors[
-                                    `lines.${index}.description`
-                                ]
-                            "
-                        >
-
-                            <FormInput
-                                v-model="
-                                    line.description
-                                "
-                                placeholder="Line description"
-                            />
-
-                        </FormField>
-
-
-                        <!-- Debit -->
-
-                        <FormField
-                            label="Debit"
-                            required
-                            :error="
-                                form.errors[
-                                    `lines.${index}.debit`
-                                ]
-                            "
-                        >
-
-                            <FormInput
-                                v-model="
-                                    line.debit
-                                "
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                @input="
-                                    updateDebit(line)
-                                "
-                            />
-
-                        </FormField>
-
-
-                        <!-- Credit -->
-
-                        <FormField
-                            label="Credit"
-                            required
-                            :error="
-                                form.errors[
-                                    `lines.${index}.credit`
-                                ]
-                            "
-                        >
-
-                            <FormInput
-                                v-model="
-                                    line.credit
-                                "
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                @input="
-                                    updateCredit(line)
-                                "
-                            />
-
-                        </FormField>
-
-
-                        <!-- Remove -->
 
                         <div
-                            class="
-                                flex
-                                items-center
-                                justify-end
-                                lg:pt-7
-                            "
+                            class="grid grid-cols-1 gap-4 md:grid-cols-2"
                         >
 
-                            <BaseButton
-                                v-if="
-                                    form.lines.length > 1
-                                "
-                                type="button"
-                                variant="danger"
-                                @click="
-                                    removeLine(index)
-                                "
+                            <!-- Number -->
+
+                            <div>
+
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Number
+                                </label>
+
+                                <FormInput
+                                    v-model="form.code"
+                                    readonly
+                                    placeholder="Auto generated"
+                                />
+
+                            </div>
+
+
+                            <!-- Entry Date -->
+
+                            <div>
+
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Entry Date
+                                    <span class="text-red-500">*</span>
+                                </label>
+
+                                <FlatPickr
+                                    v-model="form.entry_date"
+                                    :config="{
+                                        dateFormat: 'Y-m-d',
+                                        allowInput: true,
+                                        clickOpens: true,
+                                    }"
+                                    class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                    @change="handleEntryDateChange"
+                                />
+
+                            </div>
+
+
+                            <!-- Accounting Journal -->
+
+                            <div>
+
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Accounting Journal
+                                    <span class="text-red-500">*</span>
+                                </label>
+
+                                <SearchableSelect
+                                    v-model="form.accounting_journal_id"
+                                    :options="accountingJournals"
+                                    label-key="name"
+                                    value-key="id"
+                                    placeholder="Select journal"
+                                />
+
+                            </div>
+
+
+                            <!-- Reference -->
+
+                            <div>
+
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Reference
+                                </label>
+
+                                <FormInput
+                                    v-model="form.reference"
+                                    placeholder="Optional reference"
+                                />
+
+                            </div>
+
+
+                            <!-- Description -->
+
+                            <div
+                                class="md:col-span-2"
                             >
-                                Remove
-                            </BaseButton>
+
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Description
+                                    <span class="text-red-500">*</span>
+                                </label>
+
+                                <FormInput
+                                    v-model="form.description"
+                                    placeholder="Describe this journal entry"
+                                />
+
+                            </div>
 
                         </div>
 
                     </div>
 
 
-                    <!-- Add Line -->
+                    <!--
+                    |--------------------------------------------------------------------------
+                    | JOURNAL LINES
+                    |--------------------------------------------------------------------------
+                    -->
 
-                    <div class="flex justify-start">
+                    <div class="mt-6">
 
-                        <BaseButton
-                            type="button"
-                            variant="secondary"
-                            @click="addLine"
+                        <div class="mb-4">
+
+                            <h3
+                                class="text-sm font-semibold text-slate-900"
+                            >
+                                Journal Lines
+                            </h3>
+
+                            <p
+                                class="mt-1 text-xs text-slate-500"
+                            >
+                                Enter the accounts and amounts for this transaction.
+                            </p>
+
+                        </div>
+
+
+                        <!-- TABLE -->
+
+                        <div
+                            class="overflow-x-auto rounded-xl border border-slate-200"
                         >
-                            + Add Line
-                        </BaseButton>
+
+                            <table
+                                class="w-full min-w-[720px] border-collapse text-sm"
+                            >
+
+                                <thead>
+
+                                    <tr
+                                        class="border-b border-slate-200 bg-slate-50"
+                                    >
+
+                                        <th
+                                            class="px-3 py-3 text-left font-semibold text-slate-700"
+                                        >
+                                            Account
+                                        </th>
+
+                                        <th
+                                            class="w-44 px-3 py-3 text-right font-semibold text-slate-700"
+                                        >
+                                            Debit
+                                        </th>
+
+                                        <th
+                                            class="w-44 px-3 py-3 text-right font-semibold text-slate-700"
+                                        >
+                                            Credit
+                                        </th>
+
+                                        <th
+                                            class="w-16 px-3 py-3 text-center font-semibold text-slate-700"
+                                        >
+                                            Action
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+
+                                <tbody>
+
+                                    <tr
+                                        v-for="(
+                                            line,
+                                            index
+                                        ) in lines"
+                                        :key="line._key"
+                                        class="border-b border-slate-100 last:border-b-0"
+                                    >
+
+                                        <!-- ACCOUNT -->
+
+                                        <td class="px-3 py-2">
+
+                                            <SearchableSelect
+                                                v-model="line.account_id"
+                                                :options="chartOfAccounts"
+                                                label-key="name"
+                                                value-key="id"
+                                                placeholder="Select account"
+                                            />
+
+                                        </td>
+
+
+                                        <!-- DEBIT -->
+
+                                        <td class="px-3 py-2">
+
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                autocomplete="off"
+                                                :value="
+                                                    displayAmount(
+                                                        line,
+                                                        'debit'
+                                                    )
+                                                "
+                                                placeholder="0,00"
+                                                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                @focus="
+                                                    focusAmount(
+                                                        line,
+                                                        'debit',
+                                                        $event
+                                                    )
+                                                "
+                                                @input="
+                                                    updateDebit(
+                                                        line,
+                                                        $event
+                                                    )
+                                                "
+                                                @blur="
+                                                    blurAmount(
+                                                        line,
+                                                        'debit'
+                                                    )
+                                                "
+                                            />
+
+                                        </td>
+
+
+                                        <!-- CREDIT -->
+
+                                        <td class="px-3 py-2">
+
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                autocomplete="off"
+                                                :value="
+                                                    displayAmount(
+                                                        line,
+                                                        'credit'
+                                                    )
+                                                "
+                                                placeholder="0,00"
+                                                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                @focus="
+                                                    focusAmount(
+                                                        line,
+                                                        'credit',
+                                                        $event
+                                                    )
+                                                "
+                                                @input="
+                                                    updateCredit(
+                                                        line,
+                                                        $event
+                                                    )
+                                                "
+                                                @blur="
+                                                    blurAmount(
+                                                        line,
+                                                        'credit'
+                                                    )
+                                                "
+                                            />
+
+                                        </td>
+
+
+                                        <!-- ACTION -->
+
+                                        <td
+                                            class="px-3 py-2 text-center"
+                                        >
+
+                                            <button
+                                                type="button"
+                                                :disabled="lines.length <= 2"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30"
+                                                title="Remove line"
+                                                @click.stop="removeLine(index)"
+                                            >
+
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    class="h-4 w-4"
+                                                >
+                                                    <path d="M3 6h18" />
+                                                    <path d="M8 6V4h8v2" />
+                                                    <path d="M19 6l-1 14H6L5 6" />
+                                                    <path d="M10 11v5" />
+                                                    <path d="M14 11v5" />
+                                                </svg>
+
+                                            </button>
+
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        <!-- ADD LINE -->
+
+                        <div class="mt-3">
+
+                            <button
+                                type="button"
+                                class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+                                @click="addLine"
+                            >
+                                + Add Line
+                            </button>
+
+                        </div>
+
+
+                        <!-- TOTALS -->
+
+                        <div
+                            class="mt-4 border-t border-slate-100 pt-4"
+                        >
+
+                            <div
+                                class="flex items-center justify-end gap-6 text-sm"
+                            >
+
+                                <!-- TOTAL DEBIT -->
+
+                                <div
+                                    class="flex items-center gap-2"
+                                >
+
+                                    <span class="text-slate-500">
+                                        Total Debit
+                                    </span>
+
+                                    <span
+                                        class="font-semibold tabular-nums text-slate-800"
+                                    >
+                                        {{ formatAmount(totalDebit) }}
+                                    </span>
+
+                                </div>
+
+
+                                <!-- TOTAL CREDIT -->
+
+                                <div
+                                    class="flex items-center gap-2"
+                                >
+
+                                    <span class="text-slate-500">
+                                        Total Credit
+                                    </span>
+
+                                    <span
+                                        class="font-semibold tabular-nums text-slate-800"
+                                    >
+                                        {{ formatAmount(totalCredit) }}
+                                    </span>
+
+                                </div>
+
+
+                                <!-- BALANCE -->
+
+                                <div
+                                    class="flex items-center gap-2"
+                                >
+
+                                    <span class="text-slate-500">
+                                        Balance
+                                    </span>
+
+                                    <span
+                                        :class="
+                                            isBalanced
+                                                ? 'text-green-600'
+                                                : 'text-red-600'
+                                        "
+                                        class="font-bold tabular-nums"
+                                    >
+                                        {{ formatAmount(Math.abs(balance)) }}
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- STATUS -->
+
+                            <div
+                                class="mt-3 flex justify-end"
+                            >
+
+                                <span
+                                    v-if="isBalanced"
+                                    class="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700"
+                                >
+                                    Balanced
+                                </span>
+
+                                <span
+                                    v-else
+                                    class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700"
+                                >
+                                    Not Balanced
+                                </span>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                </div>
-
-            </div>
-
-        </FormSection>
+                </form>
 
 
-        <!-- ========================================================= -->
-        <!-- Description -->
-        <!-- ========================================================= -->
-
-        <FormSection
-            icon="📝"
-            title="Description"
-            description="Additional information about this journal entry."
-            :columns="1"
-        >
-
-            <FormField
-                label="Description"
-                :error="form.errors.description"
-            >
-
-                <FormTextarea
-                    v-model="form.description"
-                    :rows="4"
-                    placeholder="Write additional notes..."
-                />
-
-            </FormField>
-
-        </FormSection>
-
-
-        <!-- ========================================================= -->
-        <!-- Summary -->
-        <!-- ========================================================= -->
-
-        <div
-            class="
-                mt-6
-                flex
-                justify-end
-            "
-        >
-
-            <div
-                class="
-                    w-full
-                    max-w-md
-                    rounded-xl
-                    border
-                    bg-gray-50
-                    p-5
-                "
-            >
-
-                <!-- Total Debit -->
+                <!--
+                |--------------------------------------------------------------------------
+                | FOOTER
+                |--------------------------------------------------------------------------
+                -->
 
                 <div
-                    class="
-                        flex
-                        justify-between
-                        py-2
-                        text-sm
-                    "
+                    class="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-3"
                 >
 
-                    <span>
-                        Total Debit
-                    </span>
-
-                    <span class="font-medium">
-                        {{
-                            formatCurrency(
-                                totalDebit
-                            )
-                        }}
-                    </span>
-
-                </div>
+                    <button
+                        type="button"
+                        class="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+                        @click="cancel"
+                    >
+                        Cancel
+                    </button>
 
 
-                <!-- Total Credit -->
-
-                <div
-                    class="
-                        flex
-                        justify-between
-                        py-2
-                        text-sm
-                    "
-                >
-
-                    <span>
-                        Total Credit
-                    </span>
-
-                    <span class="font-medium">
-                        {{
-                            formatCurrency(
-                                totalCredit
-                            )
-                        }}
-                    </span>
-
-                </div>
+                    <button
+                        type="button"
+                        :disabled="!isBalanced"
+                        class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        @click="submitAndNew"
+                    >
+                        Save & New
+                    </button>
 
 
-                <!-- Balance -->
-
-                <div
-                    class="
-                        mt-2
-                        flex
-                        justify-between
-                        border-t
-                        pt-3
-                        text-base
-                        font-semibold
-                    "
-                >
-
-                    <span>
-                        Balance
-                    </span>
-
-                    <span
-                        :class="
-                            isBalanced
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                        "
+                    <button
+                        type="button"
+                        :disabled="!isBalanced"
+                        class="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                        @click="submit"
                     >
                         {{
-                            formatCurrency(
-                                balanceDifference
-                            )
+                            mode === 'create'
+                                ? 'Save'
+                                : 'Update'
                         }}
-                    </span>
+                    </button>
 
                 </div>
 
@@ -1099,59 +1595,10 @@ onMounted(() => {
 
         </div>
 
-
-        <!-- ========================================================= -->
-        <!-- Action -->
-        <!-- ========================================================= -->
-
-        <div
-            class="
-                flex
-                justify-end
-                gap-3
-                mt-8
-            "
-        >
-
-            <BaseButton
-                type="button"
-                variant="secondary"
-                @click="emit('cancel')"
-            >
-                Cancel
-            </BaseButton>
-
-
-            <BaseButton
-                type="submit"
-                :loading="form.processing"
-            >
-
-                {{
-                    mode === 'create'
-                        ? 'Save'
-                        : 'Update'
-                }}
-
-            </BaseButton>
-
-
-            <BaseButton
-                v-if="mode === 'create'"
-                type="button"
-                variant="success"
-                :loading="form.processing"
-                @click="
-                    emit('submitAndNew')
-                "
-            >
-
-                Save &amp; New
-
-            </BaseButton>
-
-        </div>
-
-    </form>
-
+    </Teleport>
 </template>
+
+
+
+
+

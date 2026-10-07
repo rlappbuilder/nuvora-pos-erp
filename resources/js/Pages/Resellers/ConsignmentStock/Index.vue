@@ -1152,666 +1152,752 @@ const closeMovement = () => {
 
         <!-- Table -->
 
-        <div
-            ref="tableSection"
+<div
+    ref="tableSection"
+    class="
+        overflow-hidden
+        rounded-xl
+        border
+        border-gray-100
+        bg-white
+        shadow-sm
+        print:overflow-visible
+        print:rounded-none
+        print:border-0
+        print:shadow-none
+    "
+>
+
+    <div class="overflow-x-auto">
+
+        <table
             class="
-                overflow-hidden
-                rounded-xl
-                border
-                border-gray-100
-                bg-white
-                shadow-sm
-                print:overflow-visible
-                print:rounded-none
-                print:border-0
-                print:shadow-none
+                print-table
+                w-full
+                text-sm
             "
         >
 
-            <div class="overflow-x-auto">
+            <thead>
 
-                <table
+                <tr
                     class="
-                        print-table
-                        w-full
-                        text-sm
+                        border-b
+                        border-gray-200
                     "
                 >
 
-                    <thead>
+                    <!-- Reseller / Location -->
 
-                        <tr
+                    <th
+                        class="
+                            min-w-[180px]
+                            px-4
+                            py-3
+                            text-left
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Reseller /
+                        <br>
+                        Location
+                    </th>
+
+
+                    <!-- Product -->
+
+                    <th
+                        class="
+                            min-w-[190px]
+                            px-4
+                            py-3
+                            text-left
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Product
+                    </th>
+
+
+                    <!-- Unit -->
+
+                    <th
+                        class="
+                            min-w-[90px]
+                            px-4
+                            py-3
+                            text-left
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Unit
+                    </th>
+
+
+                    <!-- On Hand / Available -->
+
+                    <th
+                        class="
+                            min-w-[125px]
+                            px-4
+                            py-3
+                            text-right
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        On Hand
+                        /
+                        <br>
+                        Available
+                    </th>
+
+
+                    <!-- Average Cost -->
+
+                    <th
+                        class="
+                            min-w-[110px]
+                            px-4
+                            py-3
+                            text-right
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Average
+                        <br>
+                        Cost
+                    </th>
+
+
+                    <!-- Stock Value -->
+
+                    <th
+                        class="
+                            min-w-[120px]
+                            px-4
+                            py-3
+                            text-right
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Stock
+                        <br>
+                        Value
+                    </th>
+
+
+                    <!-- Consignment Price -->
+
+                    <th
+                        class="
+                            min-w-[125px]
+                            px-4
+                            py-3
+                            text-right
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Consignment
+                        <br>
+                        Price
+                    </th>
+
+
+                    <!-- Consignment Value -->
+
+                    <th
+                        class="
+                            min-w-[130px]
+                            px-4
+                            py-3
+                            text-right
+                            text-xs
+                            font-semibold
+                            leading-tight
+                            text-gray-500
+                        "
+                    >
+                        Consignment
+                        <br>
+                        Value
+                    </th>
+
+
+                    <!-- Actions -->
+
+                    <th
+                        class="
+                            min-w-[80px]
+                            px-4
+                            py-3
+                            text-center
+                            text-xs
+                            font-semibold
+                            text-gray-500
+                            print:hidden
+                        "
+                    >
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                <!-- Rows -->
+
+                <tr
+                    v-for="row in rows"
+                    :key="row.id"
+                    class="
+                        border-b
+                        border-gray-50
+                        last:border-b-0
+                    "
+                >
+
+                    <!-- Reseller / Location -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            align-top
+                        "
+                    >
+
+                        <div
                             class="
-                                border-b
-                                border-gray-200
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                row.reseller?.name ??
+                                '-'
+                            }}
+                        </div>
+
+                        <div
+                            class="
+                                mt-0.5
+                                text-xs
+                                text-gray-500
                             "
                         >
 
-                            <!-- Reseller / Location -->
+                            {{
+                                row.branch?.name ??
+                                '-'
+                            }}
 
-                            <th
-                                class="
-                                    min-w-[180px]
-                                    px-4
-                                    py-3
-                                    text-left
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Reseller /
-                                <br>
-                                Location
-                            </th>
+                            ·
+
+                            {{
+                                row.warehouse?.name ??
+                                '-'
+                            }}
+
+                        </div>
+
+                    </td>
 
 
-                            <!-- Product -->
+                    <!-- Product -->
 
-                            <th
-                                class="
-                                    min-w-[190px]
-                                    px-4
-                                    py-3
-                                    text-left
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Product
-                            </th>
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            align-top
+                        "
+                    >
 
-
-                            <!-- Unit -->
-
-                            <th
-                                class="
-                                    min-w-[90px]
-                                    px-4
-                                    py-3
-                                    text-left
-                                    text-xs
-                                    font-semibold
-                                    text-gray-500
-                                "
-                            >
-                                Unit
-                            </th>
-
-
-                            <!-- On Hand -->
-
-                            <th
-                                class="
-                                    min-w-[100px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                On
-                                <br>
-                                Hand
-                            </th>
-
-
-                            <!-- Available -->
-
-                            <th
-                                class="
-                                    min-w-[100px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Available
-                            </th>
-
-
-                            <!-- Average Cost -->
-
-                            <th
-                                class="
-                                    min-w-[110px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Average
-                                <br>
-                                Cost
-                            </th>
-
-
-                            <!-- Stock Value -->
-
-                            <th
-                                class="
-                                    min-w-[120px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Stock
-                                <br>
-                                Value
-                            </th>
-
-
-                            <!-- Consignment Price -->
-
-                            <th
-                                class="
-                                    min-w-[125px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Consignment
-                                <br>
-                                Price
-                            </th>
-
-
-                            <!-- Consignment Value -->
-
-                            <th
-                                class="
-                                    min-w-[130px]
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-xs
-                                    font-semibold
-                                    leading-tight
-                                    text-gray-500
-                                "
-                            >
-                                Consignment
-                                <br>
-                                Value
-                            </th>
-
-
-                            <!-- Actions -->
-
-                            <th
-                                class="
-                                    min-w-[80px]
-                                    px-4
-                                    py-3
-                                    text-center
-                                    text-xs
-                                    font-semibold
-                                    text-gray-500
-                                    print:hidden
-                                "
-                            >
-                                Actions
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-                        <!-- Rows -->
-
-                        <tr
-                            v-for="row in rows"
-                            :key="row.id"
+                        <div
                             class="
-                                border-b
-                                border-gray-50
-                                last:border-b-0
+                                font-medium
+                                text-gray-900
+                            "
+                        >
+                            {{
+                                row.product?.name ??
+                                row.variant?.product?.name ??
+                                '-'
+                            }}
+                        </div>
+
+                        <div
+                            class="
+                                mt-0.5
+                                text-xs
+                                text-gray-500
+                            "
+                        >
+                            SKU:
+                            {{
+                                row.variant?.sku ??
+                                '-'
+                            }}
+                        </div>
+
+                    </td>
+
+
+                    <!-- Unit -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            align-top
+                            text-gray-700
+                        "
+                    >
+
+                        <template
+                            v-if="
+                                row.units?.length
                             "
                         >
 
-                            <!-- Reseller / Location -->
-
-                            <td
+                            <div
+                                v-for="
+                                    unit in row.units
+                                "
+                                :key="unit.id"
                                 class="
-                                    px-4
-                                    py-3
-                                    align-top
+                                    text-xs
                                 "
                             >
+                                {{ unit.unit_name }}
+                            </div>
 
-                                <div
-                                    class="
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        row.reseller?.name ??
-                                        '-'
-                                    }}
-                                </div>
+                        </template>
 
-                                <div
-                                    class="
-                                        mt-0.5
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
+                        <template v-else>
 
-                                    {{
-                                        row.branch?.name ??
-                                        '-'
-                                    }}
+                            -
 
-                                    ·
+                        </template>
 
-                                    {{
-                                        row.warehouse?.name ??
-                                        '-'
-                                    }}
-
-                                </div>
-
-                            </td>
+                    </td>
 
 
-                            <!-- Product -->
+                    <!-- On Hand / Available -->
 
-                            <td
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            align-top
+                            tabular-nums
+                        "
+                    >
+
+                        <div
+                            class="
+                                flex
+                                items-center
+                                justify-end
+                                gap-2
+                            "
+                        >
+
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    align-top
+                                    text-[11px]
+                                    text-gray-400
                                 "
                             >
+                                On Hand
+                            </span>
 
-                                <div
-                                    class="
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        row.product?.name ??
-                                        row.variant?.product?.name ??
-                                        '-'
-                                    }}
-                                </div>
-
-                                <div
-                                    class="
-                                        mt-0.5
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
-                                    SKU:
-                                    {{
-                                        row.variant?.sku ??
-                                        '-'
-                                    }}
-                                </div>
-
-                            </td>
-
-
-                            <!-- Unit -->
-
-                            <td
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    align-top
-                                    text-gray-700
-                                "
-                            >
-
-                                <template
-                                    v-if="
-                                        row.units?.length
-                                    "
-                                >
-
-                                    <div
-                                        v-for="
-                                            unit in row.units
-                                        "
-                                        :key="unit.id"
-                                        class="text-xs"
-                                    >              
-                                       {{ unit.unit_name }}
-                                    </div>
-
-                                </template>
-
-                                <template v-else>
-
-                                    -
-
-                                </template>
-
-                            </td>
-
-
-                            <!-- On Hand -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    font-medium
-                                    tabular-nums
-                                    text-gray-900
+                                    font-semibold
+                                    text-green-700
                                 "
                             >
                                 {{ formatQty(row.on_hand_qty) }}
-                            </td>
+                            </span>
+                        </div>
 
 
-                            <!-- Available -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    font-medium
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                {{ formatQty(row.available_qty) }}
-                            </td>
-
-
-                            <!-- Average Cost -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                
-                               Rp {{ formatAmount(row.average_cost) }}
-                            </td>
-
-
-                            <!-- Stock Value -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                Rp
-                                {{ formatAmount(row.stock_value) }}
-                            </td>
-
-
-                            <!-- Consignment Price -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                Rp
-                                {{
-                                    formatAmount(
-                                        row.consignment_price
-                                    )
-                                }}
-                            </td>
-
-
-                            <!-- Consignment Value -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    align-top
-                                    font-medium
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                Rp
-                                {{
-                                    formatAmount(
-                                        row.consignment_value
-                                    )
-                                }}
-                            </td>
-
-
-                            <!-- Actions -->
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-center
-                                    align-top
-                                    print:hidden
-                                "
-                            >
-
-                                <button
-                                    type="button"
-                                    class="
-                                        rounded-lg
-                                        border
-                                        border-gray-200
-                                        bg-white
-                                        px-3
-                                        py-1.5
-                                        text-xs
-                                        font-medium
-                                        text-gray-700
-                                        hover:bg-gray-50
-                                    "
-                                    @click="openMovement(row)"
-                                >
-                                    Movement
-                                </button>
-
-                            </td>
-
-                        </tr>
-
-
-                        <!-- Empty -->
-
-                        <tr
-                            v-if="rows.length === 0"
-                        >
-
-                            <td
-                                colspan="10"
-                                class="
-                                    px-4
-                                    py-10
-                                    text-center
-                                    text-sm
-                                    text-gray-500
-                                "
-                            >
-                                No consignment stock found.
-                            </td>
-
-                        </tr>
-
-
-                        <!-- Total -->
-
-                        <tr
-                            v-if="rows.length > 0"
+                        <div
                             class="
-                                border-t
-                                border-gray-300
+                                mt-1
+                                flex
+                                items-center
+                                justify-end
+                                gap-2
                             "
                         >
 
-                            <td
-                                colspan="3"
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    font-semibold
-                                    text-gray-900
+                                    text-[11px]
+                                    text-gray-400
                                 "
                             >
-                                Total
-                            </td>
+                                Available
+                            </span>
 
-
-                            <td
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    font-semibold
-                                    tabular-nums
-                                    text-gray-900
-                                "
-                            >
-                                {{ formatQty(totalOnHand) }}
-                            </td>
-
-
-                            <td
-                                class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    font-semibold
-                                    tabular-nums
-                                    text-gray-900
+                                    ml-2
+                                    text-red-600
                                 "
                             >
                                 {{ formatQty(totalAvailable) }}
-                            </td>
+                            </span>
+
+                        </div>
+
+                    </td>
 
 
-                            <td
+                    <!-- Average Cost -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            align-top
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
+
+                        Rp
+                        {{ formatAmount(row.average_cost) }}
+
+                    </td>
+
+
+                    <!-- Stock Value -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            align-top
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
+
+                        Rp
+                        {{ formatAmount(row.stock_value) }}
+
+                    </td>
+
+
+                    <!-- Consignment Price -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            align-top
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
+
+                        Rp
+                        {{
+                            formatAmount(
+                                row.consignment_price
+                            )
+                        }}
+
+                    </td>
+
+
+                    <!-- Consignment Value -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            align-top
+                            font-medium
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
+
+                        Rp
+                        {{
+                            formatAmount(
+                                row.consignment_value
+                            )
+                        }}
+
+                    </td>
+
+
+                    <!-- Actions -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-center
+                            align-top
+                            print:hidden
+                        "
+                    >
+
+                        <button
+                            type="button"
+                            class="
+                                rounded-lg
+                                border
+                                border-gray-200
+                                bg-white
+                                px-3
+                                py-1.5
+                                text-xs
+                                font-medium
+                                text-gray-700
+                                hover:bg-gray-50
+                            "
+                            @click="openMovement(row)"
+                        >
+                            Movement
+                        </button>
+
+                    </td>
+
+                </tr>
+
+
+                <!-- Empty -->
+
+                <tr
+                    v-if="rows.length === 0"
+                >
+
+                    <td
+                        colspan="9"
+                        class="
+                            px-4
+                            py-10
+                            text-center
+                            text-sm
+                            text-gray-500
+                        "
+                    >
+                        No consignment stock found.
+                    </td>
+
+                </tr>
+
+
+                <!-- Total -->
+
+                <tr
+                    v-if="rows.length > 0"
+                    class="
+                        border-t
+                        border-gray-300
+                    "
+                >
+
+                    <td
+                        colspan="3"
+                        class="
+                            px-4
+                            py-3
+                            font-semibold
+                            text-gray-900
+                        "
+                    >
+                        Total
+                    </td>
+
+
+                    <!-- Total On Hand / Available -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            font-semibold
+                            tabular-nums
+                        "
+                    >
+
+                        <div>
+
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-gray-500
+                                    text-[11px]
+                                    font-normal
+                                    text-gray-400
                                 "
                             >
-                                -
-                            </td>
+                                On Hand
+                            </span>
 
-
-                            <td
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    font-semibold
-                                    tabular-nums
-                                    text-gray-900
+                                    ml-2
+                                    text-emerald-600
                                 "
                             >
-                                Rp
-                                {{ formatAmount(totalStockValue) }}
-                            </td>
+                                {{ formatQty(totalOnHand) }}
+                            </span>
+
+                        </div>
 
 
-                            <td
+                        <div
+                            class="
+                                mt-1
+                            "
+                        >
+
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    text-gray-500
+                                    text-[11px]
+                                    font-normal
+                                    text-gray-400
                                 "
                             >
-                                -
-                            </td>
+                                Available
+                            </span>
 
-
-                            <td
+                            <span
                                 class="
-                                    px-4
-                                    py-3
-                                    text-right
-                                    font-semibold
-                                    tabular-nums
-                                    text-gray-900
+                                    ml-2
+                                    text-blue-600
                                 "
                             >
-                                Rp
-                                {{
-                                    formatAmount(
-                                        totalConsignmentValue
-                                    )
-                                }}
-                            </td>
+                                {{ formatQty(totalAvailable) }}
+                            </span>
+
+                        </div>
+
+                    </td>
 
 
-                            <td
-                                class="print:hidden"
-                            ></td>
+                    <!-- Total Average Cost -->
 
-                        </tr>
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            text-gray-500
+                        "
+                    >
+                        -
+                    </td>
 
-                    </tbody>
 
-                </table>
+                    <!-- Total Stock Value -->
 
-            </div>
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            font-semibold
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
 
-        </div>
+                        
+                        {{ formatAmount(totalStockValue) }}
+
+                    </td>
+
+
+                    <!-- Total Consignment Price -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            text-gray-500
+                        "
+                    >
+                        -
+                    </td>
+
+
+                    <!-- Total Consignment Value -->
+
+                    <td
+                        class="
+                            px-4
+                            py-3
+                            text-right
+                            font-semibold
+                            tabular-nums
+                            text-gray-900
+                        "
+                    >
+
+                        
+                        {{
+                            formatAmount(
+                                totalConsignmentValue
+                            )
+                        }}
+
+                    </td>
+
+
+                    <!-- Total Actions -->
+
+                    <td
+                        class="print:hidden"
+                    ></td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
 
     </div>
 
@@ -2244,7 +2330,7 @@ const closeMovement = () => {
                                     text-gray-900
                                 "
                             >
-                                Rp
+                                
                                 {{ formatAmount(movement.unit_cost) }}
                             </td>
 
@@ -2258,7 +2344,7 @@ const closeMovement = () => {
                                     text-gray-900
                                 "
                             >
-                                Rp
+                                
                                 {{ formatAmount(movement.total_cost) }}
                             </td>
 

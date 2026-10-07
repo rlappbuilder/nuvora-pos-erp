@@ -188,7 +188,13 @@ const modules = {
                 route: 'pos.transactions.index',
                 permission: 'pos.transactions.view',
                   },
-
+                       backdatesales: {
+                key: 'backdatesales',
+                title: 'Cashier',
+                icon: UsersIcon,
+                route: 'pos.backdate-sales.index',
+                permission: 'backdate-sales.view',
+                  },
 
         // inventory //
                  openingStock: {

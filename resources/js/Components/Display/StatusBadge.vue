@@ -1,8 +1,11 @@
 <script setup>
+
 import { PanelRightDashedIcon } from 'lucide-vue-next'
 import { computed } from 'vue'
 
+
 const props = defineProps({
+
     status: {
         type: [Boolean, Number, String],
         default: false,
@@ -17,7 +20,9 @@ const props = defineProps({
         type: String,
         default: '',
     },
+
 })
+
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +50,7 @@ const variants = Object.freeze({
         text: 'Closed',
     },
 
+
     /*
     |--------------------------------------------------------------------------
     | Master Data
@@ -63,6 +69,7 @@ const variants = Object.freeze({
         text: 'Inactive',
     },
 
+
     /*
     |--------------------------------------------------------------------------
     | Transaction Status
@@ -76,9 +83,15 @@ const variants = Object.freeze({
     },
 
     submitted: {
-    badge: 'bg-blue-100 text-blue-700',
-    dot: 'bg-blue-500',
-    text: 'Submitted',
+        badge: 'bg-blue-100 text-blue-700',
+        dot: 'bg-blue-500',
+        text: 'Submitted',
+    },
+
+    approved: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Approved',
     },
 
     rejected: {
@@ -86,11 +99,19 @@ const variants = Object.freeze({
         dot: 'bg-red-500',
         text: 'Rejected',
     },
+
     cancelled: {
         badge: 'bg-red-100 text-red-700',
         dot: 'bg-red-500',
         text: 'Cancelled',
     },
+
+    received: {
+        badge: 'bg-indigo-100 text-indigo-700',
+        dot: 'bg-indigo-500',
+        text: 'Received',
+    },
+
     posted: {
         badge: 'bg-emerald-100 text-emerald-700',
         dot: 'bg-emerald-500',
@@ -102,12 +123,6 @@ const variants = Object.freeze({
         dot: 'bg-sky-500',
         text: 'Processing',
     },
-
-   approved: {
-    badge: 'bg-emerald-100 text-emerald-700',
-    dot: 'bg-emerald-500',
-    text: 'Approved',
-},
 
     pending: {
         badge: 'bg-purple-100 text-purple-700',
@@ -134,9 +149,9 @@ const variants = Object.freeze({
     },
 
     sent: {
-    badge: 'bg-sky-100 text-sky-700',
-    dot: 'bg-sky-500',
-    text: 'Sent',
+        badge: 'bg-sky-100 text-sky-700',
+        dot: 'bg-sky-500',
+        text: 'Sent',
     },
 
     confirmed: {
@@ -169,13 +184,14 @@ const variants = Object.freeze({
         text: 'Partially Paid',
     },
 
-        paid: {
+    paid: {
         badge: 'bg-emerald-100 text-emerald-700',
         dot: 'bg-emerald-500',
         text: 'Paid',
     },
-  
+
 })
+
 
 /*
 |--------------------------------------------------------------------------
@@ -192,8 +208,11 @@ const type = computed(() => {
     */
 
     if (props.variant) {
+
         return props.variant.toLowerCase()
+
     }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -214,13 +233,19 @@ const type = computed(() => {
                 return 'draft'
 
             case 'submitted':
-            return 'submitted'
+                return 'submitted'
 
-            case 'cancelled':
-            return 'cancelled'
+            case 'approved':
+                return 'approved'
 
             case 'rejected':
                 return 'rejected'
+
+            case 'cancelled':
+                return 'cancelled'
+
+            case 'received':
+                return 'received'
 
             case 'posted':
                 return 'posted'
@@ -228,13 +253,10 @@ const type = computed(() => {
             case 'processing':
                 return 'processing'
 
-            case 'approved':
-                return 'approved'
-
             case 'pending':
                 return 'pending'
 
-                case 'sent':
+            case 'sent':
                 return 'sent'
 
             case 'confirmed':
@@ -252,19 +274,19 @@ const type = computed(() => {
             case 'partially paid':
                 return 'partially_paid'
 
-           case 'open':
+            case 'open':
                 return 'open'
 
             case 'closed':
                 return 'closed'
 
-
             default:
                 break
 
-    
         }
+
     }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -282,7 +304,9 @@ const type = computed(() => {
     return active
         ? 'success'
         : 'danger'
+
 })
+
 
 /*
 |--------------------------------------------------------------------------
@@ -297,6 +321,7 @@ const current = computed(() => {
 
 })
 
+
 /*
 |--------------------------------------------------------------------------
 | Label
@@ -309,7 +334,9 @@ const text = computed(() => {
         || current.value.text
 
 })
+
 </script>
+
 
 <template>
 

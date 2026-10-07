@@ -32,7 +32,7 @@ import TablePagination from '@/Components/Table/TablePagination.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-
+import Modal from '@/Components/Modal/BaseModal.vue'
 import {
     LoadingOverlay,
 } from '@/Components/Feedback'
@@ -126,42 +126,16 @@ const props = defineProps({
         default: '',
     },
 
+    activeBranchId: {
+    type: [Number, String, null],
+    default: null,
+},
+
 })
-
 console.log(
-    '=== JOURNAL ENTRY DEBUG ==='
+    'INDEX ACTIVE BRANCH:',
+    props.activeBranchId
 )
-
-console.log(
-    'previewNumber:',
-    props.previewNumber
-)
-
-console.log(
-    'accountingJournals:',
-    props.accountingJournals
-)
-
-console.log(
-    'fiscalYears:',
-    props.fiscalYears
-)
-
-console.log(
-    'accountingPeriods:',
-    props.accountingPeriods
-)
-
-console.log(
-    'chartOfAccounts:',
-    props.chartOfAccounts
-)
-const {
-    journalEntries,
-    statistics,
-} = toRefs(props)
-
-
 /*
 |--------------------------------------------------------------------------
 | Page
@@ -569,42 +543,27 @@ const selectAllRef = ref(null)
 
 
 const isAllSelected = computed(() => {
-
     const totalRows =
-        journalEntries.value
+        props.journalEntries
             ?.data
             ?.length ?? 0
 
-
     return (
-
         totalRows > 0 &&
-
-        selectedRows.value.length ===
-            totalRows
-
+        selectedRows.value.length === totalRows
     )
-
 })
 
-
 const isIndeterminate = computed(() => {
-
     const totalRows =
-        journalEntries.value
+        props.journalEntries
             ?.data
             ?.length ?? 0
 
-
     return (
-
         selectedRows.value.length > 0 &&
-
-        selectedRows.value.length <
-            totalRows
-
+        selectedRows.value.length < totalRows
     )
-
 })
 
 
@@ -631,30 +590,16 @@ watch(
 
 )
 
-
-function toggleSelectAll(event)
-{
-
-    if (
-        event.target.checked
-    ) {
-
+function toggleSelectAll(event) {
+    if (event.target.checked) {
         selectedRows.value =
-            journalEntries.value
+            props.journalEntries
                 ?.data
-                ?.map(
-                    item => item.id
-                ) ?? []
-
+                ?.map(item => item.id) ?? []
     } else {
-
         selectedRows.value = []
-
     }
-
 }
-
-
 /*
 |--------------------------------------------------------------------------
 | View State
@@ -667,6 +612,8 @@ const formMode = ref('create')
 
 const editingItem = ref(null)
 
+const showFormModal = ref(false)
+
 
 /*
 |--------------------------------------------------------------------------
@@ -677,8 +624,6 @@ const editingItem = ref(null)
 const createEmptyLine = () => ({
 
     account_id: null,
-
-    description: null,
 
     debit: 0,
 
@@ -692,7 +637,7 @@ const today = new Date()
 
 const form = useForm({
 
-    number:
+    code:
         props.previewNumber ?? '',
 
     company_id:
@@ -730,14 +675,14 @@ function resetCreateForm()
 
     form.clearErrors()
 
-    form.number =
+    form.code =
         props.previewNumber ?? ''
 
     form.company_id =
         props.companyId ?? null
 
     form.branch_id =
-        null
+        props.activeBranchId ?? null
 
     form.accounting_journal_id =
         null
@@ -771,23 +716,10 @@ function create()
 
     form.clearErrors()
 
-    /*
-    |--------------------------------------------------------------------------
-    | Date
-    |--------------------------------------------------------------------------
-    */
-
     const entryDate =
         new Date()
             .toISOString()
             .slice(0, 10)
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Fiscal Year
-    |--------------------------------------------------------------------------
-    */
 
     const fiscalYear =
         props.fiscalYears.find(
@@ -810,13 +742,6 @@ function create()
 
             }
         )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Accounting Period
-    |--------------------------------------------------------------------------
-    */
 
     const accountingPeriod =
         props.accountingPeriods.find(
@@ -848,23 +773,16 @@ function create()
             }
         )
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Reset Form
-    |--------------------------------------------------------------------------
-    */
-
     form.reset()
 
-    form.number =
+    form.code =
         props.previewNumber ?? ''
 
     form.company_id =
         props.companyId ?? null
 
     form.branch_id =
-        null
+        props.activeBranchId ?? null
 
     form.accounting_journal_id =
         null
@@ -888,50 +806,7 @@ function create()
         createEmptyLine(),
     ]
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | DEBUG
-    |--------------------------------------------------------------------------
-    */
-
-    console.log(
-        '=== CREATE JOURNAL ENTRY DEFAULT ==='
-    )
-
-    console.log(
-        'entryDate:',
-        entryDate
-    )
-
-    console.log(
-        'fiscalYear:',
-        fiscalYear
-    )
-
-    console.log(
-        'accountingPeriod:',
-        accountingPeriod
-    )
-
-    console.log(
-        'form fiscal_year_id:',
-        form.fiscal_year_id
-    )
-
-    console.log(
-        'form accounting_period_id:',
-        form.accounting_period_id
-    )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Show Form
-    |--------------------------------------------------------------------------
-    */
-
-    view.value = 'form'
+    showFormModal.value = true
 }
 /*
 |--------------------------------------------------------------------------
@@ -941,17 +816,11 @@ function create()
 
 function cancelForm()
 {
-
-    form.reset()
-
     form.clearErrors()
 
-    editingItem.value =
-        null
+    editingItem.value = null
 
-    view.value =
-        'list'
-
+    showFormModal.value = false
 }
 
 
@@ -979,18 +848,14 @@ function submit()
 
                 preserveScroll: true,
 
-                onSuccess: () => {
+               onSuccess: () => {
 
                     success(
-
                         'Success',
-
                         'Journal Entry created successfully.'
-
                     )
 
-                    view.value =
-                        'list'
+                    showFormModal.value = false
 
                 },
 
@@ -1037,18 +902,14 @@ function submit()
 
             onSuccess: () => {
 
-                success(
+                    success(
+                        'Success',
+                        'Journal Entry updated successfully.'
+                    )
 
-                    'Success',
+                    showFormModal.value = false
 
-                    'Journal Entry updated successfully.'
-
-                )
-
-                view.value =
-                    'list'
-
-            },
+                },
 
             onError: (errors) => {
 
@@ -1088,6 +949,21 @@ function submitAndNew()
                 )
 
                 resetCreateForm()
+
+                showFormModal.value = true
+
+            },
+
+            onError: (errors) => {
+
+                console.error(
+                    'CREATE JOURNAL ENTRY ERRORS:',
+                    errors
+                )
+
+                error(
+                    'Failed to create Journal Entry.'
+                )
 
             },
         }
@@ -1202,9 +1078,6 @@ function editJournalEntry(
                 account_id:
                     line.account_id,
 
-                description:
-                    line.description ?? null,
-
                 debit:
                     Number(
                         line.debit ?? 0
@@ -1223,8 +1096,7 @@ function editJournalEntry(
         ]
 
 
-    view.value =
-        'form'
+    showFormModal.value = true
 
 }
 
@@ -1966,119 +1838,7 @@ onUnmounted(() => {
 
 })
 
-watch(
-    () => form.branch_id,
-    (branchId) => {
-
-        if (!branchId) {
-
-            form.company_id = null
-
-            form.accounting_journal_id = null
-
-            form.fiscal_year_id = null
-
-            form.accounting_period_id = null
-
-            return
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Resolve Company
-        |--------------------------------------------------------------------------
-        */
-
-        const branch =
-            props.branches.find(
-                item =>
-                    Number(item.id) ===
-                    Number(branchId)
-            )
-
-        form.company_id =
-            branch?.company_id ?? null
-
-        /*
-        |--------------------------------------------------------------------------
-        | Fiscal Year
-        |--------------------------------------------------------------------------
-        */
-
-        const entryDate =
-            String(
-                form.entry_date ?? ''
-            ).slice(0, 10)
-
-        const fiscalYear =
-            props.fiscalYears.find(
-                year => {
-
-                    const start =
-                        String(
-                            year.start_date
-                        ).slice(0, 10)
-
-                    const end =
-                        String(
-                            year.end_date
-                        ).slice(0, 10)
-
-                    return (
-                        entryDate >= start &&
-                        entryDate <= end
-                    )
-
-                }
-            )
-
-        form.fiscal_year_id =
-            fiscalYear?.id ?? null
-
-        /*
-        |--------------------------------------------------------------------------
-        | Accounting Period
-        |--------------------------------------------------------------------------
-        */
-
-        const period =
-            props.accountingPeriods.find(
-                item => {
-
-                    const start =
-                        String(
-                            item.start_date
-                        ).slice(0, 10)
-
-                    const end =
-                        String(
-                            item.end_date
-                        ).slice(0, 10)
-
-                    return (
-                        Number(
-                            item.fiscal_year_id
-                        ) ===
-                        Number(
-                            form.fiscal_year_id
-                        )
-                        &&
-                        entryDate >= start
-                        &&
-                        entryDate <= end
-                    )
-
-                }
-            )
-
-        form.accounting_period_id =
-            period?.id ?? null
-
-    }
-)
 </script>
-
-
 <template>
 
 <AppLayout>
@@ -2161,85 +1921,84 @@ watch(
             <Card class="mt-4">
 
 
-                <!-- ================================================= -->
+               <!-- ================================================= -->
                 <!-- Toolbar -->
                 <!-- ================================================= -->
 
-                <div>
+                <div class="space-y-3">
 
-
+                    <!-- ================================================= -->
                     <!-- TOP ROW -->
+                    <!-- ================================================= -->
 
                     <div
                         class="
                             flex
                             flex-col
-                            gap-3
+                            gap-2
                             lg:flex-row
                             lg:items-center
-                            lg:justify-between
                         "
                     >
 
-
                         <!-- Search -->
 
-                        <div
-                            class="
-                                flex
-                                flex-1
-                                flex-col
-                                gap-3
-                                lg:flex-row
-                                lg:items-center
-                            "
-                        >
+                        <div class="flex-1">
 
                             <input
-                                v-model="
-                                    filters.search
-                                "
+                                v-model="filters.search"
                                 type="text"
                                 placeholder="Search code or reference..."
                                 class="
                                     w-full
-                                    rounded-xl
+                                    rounded-lg
                                     border
-                                    border-gray-300
-                                    px-4
-                                    py-2.5
-                                    lg:w-80
-                                "
-                            />
-
-
-                            <!-- Date Range -->
-
-                            <FlatPickr
-                                v-model="
-                                    dateRange
-                                "
-                                :config="{
-                                    mode: 'range',
-                                    dateFormat: 'Y-m-d',
-                                }"
-                                placeholder="Date Range"
-                                class="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-gray-300
-                                    px-4
+                                    border-slate-300
+                                    bg-white
+                                    px-3.5
                                     py-2.5
                                     text-sm
-                                    lg:w-56
-                                "
-                                @on-change="
-                                    handleDateRangeChange
+                                    text-slate-700
+                                    placeholder:text-slate-400
+                                    outline-none
+                                    focus:border-blue-500
+                                    focus:ring-1
+                                    focus:ring-blue-500
+                                    lg:max-w-md
                                 "
                             />
 
                         </div>
+
+
+                        <!-- Date Range -->
+
+                        <FlatPickr
+                            v-model="dateRange"
+                            :config="{
+                                mode: 'range',
+                                dateFormat: 'Y-m-d',
+                            }"
+                            placeholder="Date Range"
+                            class="
+                                w-full
+                                rounded-lg
+                                border
+                                border-slate-300
+                                bg-white
+                                px-3.5
+                                py-2.5
+                                text-sm
+                                text-slate-700
+                                placeholder:text-slate-400
+                                outline-none
+                                focus:border-blue-500
+                                focus:ring-1
+                                focus:ring-blue-500
+                                lg:w-56
+                            "
+                            @on-change="handleDateRangeChange"
+                        />
 
 
                         <!-- Actions -->
@@ -2247,23 +2006,15 @@ watch(
                         <div
                             class="
                                 flex
-                                w-full
-                                flex-col
+                                items-center
                                 gap-2
-                                lg:w-auto
-                                lg:flex-row
-                                lg:items-center
+                                lg:ml-auto
                             "
                         >
 
                             <BaseButton
                                 variant="secondary"
-                                class="
-                                    w-full
-                                    shrink-0
-                                    whitespace-nowrap
-                                    lg:w-auto
-                                "
+                                class="shrink-0 whitespace-nowrap"
                                 @click="refresh"
                             >
                                 Refresh
@@ -2271,20 +2022,13 @@ watch(
 
 
                             <BaseButton
-                                class="
-                                    w-full
-                                    shrink-0
-                                    whitespace-nowrap
-                                    lg:w-auto
-                                "
+                                class="shrink-0 whitespace-nowrap"
                                 @click="create"
                             >
 
                                 <template #icon>
 
-                                    <PlusIcon
-                                        class="h-5 w-5"
-                                    />
+                                    <PlusIcon class="h-5 w-5" />
 
                                 </template>
 
@@ -2294,16 +2038,12 @@ watch(
 
 
                             <BulkActionDropdown
-                                :count="
-                                    selectedRows.length
-                                "
-                                :disabled="
-                                    selectedRows.length === 0
-                                "
+                                :count="selectedRows.length"
+                                :disabled="selectedRows.length === 0"
                                 :actions="[
                                     'export',
                                 ]"
-                                class="w-full lg:w-auto"
+                                class="shrink-0"
                             />
 
                         </div>
@@ -2311,29 +2051,25 @@ watch(
                     </div>
 
 
+                    <!-- ================================================= -->
                     <!-- BOTTOM ROW -->
+                    <!-- ================================================= -->
 
                     <div
                         class="
-                            mt-3
                             flex
                             flex-col
-                            gap-3
+                            gap-2
                             lg:flex-row
                             lg:items-center
                         "
                     >
 
-
                         <!-- Branch -->
 
                         <SearchableSelect
-                            v-model="
-                                filters.branch_id
-                            "
-                            :options="
-                                branches
-                            "
+                            v-model="filters.branch_id"
+                            :options="branches"
                             label="label"
                             value-key="id"
                             placeholder="All Branches"
@@ -2344,12 +2080,8 @@ watch(
                         <!-- Accounting Journal -->
 
                         <SearchableSelect
-                            v-model="
-                                filters.accounting_journal_id
-                            "
-                            :options="
-                                accountingJournals
-                            "
+                            v-model="filters.accounting_journal_id"
+                            :options="accountingJournals"
                             label="label"
                             value-key="id"
                             placeholder="All Journals"
@@ -2360,12 +2092,8 @@ watch(
                         <!-- Fiscal Year -->
 
                         <SearchableSelect
-                            v-model="
-                                filters.fiscal_year_id
-                            "
-                            :options="
-                                fiscalYears
-                            "
+                            v-model="filters.fiscal_year_id"
+                            :options="fiscalYears"
                             label="label"
                             value-key="id"
                             placeholder="All Fiscal Years"
@@ -2376,12 +2104,8 @@ watch(
                         <!-- Period -->
 
                         <SearchableSelect
-                            v-model="
-                                filters.accounting_period_id
-                            "
-                            :options="
-                                filteredAccountingPeriods
-                            "
+                            v-model="filters.accounting_period_id"
+                            :options="filteredAccountingPeriods"
                             label="label"
                             value-key="id"
                             placeholder="All Periods"
@@ -2392,12 +2116,8 @@ watch(
                         <!-- Status -->
 
                         <SearchableSelect
-                            v-model="
-                                filters.status
-                            "
-                            :options="
-                                statusOptions
-                            "
+                            v-model="filters.status"
+                            :options="statusOptions"
                             label="label"
                             value-key="value"
                             placeholder="All Status"
@@ -2423,376 +2143,383 @@ watch(
 
 
                     <DataTable
-                        v-if="
-                            journalEntries?.data?.length
-                        "
-                        sticky-header
-                        max-height="650px"
-                    >
+                            v-if="
+                                journalEntries?.data?.length
+                            "
+                            sticky-header
+                            max-height="650px"
+                        >
 
-                        <DataTableHead sticky>
-
-
-                            <!-- Select -->
-
-                            <DataTableHeaderCell
-                                width="60px"
-                                align="center"
-                            >
-
-                                <input
-                                    ref="selectAllRef"
-                                    type="checkbox"
-                                    :checked="
-                                        isAllSelected
-                                    "
-                                    @change="
-                                        toggleSelectAll
-                                    "
-                                    class="rounded border-gray-300"
-                                />
-
-                            </DataTableHeaderCell>
+                            <DataTableHead sticky>
 
 
-                            <!-- Code -->
+                                <!-- Select -->
 
-                            <DataTableHeaderCell
-                                sortable
-                                column="code"
-                                :sort="sort"
-                                :direction="direction"
-                                @sort="sortBy"
-                                width="190px"
-                            >
-                                Code
-                            </DataTableHeaderCell>
-
-
-                            <!-- Date -->
-
-                            <DataTableHeaderCell
-                                sortable
-                                column="entry_date"
-                                :sort="sort"
-                                :direction="direction"
-                                @sort="sortBy"
-                                width="150px"
-                            >
-                                Entry Date
-                            </DataTableHeaderCell>
-
-
-                            <!-- Journal -->
-
-                            <DataTableHeaderCell
-                                width="180px"
-                            >
-                                Journal
-                            </DataTableHeaderCell>
-
-
-                            <!-- Branch -->
-
-                            <DataTableHeaderCell
-                                width="180px"
-                            >
-                                Branch
-                            </DataTableHeaderCell>
-
-
-                            <!-- Reference -->
-
-                            <DataTableHeaderCell
-                                width="180px"
-                            >
-                                Reference
-                            </DataTableHeaderCell>
-
-
-                            <!-- Description -->
-
-                            <DataTableHeaderCell
-                                width="250px"
-                            >
-                                Description
-                            </DataTableHeaderCell>
-
-
-                            <!-- Total -->
-
-                            <DataTableHeaderCell
-                                width="180px"
-                                align="right"
-                            >
-                                Amount
-                            </DataTableHeaderCell>
-
-
-                            <!-- Status -->
-
-                            <DataTableHeaderCell
-                                sortable
-                                column="status"
-                                :sort="sort"
-                                :direction="direction"
-                                @sort="sortBy"
-                                width="120px"
-                                align="center"
-                            >
-                                Status
-                            </DataTableHeaderCell>
-
-
-                            <!-- Actions -->
-
-                            <DataTableHeaderCell
-                                width="100px"
-                                align="center"
-                            >
-                                Actions
-                            </DataTableHeaderCell>
-
-                        </DataTableHead>
-
-
-                        <DataTableBody>
-
-                            <DataTableRow
-                                v-for="
-                                    item in journalEntries.data
-                                "
-                                :key="item.id"
-                            >
-
-
-                                <!-- Checkbox -->
-
-                                <DataTableCell
+                                <DataTableHeaderCell
+                                    width="60px"
                                     align="center"
                                 >
 
                                     <input
-                                        v-model="
-                                            selectedRows
-                                        "
-                                        :value="
-                                            item.id
-                                        "
+                                        ref="selectAllRef"
                                         type="checkbox"
+                                        :checked="
+                                            isAllSelected
+                                        "
+                                        @change="
+                                            toggleSelectAll
+                                        "
                                         class="rounded border-gray-300"
                                     />
 
-                                </DataTableCell>
+                                </DataTableHeaderCell>
 
 
-                                <!-- Code -->
+                                <!-- Journal Entry -->
 
-                                <DataTableCell>
-
-                                    <span
-                                        class="
-                                            font-medium
-                                            text-gray-900
-                                        "
-                                    >
-                                        {{
-                                            item.code
-                                        }}
-                                    </span>
-
-                                </DataTableCell>
-
-
-                                <!-- Date -->
-
-                                <DataTableCell>
-
-                                    <span
-                                        class="
-                                            text-sm
-                                            text-gray-700
-                                        "
-                                    >
-                                        {{
-                                            formatDate(
-                                                item.entry_date
-                                            )
-                                        }}
-                                    </span>
-
-                                </DataTableCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="code"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="250px"
+                                >
+                                    Journal Entry
+                                </DataTableHeaderCell>
 
 
                                 <!-- Journal -->
 
-                                <DataTableCell>
-
-                                    <div
-                                        class="
-                                            font-semibold
-                                            text-gray-900
-                                        "
-                                    >
-                                        {{
-                                            item.accounting_journal?.name
-                                            ?? '-'
-                                        }}
-                                    </div>
-
-                                    <div
-                                        class="
-                                            mt-0.5
-                                            text-xs
-                                            text-gray-500
-                                        "
-                                    >
-                                        {{
-                                            item.accounting_journal?.code
-                                            ?? '-'
-                                        }}
-                                    </div>
-
-                                </DataTableCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="accounting_journal_id"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="300px"
+                                >
+                                    Journal
+                                </DataTableHeaderCell>
 
 
                                 <!-- Branch -->
 
-                                <DataTableCell>
-
-                                    {{
-                                        item.branch?.name
-                                        ?? '-'
-                                    }}
-
-                                </DataTableCell>
-
-
-                                <!-- Reference -->
-
-                                <DataTableCell>
-
-                                    {{
-                                        item.reference
-                                        ?? '-'
-                                    }}
-
-                                </DataTableCell>
-
-
-                                <!-- Description -->
-
-                                <DataTableCell>
-
-                                    <span
-                                        class="
-                                            text-sm
-                                            text-gray-700
-                                        "
-                                    >
-                                        {{
-                                            item.description
-                                            ?? '-'
-                                        }}
-                                    </span>
-
-                                </DataTableCell>
+                                <DataTableHeaderCell
+                                    width="180px"
+                                >
+                                    Branch
+                                </DataTableHeaderCell>
 
 
                                 <!-- Amount -->
 
-                                <DataTableCell
+                                <DataTableHeaderCell
+                                    width="180px"
                                     align="right"
                                 >
-
-                                    <span
-                                        class="
-                                            text-sm
-                                            font-medium
-                                            text-gray-900
-                                        "
-                                    >
-
-                                        {{
-                                            currency(
-                                                item.total_debit
-                                                ?? 0
-                                            )
-                                        }}
-
-                                    </span>
-
-                                </DataTableCell>
+                                    Amount
+                                </DataTableHeaderCell>
 
 
                                 <!-- Status -->
 
-                                <DataTableCell
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="status"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="120px"
                                     align="center"
                                 >
-
-                                    <StatusBadge
-                                        :status="
-                                            item.status
-                                        "
-                                    />
-
-                                </DataTableCell>
+                                    Status
+                                </DataTableHeaderCell>
 
 
                                 <!-- Actions -->
 
-                                <DataTableCell
+                                <DataTableHeaderCell
+                                    width="100px"
                                     align="center"
                                 >
+                                    Actions
+                                </DataTableHeaderCell>
 
-                                    <ActionDropdown
+                            </DataTableHead>
 
-                                        @view="
-                                            openView(item)
-                                        "
 
-                                        @edit="
-                                            editJournalEntry(item)
-                                        "
+                            <DataTableBody>
 
-                                        @post="
-                                            openPost(item)
-                                        "
+                                <DataTableRow
+                                    v-for="
+                                        item in journalEntries.data
+                                    "
+                                    :key="item.id"
+                                >
 
-                                        @delete="
-                                            openDelete(item)
-                                        "
 
-                                        :showEdit="
-                                            canEdit(item)
-                                        "
+                                    <!-- Checkbox -->
 
-                                        :showDuplicate="false"
+                                    <DataTableCell
+                                        align="center"
+                                    >
 
-                                        :showPost="
-                                            canPost(item)
-                                        "
+                                        <input
+                                            v-model="
+                                                selectedRows
+                                            "
+                                            :value="
+                                                item.id
+                                            "
+                                            type="checkbox"
+                                            class="rounded border-gray-300"
+                                        />
 
-                                        :showReject="false"
+                                    </DataTableCell>
 
-                                        :showExport="false"
 
-                                        :showHistory="false"
+                                    <!-- JOURNAL ENTRY -->
+                                    <!-- Code + Date + Reference -->
 
-                                        :showDelete="
-                                            canDelete(item)
-                                        "
+                                    <DataTableCell>
 
-                                    />
+                                        <div
+                                            class="
+                                                font-semibold
+                                                text-slate-900
+                                            "
+                                        >
+                                            {{
+                                                item.code
+                                                ?? '-'
+                                            }}
+                                        </div>
 
-                                </DataTableCell>
 
-                            </DataTableRow>
+                                        <div
+                                            class="
+                                                mt-0.5
+                                                text-xs
+                                                text-slate-500
+                                            "
+                                        >
+                                            {{
+                                                formatDate(
+                                                    item.entry_date
+                                                )
+                                            }}
+                                        </div>
 
-                        </DataTableBody>
 
-                    </DataTable>
+                                        <div
+                                            v-if="
+                                                item.reference
+                                            "
+                                            class="
+                                                mt-0.5
+                                                text-xs
+                                                font-medium
+                                                text-blue-600
+                                            "
+                                        >
+                                            {{ item.reference }}
+                                        </div>
+
+
+                                        <div
+                                            v-else
+                                            class="
+                                                mt-0.5
+                                                text-xs
+                                                text-slate-400
+                                            "
+                                        >
+                                            -
+                                        </div>
+
+                                    </DataTableCell>
+
+
+                                    <!-- JOURNAL -->
+                                    <!-- Journal + Code + Description -->
+
+                                    <DataTableCell>
+
+                                        <div
+                                            class="
+                                                font-semibold
+                                                text-slate-800
+                                            "
+                                        >
+                                            {{
+                                                item.accounting_journal?.name
+                                                ?? '-'
+                                            }}
+                                        </div>
+
+
+                                        <div
+                                            class="
+                                                mt-0.5
+                                                text-xs
+                                                text-slate-500
+                                            "
+                                        >
+                                            {{
+                                                item.accounting_journal?.code
+                                                ?? '-'
+                                            }}
+                                        </div>
+
+
+                                        <div
+                                            v-if="
+                                                item.description
+                                            "
+                                            class="
+                                                mt-1
+                                                line-clamp-1
+                                                text-xs
+                                                text-slate-500
+                                            "
+                                            :title="
+                                                item.description
+                                            "
+                                        >
+                                            {{
+                                                item.description
+                                            }}
+                                        </div>
+
+                                        <div
+                                            v-else
+                                            class="
+                                                mt-1
+                                                text-xs
+                                                text-slate-400
+                                            "
+                                        >
+                                            -
+                                        </div>
+
+                                    </DataTableCell>
+
+
+                                    <!-- Branch -->
+
+                                    <DataTableCell>
+
+                                        <span
+                                            class="
+                                                text-sm
+                                                text-slate-700
+                                            "
+                                        >
+                                            {{
+                                                item.branch?.name
+                                                ?? '-'
+                                            }}
+                                        </span>
+
+                                    </DataTableCell>
+
+
+                                    <!-- Amount -->
+
+                                    <DataTableCell
+                                        align="right"
+                                    >
+
+                                        <span
+                                            class="
+                                                text-sm
+                                                font-semibold
+                                                tabular-nums
+                                                text-slate-900
+                                            "
+                                        >
+
+                                            {{
+                                                currency(
+                                                    item.total_debit
+                                                    ?? 0
+                                                )
+                                            }}
+
+                                        </span>
+
+                                    </DataTableCell>
+
+
+                                    <!-- Status -->
+
+                                    <DataTableCell
+                                        align="center"
+                                    >
+
+                                        <StatusBadge
+                                            :status="
+                                                item.status
+                                            "
+                                        />
+
+                                    </DataTableCell>
+
+
+                                    <!-- Actions -->
+
+                                    <DataTableCell
+                                        align="center"
+                                    >
+
+                                        <ActionDropdown
+
+                                            @view="
+                                                openView(item)
+                                            "
+
+                                            @edit="
+                                                editJournalEntry(item)
+                                            "
+
+                                            @post="
+                                                openPost(item)
+                                            "
+
+                                            @delete="
+                                                openDelete(item)
+                                            "
+
+                                            :showEdit="
+                                                canEdit(item)
+                                            "
+
+                                            :showDuplicate="false"
+
+                                            :showPost="
+                                                canPost(item)
+                                            "
+
+                                            :showReject="false"
+
+                                            :showExport="false"
+
+                                            :showHistory="false"
+
+                                            :showDelete="
+                                                canDelete(item)
+                                            "
+
+                                        />
+
+                                    </DataTableCell>
+
+                                </DataTableRow>
+
+                            </DataTableBody>
+
+                        </DataTable>
 
 
                     <!-- Empty -->
@@ -2838,86 +2565,27 @@ watch(
 
         </div>
 
-
-        <!-- ===================================================== -->
-        <!-- FORM -->
-        <!-- ===================================================== -->
-
-        <div
-            v-else-if="
-                view === 'form'
-            "
-            key="form"
-            class="space-y-6"
-        >
-
-            <PageHeader
-                icon="📒"
-                :title="
-                    formMode === 'create'
-                        ? 'Create Journal Entry'
-                        : 'Edit Journal Entry'
-                "
-                :subtitle="
-                    formMode === 'create'
-                        ? 'Create a new Journal Entry transaction.'
-                        : 'Update Journal Entry transaction.'
-                "
-            />
-
-
-            <Card>
-
-                <JournalEntryForm
-
-                    :form="form"
-
-                    :branches="
-                        branches
-                    "
-
-                    :accounting-journals="
-                        accountingJournals
-                    "
-
-                    :fiscal-years="
-                        fiscalYears
-                    "
-
-                    :accounting-periods="
-                        accountingPeriods
-                    "
-
-                    :chart-of-accounts="
-                        chartOfAccounts
-                    "
-
-                    :mode="
-                        formMode
-                    "
-
-                    @submit="
-                        submit
-                    "
-
-                    @submit-and-new="
-                        submitAndNew
-                    "
-
-                    @cancel="
-                        cancelForm
-                    "
-
-                />
-
-            </Card>
-
-        </div>
-
     </Transition>
 
 </AppLayout>
+<!-- ========================================================= -->
+<!-- Journal Entry Form Modal -->
+<!-- ========================================================= -->
 
+<JournalEntryForm
+    :show="showFormModal"
+    :form="form"
+    :branches="branches"
+    :accounting-journals="accountingJournals"
+    :fiscal-years="fiscalYears"
+    :accounting-periods="accountingPeriods"
+    :chart-of-accounts="chartOfAccounts"
+    :active-branch-id="activeBranchId"
+    :mode="formMode"
+    @submit="submit"
+    @submit-and-new="submitAndNew"
+    @cancel="cancelForm"
+/>
 
 <!-- ========================================================= -->
 <!-- Delete -->

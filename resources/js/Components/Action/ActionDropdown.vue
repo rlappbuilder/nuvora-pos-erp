@@ -46,6 +46,7 @@ const emit = defineEmits([
     'print',
     'pdf',
     'excel',
+    'receive',
 ])
 const props = defineProps({
 
@@ -130,6 +131,10 @@ const props = defineProps({
     showExcel: {
         type: Boolean,
         default: false,
+    },
+    showReceive: {
+    type: Boolean,
+    default: false,
     },
 })
 const EVENT_NAME = 'nuvora-action-dropdown-close'
@@ -752,7 +757,6 @@ onBeforeUnmount(() => {
                         Print Preview
                     </button>
 
-
                     <!-- ================================================= -->
                     <!-- PDF -->
                     <!-- ================================================= -->
@@ -858,7 +862,35 @@ onBeforeUnmount(() => {
                         Delete
 
                     </button>
+                        <!-- ================================================= -->
+                        <!-- Receive -->
+                        <!-- ================================================= -->
 
+                        <button
+                            v-if="showReceive"
+                            type="button"
+                            class="
+                                flex
+                                w-full
+                                items-center
+                                gap-3
+                                px-4
+                                py-2.5
+                                text-sm
+                                text-amber-600
+                                transition-colors
+                                duration-150
+                                hover:bg-amber-50
+                            "
+                            @click="$emit('receive'); close()"
+                        >
+                            <CheckCircleIcon
+                                class="h-5 w-5"
+                            />
+
+                            Receive
+
+                        </button>
                 </div>
 
             </Transition>
