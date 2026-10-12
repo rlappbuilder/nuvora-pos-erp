@@ -28,6 +28,7 @@ use App\Services\Accounting\JournalEntryService;
 use App\Models\Accounting\FiscalYear;
 use App\Models\Accounting\AccountingPeriod;
 use App\Models\Accounting\AccountingJournal;
+use App\Models\Accounting\BranchAccountMapping;
 class InventoryService
 {
     protected CodeGeneratorService $codeGeneratorService;
@@ -5159,6 +5160,198 @@ public function postStockTransfer(
 
         /*
         |--------------------------------------------------------------------------
+        | Resolve Fiscal Year
+        |--------------------------------------------------------------------------
+        */
+
+        $fiscalYear =
+            FiscalYear::query()
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->whereDate(
+                    'start_date',
+                    '<=',
+                    $stockTransfer->transaction_date
+                )
+                ->whereDate(
+                    'end_date',
+                    '>=',
+                    $stockTransfer->transaction_date
+                )
+                ->first();
+
+        if (! $fiscalYear) {
+
+            throw new \RuntimeException(
+                'Fiscal year is not configured for the stock transfer date.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounting Period
+        |--------------------------------------------------------------------------
+        */
+
+        $accountingPeriod =
+            AccountingPeriod::query()
+                ->where(
+                    'fiscal_year_id',
+                    $fiscalYear->id
+                )
+                ->whereDate(
+                    'start_date',
+                    '<=',
+                    $stockTransfer->transaction_date
+                )
+                ->whereDate(
+                    'end_date',
+                    '>=',
+                    $stockTransfer->transaction_date
+                )
+                ->where(
+                    'status',
+                    'Open'
+                )
+                ->first();
+
+        if (! $accountingPeriod) {
+
+            throw new \RuntimeException(
+                'Accounting period is not open for the stock transfer date.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Accounting Journal
+        |--------------------------------------------------------------------------
+        */
+
+        $accountingJournal =
+            AccountingJournal::query()
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->where(
+                    'code',
+                    'GEN'
+                )
+                ->where(
+                    'type',
+                    'General'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (! $accountingJournal) {
+
+            throw new \RuntimeException(
+                'General accounting journal is not configured for this company.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Source Inventory Account
+        |--------------------------------------------------------------------------
+        */
+
+        $sourceInventoryMapping =
+            BranchAccountMapping::query()
+                ->with('account')
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $stockTransfer->from_branch_id
+                )
+                ->where(
+                    'key',
+                    'inventory_merchandise'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (
+            ! $sourceInventoryMapping ||
+            ! $sourceInventoryMapping->account
+        ) {
+
+            throw new \RuntimeException(
+                'Merchandise inventory account is not configured for the source branch.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Destination Inventory Account
+        |--------------------------------------------------------------------------
+        */
+
+        $destinationInventoryMapping =
+            BranchAccountMapping::query()
+                ->with('account')
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $stockTransfer->to_branch_id
+                )
+                ->where(
+                    'key',
+                    'inventory_merchandise'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+        if (
+            ! $destinationInventoryMapping ||
+            ! $destinationInventoryMapping->account
+        ) {
+
+            throw new \RuntimeException(
+                'Merchandise inventory account is not configured for the destination branch.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Total Transfer Value
+        |--------------------------------------------------------------------------
+        */
+
+        $totalTransferValue = 0;
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Process Details
         |--------------------------------------------------------------------------
         */
@@ -5249,6 +5442,16 @@ public function postStockTransfer(
 
             /*
             |--------------------------------------------------------------------------
+            | Accumulate Accounting Value
+            |--------------------------------------------------------------------------
+            */
+
+            $totalTransferValue +=
+                $totalCost;
+
+
+            /*
+            |--------------------------------------------------------------------------
             | Update Detail Cost
             |--------------------------------------------------------------------------
             */
@@ -5277,7 +5480,7 @@ public function postStockTransfer(
                 $this->updateCurrentStock([
 
                     'company_id' =>
-                    $stockTransfer->company_id,
+                        $stockTransfer->company_id,
 
                     'branch_id' =>
                         $stockTransfer->from_branch_id,
@@ -5369,7 +5572,7 @@ public function postStockTransfer(
                 $this->updateCurrentStock([
 
                     'company_id' =>
-                    $stockTransfer->company_id,
+                        $stockTransfer->company_id,
 
                     'branch_id' =>
                         $stockTransfer->to_branch_id,
@@ -5449,6 +5652,119 @@ public function postStockTransfer(
             );
 
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Transfer Value
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $totalTransferValue <= 0
+        ) {
+
+            throw new \RuntimeException(
+                'Stock transfer value must be greater than zero.'
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $journalEntry =
+            $this->journalEntryService->create([
+
+                'company_id' =>
+                    $stockTransfer->company_id,
+
+                'branch_id' =>
+                    $stockTransfer->from_branch_id,
+
+                'accounting_journal_id' =>
+                    $accountingJournal->id,
+
+                'fiscal_year_id' =>
+                    $fiscalYear->id,
+
+                'accounting_period_id' =>
+                    $accountingPeriod->id,
+
+                'entry_date' =>
+                    $stockTransfer->transaction_date,
+
+                'reference' =>
+                    $stockTransfer->number,
+
+                'description' =>
+                    'Stock transfer '
+                    . $stockTransfer->number,
+
+                'lines' => [
+
+                    [
+                        'account_id' =>
+                            $destinationInventoryMapping
+                                ->account
+                                ->id,
+
+                        'branch_id' =>
+                            $stockTransfer->to_branch_id,
+
+                        'description' =>
+                            'Inventory transfer in - '
+                            . $stockTransfer->number,
+
+                        'debit' =>
+                            $totalTransferValue,
+
+                        'credit' =>
+                            0,
+
+                    ],
+
+                    [
+
+                        'account_id' =>
+                            $sourceInventoryMapping
+                                ->account
+                                ->id,
+
+                        'branch_id' =>
+                            $stockTransfer->from_branch_id,
+
+                        'description' =>
+                            'Inventory transfer out - '
+                            . $stockTransfer->number,
+
+                        'debit' =>
+                            0,
+
+                        'credit' =>
+                            $totalTransferValue,
+
+                    ],
+
+                ],
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $this->journalEntryService
+            ->post(
+                $journalEntry
+            );
 
 
         /*

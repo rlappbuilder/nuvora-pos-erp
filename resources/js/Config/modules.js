@@ -332,6 +332,13 @@ const modules = {
                 route: 'income-statement.index',
                 permission: 'income-statement.view',
             },
+            fundTransfers: {
+                key: 'fundTransfers',
+                title: 'Fund Transfer',
+                icon: UsersIcon,
+                route: 'fund-transfers.index',
+                permission: 'fund-transfers.view',
+            },
 
         // End accounting //
 

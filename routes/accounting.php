@@ -10,6 +10,7 @@ use App\Http\Controllers\Accounting\GeneralLedgerController;
 use App\Http\Controllers\Accounting\TrialBalanceController;
 use App\Http\Controllers\Accounting\BalanceSheetController;
 use App\Http\Controllers\Accounting\IncomeStatementController;
+use App\Http\Controllers\Accounting\FundTransferController;
 Route::middleware('auth')
 
     ->prefix('accounting')
@@ -174,6 +175,67 @@ Route::middleware('auth')
                                 'reopen',
                             ]
                         )->name('fiscal-years.reopen');
+
+                        /*
+                |---------------------------------------------------------------
+                | FUND TRANSFER
+                |---------------------------------------------------------------
+                */
+
+                Route::get(
+                    'fund-transfers',
+                    [FundTransferController::class, 'index']
+                )->name('fund-transfers.index');
+
+                Route::get(
+                    'fund-transfers/create',
+                    [FundTransferController::class, 'create']
+                )->name('fund-transfers.create');
+
+                Route::post(
+                    'fund-transfers',
+                    [FundTransferController::class, 'store']
+                )->name('fund-transfers.store');
+
+                Route::get(
+                    'fund-transfers/accounts',
+                    [FundTransferController::class, 'accounts']
+                )->name('fund-transfers.accounts');
+
+                Route::get(
+                    'fund-transfers/{fundTransfer}/data',
+                    [FundTransferController::class, 'showData']
+                )->name('fund-transfers.data');
+
+                Route::get(
+                    'fund-transfers/{fundTransfer}',
+                    [FundTransferController::class, 'show']
+                )->name('fund-transfers.show');
+
+                Route::post(
+                    'fund-transfers/{fundTransfer}/submit',
+                    [FundTransferController::class, 'submit']
+                )->name('fund-transfers.submit');
+
+                Route::post(
+                    'fund-transfers/{fundTransfer}/approve',
+                    [FundTransferController::class, 'approve']
+                )->name('fund-transfers.approve');
+
+                Route::post(
+                    'fund-transfers/{fundTransfer}/reject',
+                    [FundTransferController::class, 'reject']
+                )->name('fund-transfers.reject');
+
+                Route::post(
+                    'fund-transfers/{fundTransfer}/post',
+                    [FundTransferController::class, 'post']
+                )->name('fund-transfers.post');
+
+                Route::post(
+                    'fund-transfers/{fundTransfer}/cancel',
+                    [FundTransferController::class, 'cancel']
+                )->name('fund-transfers.cancel');
              /*
             |--------------------------------------------------------------------------
             | accounting period

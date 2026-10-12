@@ -413,12 +413,14 @@ if (
         ) {
 
             JournalEntryLine::create([
-
                 'journal_entry_id' =>
                     $header->id,
 
                 'account_id' =>
                     $line['account_id'],
+
+                'branch_id' =>
+                    $line['branch_id'] ?? null,
 
                 'line_number' =>
                     $index + 1,
@@ -434,7 +436,6 @@ if (
 
                 'created_by' =>
                     auth()->id(),
-
             ]);
 
         }
@@ -465,6 +466,7 @@ if (
 
     });
 }
+
 /*
 |--------------------------------------------------------------------------
 | Update Journal Entry - DRAFT
@@ -833,73 +835,74 @@ public function update(
         ]);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Replace Lines
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| Replace Lines
+|--------------------------------------------------------------------------
+*/
 
-        $journalEntry->lines()->delete();
+$journalEntry->lines()->delete();
 
+foreach (
+    $data['lines']
+    as $index => $line
+) {
 
-        foreach (
-            $data['lines']
-            as $index => $line
-        ) {
+    JournalEntryLine::create([
+        'journal_entry_id' =>
+            $journalEntry->id,
 
-            JournalEntryLine::create([
+        'account_id' =>
+            $line['account_id'],
 
-                'journal_entry_id' =>
-                    $journalEntry->id,
+        'branch_id' =>
+            $line['branch_id'] ?? null,
 
-                'account_id' =>
-                    $line['account_id'],
+        'line_number' =>
+            $index + 1,
 
-                'line_number' =>
-                    $index + 1,
+        'description' =>
+            $line['description'] ?? null,
 
-                'description' =>
-                    $line['description'] ?? null,
+        'debit' =>
+            $line['debit'] ?? 0,
 
-                'debit' =>
-                    $line['debit'] ?? 0,
+        'credit' =>
+            $line['credit'] ?? 0,
 
-                'credit' =>
-                    $line['credit'] ?? 0,
+        'created_by' =>
+            auth()->id(),
+    ]);
 
-                'created_by' =>
-                    auth()->id(),
-
-            ]);
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Document Activity - UPDATED
-        |--------------------------------------------------------------------------
-        */
-
-        $this->documentActivityService->record(
-
-            $journalEntry,
-
-            'UPDATED',
-
-            'Draft',
-
-            'Draft',
-
-            'Journal entry updated.'
-
-        );
+} // ← foreach
 
 
-        return $journalEntry->fresh('lines');
+/*
+|--------------------------------------------------------------------------
+| Document Activity - UPDATED
+|--------------------------------------------------------------------------
+*/
 
-    });
-}
+$this->documentActivityService->record(
+
+    $journalEntry,
+
+    'UPDATED',
+
+    'Draft',
+
+    'Draft',
+
+    'Journal entry updated.'
+
+);
+
+
+return $journalEntry->fresh('lines');
+
+}); // ← DB::transaction
+
+} // ← update()
    /*
 |--------------------------------------------------------------------------
 | Post Journal Entry

@@ -1,19 +1,8 @@
 <script setup>
 
-import {
-    ref,
-    reactive,
-    computed,
-    watch,
-    onMounted,
-    onUnmounted,
-    toRefs,
-} from 'vue'
+import {ref,reactive,computed, watch, onMounted,onUnmounted, toRefs,} from 'vue'
 
-import {
-    router,
-    useForm,
-} from '@inertiajs/vue3'
+import { router,useForm,} from '@inertiajs/vue3'
 
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PageHeader from '@/Components/Layout/PageHeader.vue'
@@ -33,28 +22,16 @@ import TableEmpty from '@/Components/Table/TableEmpty.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
 import Modal from '@/Components/Modal/BaseModal.vue'
-import {
-    LoadingOverlay,
-} from '@/Components/Feedback'
+import { LoadingOverlay,} from '@/Components/Feedback'
+import { PlusIcon,} from '@heroicons/vue/24/solid'
 
-import {
-    PlusIcon,
-} from '@heroicons/vue/24/solid'
-
-import {
-    success,
-    error,
-    currency,
-    formatDate,
-} from '@/Utils'
-
+import { success, error, formatDate,} from '@/Utils'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-
 import JournalEntryForm from './Partials/JournalEntryForm.vue'
 import JournalEntryViewModal from './Partials/JournalEntryViewModal.vue'
 import JournalEntryPostModal from './Partials/JournalEntryPostModal.vue'
-
+import { formatCurrency } from '@/Utils/currency'
 import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
 
 
@@ -1657,7 +1634,6 @@ function canDelete(item)
 
 }
 
-
 /*
 |--------------------------------------------------------------------------
 | Sorting
@@ -2427,29 +2403,18 @@ onUnmounted(() => {
 
                                     <!-- Amount -->
 
-                                    <DataTableCell
-                                        align="right"
+                                    <DataTableCell align="right">
+                                    <span
+                                        class="
+                                            text-sm
+                                            font-semibold
+                                            tabular-nums
+                                            text-slate-900
+                                        "
                                     >
-
-                                        <span
-                                            class="
-                                                text-sm
-                                                font-semibold
-                                                tabular-nums
-                                                text-slate-900
-                                            "
-                                        >
-
-                                            {{
-                                                currency(
-                                                    item.total_debit
-                                                    ?? 0
-                                                )
-                                            }}
-
-                                        </span>
-
-                                    </DataTableCell>
+                                        {{ formatCurrency(item.total_debit ?? 0, 'id-ID', 2) }}
+                                    </span>
+                                </DataTableCell>
 
 
                                     <!-- Status -->

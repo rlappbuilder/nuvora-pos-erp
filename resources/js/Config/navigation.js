@@ -108,8 +108,8 @@ const navigation = [
             modules.fiscalYears,
             modules.accountingJournals,
             modules.journalsEntries,
-             modules.generalLeders,
-            
+            modules.generalLeders,
+            modules.fundTransfers,
             modules.trialBalances,
             modules.balanceSheets,
             modules.profitLosses,

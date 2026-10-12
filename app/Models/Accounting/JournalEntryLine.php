@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\User;
-use App\Models\Accounting\ChartOfAccount;
+use App\Models\MasterData\Branch;
 
 class JournalEntryLine extends Model
 {
@@ -21,6 +21,7 @@ class JournalEntryLine extends Model
         'credit',
         'created_by',
         'updated_by',
+        'branch_id',
     ];
 
     protected $casts = [
@@ -58,30 +59,51 @@ class JournalEntryLine extends Model
 
     /*
     |--------------------------------------------------------------------------
+    | Branch
+    |--------------------------------------------------------------------------
+    */
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(
+            Branch::class,
+            'branch_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Audit
     |--------------------------------------------------------------------------
     */
 
     public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(
+            User::class,
+            'created_by'
+        );
     }
 
     public function updatedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(
+            User::class,
+            'updated_by'
+        );
     }
-    /*
-|--------------------------------------------------------------------------
-| General Ledger
-|--------------------------------------------------------------------------
-*/
 
-public function ledgerEntry(): HasOne
-{
-    return $this->hasOne(
-        GeneralLedger::class,
-        'journal_entry_line_id'
-    );
-}
+    /*
+    |--------------------------------------------------------------------------
+    | General Ledger
+    |--------------------------------------------------------------------------
+    */
+
+    public function ledgerEntry(): HasOne
+    {
+        return $this->hasOne(
+            GeneralLedger::class,
+            'journal_entry_line_id'
+        );
+    }
 }

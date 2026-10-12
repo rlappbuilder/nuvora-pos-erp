@@ -162,7 +162,8 @@ public function createFromJournalEntry(
                 $journalEntry->company_id,
 
             'branch_id' =>
-                $journalEntry->branch_id,
+                $line->branch_id
+                ?? $journalEntry->branch_id,
 
             'account_id' =>
                 $account->id,
@@ -221,9 +222,6 @@ public function createFromJournalEntry(
 
             /*
             | Balance
-            |
-            | Recalculated after all GL rows
-            | have been created.
             */
 
             'running_balance' =>
@@ -239,13 +237,7 @@ public function createFromJournalEntry(
                 ?: $journalEntry->created_by,
 
         ]);
-
-
-        $accountIds[] =
-            $account->id;
     }
-
-
     /*
     |--------------------------------------------------------------------------
     | Recalculate Running Balance

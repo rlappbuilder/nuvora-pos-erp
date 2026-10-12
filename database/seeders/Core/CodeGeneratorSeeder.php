@@ -77,6 +77,7 @@ $modules = [
     ['module' => 'income',            'prefix' => 'INC', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'payment_in',        'prefix' => 'RCV', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'payment_out',       'prefix' => 'PAY', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
+    ['module' => 'fund_transfer', 'prefix' => 'FT', 'format' => '{PREFIX}-{YYYY}-{SEQ}', 'digit' => 6],
     // ==========================
     // Reseller
     // ==========================
