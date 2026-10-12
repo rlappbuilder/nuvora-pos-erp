@@ -50,6 +50,13 @@ class AccountCategorySeeder extends Seeder
                 'sort_order' => 5,
             ],
 
+
+            [
+                'type' => '110000',
+                'code' => '110600',
+                'name' => 'Inter-Branch Receivable',
+                'sort_order' => 6,
+            ],
             // ==========================================================
             // FIXED ASSETS
             // ==========================================================
@@ -107,6 +114,12 @@ class AccountCategorySeeder extends Seeder
                 'name' => 'Goods Received Not Invoiced',
                 'sort_order' => 3,
             ],
+            [
+                'type' => '210000',
+                'code' => '210400',
+                'name' => 'Inter-Branch Payable',
+                'sort_order' => 4,
+            ],
             // ==========================================================
             // LONG TERM LIABILITIES
             // ==========================================================
@@ -150,7 +163,12 @@ class AccountCategorySeeder extends Seeder
                 'name' => 'Opening Balance Equity',
                 'sort_order' => 4,
             ],
-
+            [
+                'type' => '310000',
+                'code' => '310500',
+                'name' => 'Branch Allocation',
+                'sort_order' => 5,
+            ],
             // ==========================================================
             // REVENUE
             // ==========================================================

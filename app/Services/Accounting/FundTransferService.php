@@ -12,6 +12,7 @@ use App\Models\MasterData\Branch;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
 use Illuminate\Support\Facades\DB;
+use App\Models\Accounting\ChartOfAccount;
 use RuntimeException;
 
 class FundTransferService
@@ -61,6 +62,7 @@ class FundTransferService
                 'to_account_id' => $data['to_account_id'],
                 'amount' => round((float) $data['amount'], 2),
                 'description' => $data['description'] ?? null,
+                'transfer_mode' => $data['transfer_mode'] ?? 'receivable',
                 'status' => 'Draft',
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
@@ -120,6 +122,9 @@ class FundTransferService
                 'to_account_id' => $data['to_account_id'],
                 'amount' => round((float) $data['amount'], 2),
                 'description' => $data['description'] ?? null,
+                'transfer_mode' => $data['transfer_mode']
+                    ?? $fundTransfer->transfer_mode
+                    ?? 'receivable',
                 'updated_by' => auth()->id(),
             ]);
 
@@ -508,20 +513,35 @@ class FundTransferService
 
             /*
             |--------------------------------------------------------------------------
-            | Create Journal Entry
+            | Build Journal Lines
             |--------------------------------------------------------------------------
             */
 
-            $journalEntry = $this->journalEntryService->create([
-                'branch_id' => $journalBranch->id,
-                'accounting_journal_id' => $accountingJournal->id,
-                'fiscal_year_id' => $fiscalYear->id,
-                'accounting_period_id' => $accountingPeriod->id,
-                'entry_date' => $fundTransfer->transfer_date,
-                'reference' => $fundTransfer->transfer_number,
-                'description' => $fundTransfer->description
-                    ?: 'Fund transfer ' . $fundTransfer->transfer_number,
-                'lines' => [
+            $transferMode = $fundTransfer->transfer_mode ?: 'receivable';
+
+            if (! in_array($transferMode, ['receivable', 'allocation'], true)) {
+                throw new RuntimeException(
+                    'Invalid fund transfer mode.'
+                );
+            }
+
+            $lines = [];
+
+            $sameBranchTransfer = $fromBranchId !== null
+                && $fromBranchId === $toBranchId;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Same Branch Transfer
+            |--------------------------------------------------------------------------
+            |
+            | Perpindahan antar-rekening dalam cabang yang sama.
+            | Tidak membutuhkan akun penyeimbang antar-konteks.
+            |--------------------------------------------------------------------------
+            */
+
+            if ($sameBranchTransfer) {
+                $lines = [
                     [
                         'account_id' => $toAccount->id,
                         'branch_id' => $toBranchId,
@@ -536,7 +556,117 @@ class FundTransferService
                         'debit' => 0,
                         'credit' => $amount,
                     ],
-                ],
+                ];
+            } else {
+                /*
+                |--------------------------------------------------------------------------
+                | Resolve Inter-Context Accounts
+                |--------------------------------------------------------------------------
+                */
+
+                if ($transferMode === 'receivable') {
+                    $sourceCounterpartCode = '110205';
+                    $destinationCounterpartCode = '210104';
+                } else {
+                    $sourceCounterpartCode = '310501';
+                    $destinationCounterpartCode = '310502';
+                }
+
+                $resolveCounterpart = function (
+                    string $code,
+                    string $side
+                ) use ($companyId) {
+                    $account = ChartOfAccount::query()
+                        ->where('company_id', $companyId)
+                        ->where('code', $code)
+                        ->where('is_posting', true)
+                        ->where('status', true)
+                        ->first();
+
+                    if (! $account) {
+                        throw new RuntimeException(
+                            "{$side} counterpart account {$code} is missing or inactive."
+                        );
+                    }
+
+                    return $account;
+                };
+
+                $sourceCounterpart = $resolveCounterpart(
+                    $sourceCounterpartCode,
+                    'Source'
+                );
+
+                $destinationCounterpart = $resolveCounterpart(
+                    $destinationCounterpartCode,
+                    'Destination'
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Source Context
+                |--------------------------------------------------------------------------
+                */
+
+                $lines[] = [
+                    'account_id' => $sourceCounterpart->id,
+                    'branch_id' => $fromBranchId,
+                    'description' => $transferMode === 'receivable'
+                        ? 'Inter-context receivable'
+                        : 'Inter-context allocation out',
+                    'debit' => $amount,
+                    'credit' => 0,
+                ];
+
+                $lines[] = [
+                    'account_id' => $fromAccount->id,
+                    'branch_id' => $fromBranchId,
+                    'description' => 'Fund transfer source',
+                    'debit' => 0,
+                    'credit' => $amount,
+                ];
+
+                /*
+                |--------------------------------------------------------------------------
+                | Destination Context
+                |--------------------------------------------------------------------------
+                */
+
+                $lines[] = [
+                    'account_id' => $toAccount->id,
+                    'branch_id' => $toBranchId,
+                    'description' => 'Fund transfer destination',
+                    'debit' => $amount,
+                    'credit' => 0,
+                ];
+
+                $lines[] = [
+                    'account_id' => $destinationCounterpart->id,
+                    'branch_id' => $toBranchId,
+                    'description' => $transferMode === 'receivable'
+                        ? 'Inter-context payable'
+                        : 'Inter-context allocation in',
+                    'debit' => 0,
+                    'credit' => $amount,
+                ];
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Journal Entry
+            |--------------------------------------------------------------------------
+            */
+
+            $journalEntry = $this->journalEntryService->create([
+                'branch_id' => $journalBranch->id,
+                'accounting_journal_id' => $accountingJournal->id,
+                'fiscal_year_id' => $fiscalYear->id,
+                'accounting_period_id' => $accountingPeriod->id,
+                'entry_date' => $fundTransfer->transfer_date,
+                'reference' => $fundTransfer->transfer_number,
+                'description' => $fundTransfer->description
+                    ?: 'Fund transfer ' . $fundTransfer->transfer_number,
+                'lines' => $lines,
             ]);
 
             $this->journalEntryService->post($journalEntry);

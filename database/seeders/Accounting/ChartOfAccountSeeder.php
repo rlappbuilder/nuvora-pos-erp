@@ -288,7 +288,15 @@ class ChartOfAccountSeeder extends Seeder
                 'is_posting' => true,
             ],
 
-
+           [
+                'code' => '110205',
+                'name' => 'Inter-Branch Receivable',
+                'category' => 'Inter-Branch Receivable',
+                'parent' => '110200',
+                'normal_balance' => 'Debit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
             // ----------------------------------------------------------
             // Inventory
             // ----------------------------------------------------------
@@ -605,6 +613,15 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+            [
+                'code' => '210104',
+                'name' => 'Inter-Branch Payable',
+                'category' => 'Inter-Branch Payable',
+                'parent' => '210100',
+                'normal_balance' => 'Credit',
+                'is_header' => false,
+                'is_posting' => true,
+            ],
 
             [
                 'code' => '210200',
@@ -818,7 +835,39 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+                // ==========================================================
+                // BRANCH ALLOCATION
+                // ==========================================================
 
+                [
+                    'code' => '310500',
+                    'name' => 'Branch Allocation',
+                    'category' => 'Branch Allocation',
+                    'parent' => null,
+                    'normal_balance' => 'Credit',
+                    'is_header' => true,
+                    'is_posting' => false,
+                ],
+
+                [
+                    'code' => '310501',
+                    'name' => 'Inter-Branch Allocation Out',
+                    'category' => 'Branch Allocation',
+                    'parent' => '310500',
+                    'normal_balance' => 'Debit',
+                    'is_header' => false,
+                    'is_posting' => true,
+                ],
+
+                [
+                    'code' => '310502',
+                    'name' => 'Inter-Branch Allocation In',
+                    'category' => 'Branch Allocation',
+                    'parent' => '310500',
+                    'normal_balance' => 'Credit',
+                    'is_header' => false,
+                    'is_posting' => true,
+                ],
             // ==========================================================
             // REVENUE
             // ==========================================================
@@ -1175,11 +1224,17 @@ class ChartOfAccountSeeder extends Seeder
 
         foreach ($accounts as $account) {
 
-            $category = AccountCategory::where(
+           $category = AccountCategory::where(
                 'name',
                 $account['category']
-            )->firstOrFail();
+            )->first();
 
+            if (!$category) {
+                throw new \RuntimeException(
+                    "Kategori COA tidak ditemukan: [{$account['category']}] " .
+                    "untuk akun [{$account['code']} - {$account['name']}]"
+                );
+            }
             $parent = null;
             $level = 1;
 

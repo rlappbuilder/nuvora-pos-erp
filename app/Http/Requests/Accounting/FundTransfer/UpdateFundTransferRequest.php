@@ -76,7 +76,10 @@ class UpdateFundTransferRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
-
+            'transfer_mode' => [
+                'required',
+                'in:receivable,allocation',
+            ],
         ];
     }
 

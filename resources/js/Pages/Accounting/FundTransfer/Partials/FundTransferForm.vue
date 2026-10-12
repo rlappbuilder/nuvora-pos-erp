@@ -97,11 +97,22 @@ const form = useForm({
     to_branch_id: props.transfer?.to_branch_id ?? '',
     to_account_id: props.transfer?.to_account_id ?? '',
 
+    transfer_mode: props.transfer?.transfer_mode ?? 'receivable',
+
     amount: Number(props.transfer?.amount ?? 0),
 
     description: props.transfer?.description ?? '',
 })
-
+const transferModeOptions = [
+    {
+        value: 'receivable',
+        label: 'Receivable — Piutang/Utang Antar-Cabang',
+    },
+    {
+        value: 'allocation',
+        label: 'Allocation — Alokasi Antar-Cabang',
+    },
+]
 const transferType = ref(
     getTransferType(props.transfer)
 )
@@ -654,6 +665,9 @@ const initializeForm = async () => {
     form.to_account_id =
         props.transfer?.to_account_id ?? ''
 
+    form.transfer_mode =
+        props.transfer?.transfer_mode ?? 'receivable'
+
     form.amount = Number(
     props.transfer?.amount ?? 0
     )
@@ -904,31 +918,69 @@ const close = () => {
                                             {{ option.label }}
                                         </option>
                                     </select>
+                                    <!-- Transfer Mode -->
+
                                 </div>
+<!-- Transfer Mode -->
+<div>
+    <label
+        class="mb-1.5 block text-sm font-medium text-slate-700"
+    >
+        Transfer Mode
+        <span class="text-red-500">*</span>
+    </label>
 
-                                <!-- Description -->
-                                <div class="md:col-span-2">
-                                    <label
-                                        class="mb-1.5 block text-sm font-medium text-slate-700"
-                                    >
-                                        Description
-                                    </label>
+    <select
+        v-model="form.transfer_mode"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-emerald-500/10"
+        :disabled="form.processing"
+    >
+        <option
+            v-for="option in transferModeOptions"
+            :key="option.value"
+            :value="option.value"
+        >
+            {{ option.label }}
+        </option>
+    </select>
 
-                                    <textarea
-                                        v-model="form.description"
-                                        rows="2"
-                                        class="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/10"
-                                        placeholder="Optional transfer description"
-                                        :disabled="form.processing"
-                                    ></textarea>
+    <p
+        v-if="form.errors.transfer_mode"
+        class="mt-1 text-xs text-red-600"
+    >
+        {{ form.errors.transfer_mode }}
+    </p>
 
-                                    <p
-                                        v-if="form.errors.description"
-                                        class="mt-1 text-xs text-red-600"
-                                    >
-                                        {{ form.errors.description }}
-                                    </p>
-                                </div>
+    <p class="mt-1 text-xs text-slate-500">
+        Receivable digunakan untuk transaksi yang menimbulkan
+        kewajiban antar-cabang. Allocation digunakan untuk
+        alokasi internal tanpa kewajiban pembayaran kembali.
+    </p>
+</div>
+
+<!-- Description: di samping Transfer Mode -->
+<div>
+    <label
+        class="mb-1.5 block text-sm font-medium text-slate-700"
+    >
+        Description
+    </label>
+
+    <textarea
+        v-model="form.description"
+        rows="2"
+        class="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/10"
+        placeholder="Optional transfer description"
+        :disabled="form.processing"
+    ></textarea>
+
+    <p
+        v-if="form.errors.description"
+        class="mt-1 text-xs text-red-600"
+    >
+        {{ form.errors.description }}
+    </p>
+</div>
                             </div>
                         </section>
 

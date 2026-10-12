@@ -77,6 +77,11 @@ class StoreFundTransferRequest extends FormRequest
                 'max:1000',
             ],
 
+            'transfer_mode' => [
+                'required',
+                'in:receivable,allocation',
+            ],
+
         ];
     }
 

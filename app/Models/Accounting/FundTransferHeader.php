@@ -34,7 +34,7 @@ class FundTransferHeader extends Model
 
         'amount',
         'description',
-
+        'transfer_mode',
         'status',
 
         'journal_entry_id',
