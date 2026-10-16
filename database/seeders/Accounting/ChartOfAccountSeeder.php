@@ -613,8 +613,9 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+          
             [
-                'code' => '210104',
+                'code' => '210105',
                 'name' => 'Inter-Branch Payable',
                 'category' => 'Inter-Branch Payable',
                 'parent' => '210100',
@@ -622,6 +623,7 @@ class ChartOfAccountSeeder extends Seeder
                 'is_header' => false,
                 'is_posting' => true,
             ],
+
 
             [
                 'code' => '210200',

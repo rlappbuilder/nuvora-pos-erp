@@ -953,25 +953,18 @@ const showClearButton = computed(
                             transition
                         "
 
-                        :class="[
-
+                       :class="[
                             highlighted === index
-
-                                ? 'bg-indigo-50'
-
-                                : '',
+                                ? 'bg-blue-600 !text-white font-semibold'
+                                : 'text-slate-700 hover:bg-blue-600 hover:!text-white hover:font-semibold',
 
                             selected &&
-
                             isSameValue(
                                 optionValue(option),
                                 optionValue(selected)
                             )
-
-                                ? 'font-semibold text-indigo-600'
-
+                                ? 'bg-blue-600 !text-white font-semibold'
                                 : ''
-
                         ]"
 
                         @mouseenter="

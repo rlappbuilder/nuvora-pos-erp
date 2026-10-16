@@ -125,7 +125,19 @@ const printPage = () => {
 
 
 const goBack = () => {
-    window.history.back()
+    if (window.opener && !window.opener.closed) {
+        window.close()
+        return
+    }
+
+    if (window.history.length > 1) {
+        window.history.back()
+        return
+    }
+
+    router.visit(
+        route('inter-branch-settlements.index')
+    )
 }
 
 

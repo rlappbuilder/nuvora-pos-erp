@@ -11,6 +11,7 @@ use App\Http\Controllers\Accounting\TrialBalanceController;
 use App\Http\Controllers\Accounting\BalanceSheetController;
 use App\Http\Controllers\Accounting\IncomeStatementController;
 use App\Http\Controllers\Accounting\FundTransferController;
+use App\Http\Controllers\Accounting\InterBranchSettlementController;
 Route::middleware('auth')
 
     ->prefix('accounting')
@@ -236,6 +237,105 @@ Route::middleware('auth')
                     'fund-transfers/{fundTransfer}/cancel',
                     [FundTransferController::class, 'cancel']
                 )->name('fund-transfers.cancel');
+
+            /*
+            |--------------------------------------------------------------------------
+            | INTER-BRANCH SETTLEMENT
+            |--------------------------------------------------------------------------
+            */
+
+            // Index
+            Route::get(
+                'inter-branch-settlements',
+                [InterBranchSettlementController::class, 'index']
+            )->name('inter-branch-settlements.index');
+
+            // Create
+            Route::get(
+                'inter-branch-settlements/create',
+                [InterBranchSettlementController::class, 'create']
+            )->name('inter-branch-settlements.create');
+
+            // Store
+            Route::post(
+                'inter-branch-settlements',
+                [InterBranchSettlementController::class, 'store']
+            )->name('inter-branch-settlements.store');
+
+            // Eligible Fund Transfers
+            // Harus diletakkan sebelum route {settlement}.
+            Route::get(
+                'inter-branch-settlements/eligible-transfers',
+                [InterBranchSettlementController::class, 'eligibleTransfers']
+            )->name('inter-branch-settlements.eligible-transfers');
+            // Accounts berdasarkan cabang
+            Route::get(
+                'inter-branch-settlements/accounts',
+                [InterBranchSettlementController::class, 'accounts']
+            )->name('inter-branch-settlements.accounts');
+            // Detail data untuk modal
+            Route::get(
+                'inter-branch-settlements/{settlement}/data',
+                [InterBranchSettlementController::class, 'showData']
+            )->name('inter-branch-settlements.data');
+
+            // Detail settlement
+            Route::get(
+                'inter-branch-settlements/{settlement}',
+                [InterBranchSettlementController::class, 'show']
+            )->name('inter-branch-settlements.show');
+
+            // Update
+            Route::put(
+                'inter-branch-settlements/{settlement}',
+                [InterBranchSettlementController::class, 'update']
+            )->name('inter-branch-settlements.update');
+
+            // Submit
+            Route::post(
+                'inter-branch-settlements/{settlement}/submit',
+                [InterBranchSettlementController::class, 'submit']
+            )->name('inter-branch-settlements.submit');
+
+            // Approve
+            Route::post(
+                'inter-branch-settlements/{settlement}/approve',
+                [InterBranchSettlementController::class, 'approve']
+            )->name('inter-branch-settlements.approve');
+
+            // Reject
+            Route::post(
+                'inter-branch-settlements/{settlement}/reject',
+                [InterBranchSettlementController::class, 'reject']
+            )->name('inter-branch-settlements.reject');
+
+            // Post payment
+            Route::post(
+                'inter-branch-settlements/{settlement}/post',
+                [InterBranchSettlementController::class, 'post']
+            )->name('inter-branch-settlements.post');
+
+            // Receive payment
+            Route::post(
+                'inter-branch-settlements/{settlement}/receive',
+                [InterBranchSettlementController::class, 'receive']
+            )->name('inter-branch-settlements.receive');
+
+            // Cancel
+            Route::post(
+                'inter-branch-settlements/{settlement}/cancel',
+                [InterBranchSettlementController::class, 'cancel']
+            )->name('inter-branch-settlements.cancel');
+
+            // Delete
+            Route::delete(
+                'inter-branch-settlements/{settlement}',
+                [InterBranchSettlementController::class, 'destroy']
+            )->name('inter-branch-settlements.destroy');
+                Route::get(
+                '/inter-branch-settlements/{settlement}/print',
+                [InterBranchSettlementController::class, 'print']
+            )->name('inter-branch-settlements.print');
              /*
             |--------------------------------------------------------------------------
             | accounting period

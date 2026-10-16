@@ -32,7 +32,7 @@ $modules = [
     
     ['module' => 'cashier_deposit', 'prefix' => 'CD',  'format' => '{PREFIX}-{YYYY}-{MM}-{SEQ}', 'digit' => 6],
 
-
+['module' => 'inter_branch_settlement','prefix' => 'IBS', 'format' => '{PREFIX}-{YYYY}-{SEQ}','digit' => 6,],
     // ==========================
     // Product
     // ==========================

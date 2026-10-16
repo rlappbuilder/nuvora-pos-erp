@@ -16,7 +16,7 @@ use App\Services\Core\CodeGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-
+use App\Models\Accounting\InterBranchSettlementHeader;
 use RuntimeException;
 
 class FundTransferController extends Controller
@@ -57,6 +57,7 @@ class FundTransferController extends Controller
                 'rejectedBy',
                 'postedBy',
                 'cancelledBy',
+
             ])
             ->where('company_id', $companyId);
 
@@ -162,20 +163,244 @@ class FundTransferController extends Controller
             ->selectRaw("SUM(status = 'Posted') as posted")
             ->selectRaw("SUM(status = 'Cancelled') as cancelled")
             ->first();
+        /*
+        |--------------------------------------------------------------------------
+        | Inter-Branch Settlements
+        |--------------------------------------------------------------------------
+        */
 
+        $settlementQuery = InterBranchSettlementHeader::query()
+            ->byCompany($companyId)
+            ->with([
+                'fromBranch:id,code,name',
+                'toBranch:id,code,name',
+                'fromAccount:id,code,name',
+                'toAccount:id,code,name',
+                'paymentJournalEntry:id,code,status',
+                'receiptJournalEntry:id,code,status',
+                'createdBy:id,name',
+                'postedBy:id,name',
+                'receivedBy:id,name',
+                'activities.performer',
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settlement Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+
+            $settlementQuery->where(function ($q) use ($search) {
+                $q->where(
+                    'settlement_number',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'description',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhereHas('fromBranch', function ($branchQuery) use ($search) {
+                    $branchQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%");
+                })
+                ->orWhereHas('toBranch', function ($branchQuery) use ($search) {
+                    $branchQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settlement Filters
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('from_branch_id')) {
+            $settlementQuery->where(
+                'from_branch_id',
+                $request->integer('from_branch_id')
+            );
+        }
+
+        if ($request->filled('to_branch_id')) {
+            $settlementQuery->where(
+                'to_branch_id',
+                $request->integer('to_branch_id')
+            );
+        }
+
+        if ($request->filled('status')) {
+            $settlementQuery->where(
+                'status',
+                $request->input('status')
+            );
+        }
+
+        if ($request->filled('receipt_status')) {
+            $settlementQuery->where(
+                'receipt_status',
+                $request->input('receipt_status')
+            );
+        }
+
+        if ($request->filled('date_from')) {
+            $settlementQuery->whereDate(
+                'settlement_date',
+                '>=',
+                $request->input('date_from')
+            );
+        }
+
+        if ($request->filled('date_to')) {
+            $settlementQuery->whereDate(
+                'settlement_date',
+                '<=',
+                $request->input('date_to')
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settlement Sorting
+        |--------------------------------------------------------------------------
+        */
+
+        $allowedSettlementSorts = [
+            'settlement_number',
+            'settlement_date',
+            'amount',
+            'status',
+            'receipt_status',
+            'created_at',
+        ];
+
+        $settlementSortBy = $request->input(
+            'sort_by',
+            'settlement_date'
+        );
+
+        if (! in_array(
+            $settlementSortBy,
+            $allowedSettlementSorts,
+            true
+        )) {
+            $settlementSortBy = 'settlement_date';
+        }
+
+        $settlementSortDirection = strtolower(
+            $request->input('sort_direction', 'desc')
+        );
+
+        if (! in_array(
+            $settlementSortDirection,
+            ['asc', 'desc'],
+            true
+        )) {
+            $settlementSortDirection = 'desc';
+        }
+
+        $settlementQuery
+            ->orderBy($settlementSortBy, $settlementSortDirection)
+            ->orderBy('id', 'desc');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settlement Pagination
+        |--------------------------------------------------------------------------
+        */
+
+        $settlementPerPage = (int) $request->input('per_page', 10);
+
+        if (! in_array(
+            $settlementPerPage,
+            [10, 25, 50, 100],
+            true
+        )) {
+            $settlementPerPage = 10;
+        }
+
+        $settlements = $settlementQuery
+            ->paginate(
+                $settlementPerPage,
+                ['*'],
+                'settlements_page'
+            )
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settlement Statistics
+        |--------------------------------------------------------------------------
+        */
+
+        $settlementBaseQuery = InterBranchSettlementHeader::query()
+            ->byCompany($companyId);
+
+        $settlementStatistics = [
+            'total' => (clone $settlementBaseQuery)->count(),
+
+            'draft' => (clone $settlementBaseQuery)
+                ->where('status', 'Draft')
+                ->count(),
+
+            'submitted' => (clone $settlementBaseQuery)
+                ->where('status', 'Submitted')
+                ->count(),
+
+            'pending_approval' => (clone $settlementBaseQuery)
+                ->where('status', 'Submitted')
+                ->count(),
+
+            'approved' => (clone $settlementBaseQuery)
+                ->where('status', 'Approved')
+                ->count(),
+
+            'posted' => (clone $settlementBaseQuery)
+                ->where('status', 'Posted')
+                ->count(),
+
+            'pending_receipt' => (clone $settlementBaseQuery)
+                ->where('status', 'Posted')
+                ->where('receipt_status', 'Pending')
+                ->count(),
+
+            'received' => (clone $settlementBaseQuery)
+                ->where('status', 'Posted')
+                ->where('receipt_status', 'Received')
+                ->count(),
+
+            'total_amount' => (float) (clone $settlementBaseQuery)
+                ->where('status', 'Posted')
+                ->sum('amount'),
+
+            'pending_receipt_amount' => (float) (clone $settlementBaseQuery)
+                ->where('status', 'Posted')
+                ->where('receipt_status', 'Pending')
+                ->sum('amount'),
+        ];
         /*
         |--------------------------------------------------------------------------
         | Render
         |--------------------------------------------------------------------------
         */
 
-        return Inertia::render('Accounting/FundTransfer/Index', [
+              return Inertia::render('Accounting/FundTransfer/Index', [
             'title' => 'Fund Transfer',
+
             'fundTransfers' => $fundTransfers,
+
             'stats' => $stats,
+
             'previewNumber' => $this->codeGeneratorService->preview(
                 'fund_transfer'
             ),
+
             'filters' => $request->only([
                 'search',
                 'from_branch_id',
@@ -185,10 +410,30 @@ class FundTransferController extends Controller
                 'date_to',
                 'per_page',
             ]),
+
+            'settlements' => $settlements,
+
+            'settlementFilters' => $request->only([
+                'search',
+                'from_branch_id',
+                'to_branch_id',
+                'status',
+                'receipt_status',
+                'date_from',
+                'date_to',
+                'sort_by',
+                'sort_direction',
+                'per_page',
+            ]),
+
+            'settlementStatistics' => $settlementStatistics,
+
+            'settlementPreviewNumber' => $this->codeGeneratorService
+                ->preview('inter_branch_settlement'),
+
             ...$this->formData(),
         ]);
     }
-
     /*
     |--------------------------------------------------------------------------
     | Form Data

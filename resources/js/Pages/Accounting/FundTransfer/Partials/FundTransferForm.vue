@@ -918,69 +918,67 @@ const close = () => {
                                             {{ option.label }}
                                         </option>
                                     </select>
-                                    <!-- Transfer Mode -->
-
                                 </div>
-<!-- Transfer Mode -->
-<div>
-    <label
-        class="mb-1.5 block text-sm font-medium text-slate-700"
-    >
-        Transfer Mode
-        <span class="text-red-500">*</span>
-    </label>
+                                <!-- Transfer Mode -->
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-sm font-medium text-slate-700"
+                                    >
+                                        Transfer Mode
+                                        <span class="text-red-500">*</span>
+                                    </label>
 
-    <select
-        v-model="form.transfer_mode"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-emerald-500/10"
-        :disabled="form.processing"
-    >
-        <option
-            v-for="option in transferModeOptions"
-            :key="option.value"
-            :value="option.value"
-        >
-            {{ option.label }}
-        </option>
-    </select>
+                                    <select
+                                        v-model="form.transfer_mode"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-emerald-500/10"
+                                        :disabled="form.processing"
+                                    >
+                                        <option
+                                            v-for="option in transferModeOptions"
+                                            :key="option.value"
+                                            :value="option.value"
+                                        >
+                                            {{ option.label }}
+                                        </option>
+                                    </select>
 
-    <p
-        v-if="form.errors.transfer_mode"
-        class="mt-1 text-xs text-red-600"
-    >
-        {{ form.errors.transfer_mode }}
-    </p>
+                                    <p
+                                        v-if="form.errors.transfer_mode"
+                                        class="mt-1 text-xs text-red-600"
+                                    >
+                                        {{ form.errors.transfer_mode }}
+                                    </p>
 
-    <p class="mt-1 text-xs text-slate-500">
-        Receivable digunakan untuk transaksi yang menimbulkan
-        kewajiban antar-cabang. Allocation digunakan untuk
-        alokasi internal tanpa kewajiban pembayaran kembali.
-    </p>
-</div>
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        Receivable digunakan untuk transaksi yang menimbulkan
+                                        kewajiban antar-cabang. Allocation digunakan untuk
+                                        alokasi internal tanpa kewajiban pembayaran kembali.
+                                    </p>
+                                </div>
 
-<!-- Description: di samping Transfer Mode -->
-<div>
-    <label
-        class="mb-1.5 block text-sm font-medium text-slate-700"
-    >
-        Description
-    </label>
+                                <!-- Description: di samping Transfer Mode -->
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-sm font-medium text-slate-700"
+                                    >
+                                        Description
+                                    </label>
 
-    <textarea
-        v-model="form.description"
-        rows="2"
-        class="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/10"
-        placeholder="Optional transfer description"
-        :disabled="form.processing"
-    ></textarea>
+                                    <textarea
+                                        v-model="form.description"
+                                        rows="2"
+                                        class="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/10"
+                                        placeholder="Optional transfer description"
+                                        :disabled="form.processing"
+                                    ></textarea>
 
-    <p
-        v-if="form.errors.description"
-        class="mt-1 text-xs text-red-600"
-    >
-        {{ form.errors.description }}
-    </p>
-</div>
+                                    <p
+                                        v-if="form.errors.description"
+                                        class="mt-1 text-xs text-red-600"
+                                    >
+                                        {{ form.errors.description }}
+                                    </p>
+                                </div>
                             </div>
                         </section>
 

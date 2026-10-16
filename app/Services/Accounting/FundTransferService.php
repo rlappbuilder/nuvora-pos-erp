@@ -566,7 +566,7 @@ class FundTransferService
 
                 if ($transferMode === 'receivable') {
                     $sourceCounterpartCode = '110205';
-                    $destinationCounterpartCode = '210104';
+                    $destinationCounterpartCode = '210105';
                 } else {
                     $sourceCounterpartCode = '310501';
                     $destinationCounterpartCode = '310502';
