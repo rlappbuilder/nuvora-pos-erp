@@ -18,7 +18,9 @@ import FundTransferViewModal from './Partials/FundTransferViewModal.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SettlementIndex from './Settlement/Index.vue'
 import { success, error } from '@/Utils'
-
+import ReceivableTab from './Partials/ReceivableTab.vue'
+import PayableTab from './Partials/PayableTab.vue'
+import AllocationTab from './Partials/AllocationTab.vue'
 import Swal from 'sweetalert2'
 
 /*
@@ -2566,23 +2568,26 @@ async function bulkDelete() {
 <!-- =================================================
      RECEIVABLE TAB
 ================================================== -->
-<template v-else-if="activeTab === 'receivable'">
-    <!-- Konten Receivable yang sudah ada -->
-</template>
+<ReceivableTab
+    v-else-if="activeTab === 'receivable'"
+    :branches="branches"
+/>
 
 <!-- =================================================
      PAYABLE TAB
 ================================================== -->
-<template v-else-if="activeTab === 'payable'">
-    <!-- Konten Payable yang sudah ada -->
-</template>
+<PayableTab
+    v-else-if="activeTab === 'payable'"
+    :branches="branches"
+/>
 
 <!-- =================================================
      ALLOCATION TAB
 ================================================== -->
-<template v-else-if="activeTab === 'allocation'">
-    <!-- Konten Allocation yang sudah ada -->
-</template>
+<AllocationTab
+    v-else-if="activeTab === 'allocation'"
+    :branches="branches"
+/>
                 <!-- =================================================
                      OTHER TABS
                 ================================================== -->

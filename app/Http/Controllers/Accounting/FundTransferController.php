@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Accounting\InterBranchSettlementHeader;
 use RuntimeException;
+use App\Services\Accounting\FundTransferReportService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\Accounting\FundTransferReportExport;
 
 class FundTransferController extends Controller
 {
@@ -25,12 +29,16 @@ class FundTransferController extends Controller
 
     protected CodeGeneratorService $codeGeneratorService;
 
+    protected FundTransferReportService $fundTransferReportService;
+
     public function __construct(
-        FundTransferService $fundTransferService,
-        CodeGeneratorService $codeGeneratorService
+    FundTransferService $fundTransferService,
+    CodeGeneratorService $codeGeneratorService,
+    FundTransferReportService $fundTransferReportService
     ) {
         $this->fundTransferService = $fundTransferService;
         $this->codeGeneratorService = $codeGeneratorService;
+        $this->fundTransferReportService = $fundTransferReportService;
     }
 
     /*
@@ -916,4 +924,248 @@ class FundTransferController extends Controller
             404
         );
     }
+
+/*
+|--------------------------------------------------------------------------
+| Fund Transfer Receivable Report
+|--------------------------------------------------------------------------
+*/
+public function receivableIndex(Request $request)
+{
+    return response()->json(
+        $this->fundTransferReportService->getReport(
+            'receivable',
+            $request
+        )
+    );
+}
+
+public function receivableShowData(int $fundTransfer)
+{
+    $detail = $this->fundTransferReportService->getDetail(
+        'receivable',
+        $fundTransfer
+    );
+
+    return response()->json($detail);
+}
+
+public function receivablePrint(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'receivable',
+        $request
+    );
+
+    return view('print.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Receivable Report',
+        'mode' => 'receivable',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ]);
+}
+
+public function receivablePdf(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'receivable',
+        $request
+    );
+
+    return Pdf::loadView('pdf.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Receivable Report',
+        'mode' => 'receivable',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ])
+        ->setPaper('a4', 'landscape')
+        ->download('fund-transfer-receivable.pdf');
+}
+
+public function receivableExcel(Request $request)
+{
+    return Excel::download(
+        new FundTransferReportExport(
+            'receivable',
+            $request->all()
+        ),
+        'fund-transfer-receivable.xlsx'
+    );
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Fund Transfer Payable Report
+|--------------------------------------------------------------------------
+*/
+
+public function payableIndex(Request $request)
+{
+    return response()->json(
+        $this->fundTransferReportService->getReport(
+            'payable',
+            $request
+        )
+    );
+}
+
+public function payableShowData(int $fundTransfer)
+{
+    $detail = $this->fundTransferReportService->getDetail(
+        'payable',
+        $fundTransfer
+    );
+
+    return response()->json($detail);
+}
+
+public function payablePrint(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'payable',
+        $request
+    );
+
+    return view('print.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Payable Report',
+        'mode' => 'payable',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ]);
+}
+
+public function payablePdf(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'payable',
+        $request
+    );
+
+    return Pdf::loadView('pdf.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Payable Report',
+        'mode' => 'payable',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ])
+        ->setPaper('a4', 'landscape')
+        ->download('fund-transfer-payable.pdf');
+}
+
+public function payableExcel(Request $request)
+{
+    return Excel::download(
+        new FundTransferReportExport(
+            'payable',
+            $request->all()
+        ),
+        'fund-transfer-payable.xlsx'
+    );
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Fund Transfer Allocation Report
+|--------------------------------------------------------------------------
+*/
+
+public function allocationIndex(Request $request)
+{
+    return response()->json(
+        $this->fundTransferReportService->getReport(
+            'allocation',
+            $request
+        )
+    );
+}
+
+public function allocationShowData(int $fundTransfer)
+{
+    $detail = $this->fundTransferReportService->getDetail(
+        'allocation',
+        $fundTransfer
+    );
+
+    return response()->json($detail);
+}
+
+public function allocationPrint(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'allocation',
+        $request
+    );
+
+    return view('print.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Allocation Report',
+        'mode' => 'allocation',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ]);
+}
+
+public function allocationPdf(Request $request)
+{
+    $data = $this->fundTransferReportService->getExportData(
+        'allocation',
+        $request
+    );
+
+    return Pdf::loadView('pdf.Accounting.FundTransfer.report', [
+        'title' => 'Fund Transfer Allocation Report',
+        'mode' => 'allocation',
+        'transfers' => $data,
+        'filters' => $request->only([
+            'search',
+            'from_branch_id',
+            'to_branch_id',
+            'date_from',
+            'date_to',
+        ]),
+    ])
+        ->setPaper('a4', 'landscape')
+        ->download('fund-transfer-allocation.pdf');
+}
+
+public function allocationExcel(Request $request)
+{
+    return Excel::download(
+        new FundTransferReportExport(
+            'allocation',
+            $request->all()
+        ),
+        'fund-transfer-allocation.xlsx'
+    );
+}
 }

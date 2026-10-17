@@ -176,67 +176,113 @@ Route::middleware('auth')
                                 'reopen',
                             ]
                         )->name('fiscal-years.reopen');
-
                         /*
-                |---------------------------------------------------------------
-                | FUND TRANSFER
-                |---------------------------------------------------------------
-                */
+                        |----------------------------------------------------------------
+                        | FUND TRANSFER REPORTS
+                        |----------------------------------------------------------------
+                        */
 
-                Route::get(
-                    'fund-transfers',
-                    [FundTransferController::class, 'index']
-                )->name('fund-transfers.index');
+                        // Receivable
+                        Route::prefix('fund-transfers/receivable')
+                            ->name('fund-transfers.receivable.')
+                            ->controller(FundTransferController::class)
+                            ->group(function () {
+                                Route::get('/', 'receivableIndex')->name('index');
+                                Route::get('/print', 'receivablePrint')->name('print');
+                                Route::get('/pdf', 'receivablePdf')->name('pdf');
+                                Route::get('/excel', 'receivableExcel')->name('excel');
+                                Route::get('/{fundTransfer}/data', 'receivableShowData')
+                                    ->whereNumber('fundTransfer')
+                                    ->name('data');
+                            });
 
-                Route::get(
-                    'fund-transfers/create',
-                    [FundTransferController::class, 'create']
-                )->name('fund-transfers.create');
+                        // Payable
+                        Route::prefix('fund-transfers/payable')
+                            ->name('fund-transfers.payable.')
+                            ->controller(FundTransferController::class)
+                            ->group(function () {
+                                Route::get('/', 'payableIndex')->name('index');
+                                Route::get('/print', 'payablePrint')->name('print');
+                                Route::get('/pdf', 'payablePdf')->name('pdf');
+                                Route::get('/excel', 'payableExcel')->name('excel');
+                                Route::get('/{fundTransfer}/data', 'payableShowData')
+                                    ->whereNumber('fundTransfer')
+                                    ->name('data');
+                            });
 
-                Route::post(
-                    'fund-transfers',
-                    [FundTransferController::class, 'store']
-                )->name('fund-transfers.store');
+                        // Allocation
+                        Route::prefix('fund-transfers/allocation')
+                            ->name('fund-transfers.allocation.')
+                            ->controller(FundTransferController::class)
+                            ->group(function () {
+                                Route::get('/', 'allocationIndex')->name('index');
+                                Route::get('/print', 'allocationPrint')->name('print');
+                                Route::get('/pdf', 'allocationPdf')->name('pdf');
+                                Route::get('/excel', 'allocationExcel')->name('excel');
+                                Route::get('/{fundTransfer}/data', 'allocationShowData')
+                                    ->whereNumber('fundTransfer')
+                                    ->name('data');
+                            });
+                        /*
+                        |---------------------------------------------------------------
+                        | FUND TRANSFER
+                        |---------------------------------------------------------------
+                        */
 
-                Route::get(
-                    'fund-transfers/accounts',
-                    [FundTransferController::class, 'accounts']
-                )->name('fund-transfers.accounts');
+                        Route::get(
+                            'fund-transfers',
+                            [FundTransferController::class, 'index']
+                        )->name('fund-transfers.index');
 
-                Route::get(
-                    'fund-transfers/{fundTransfer}/data',
-                    [FundTransferController::class, 'showData']
-                )->name('fund-transfers.data');
+                        Route::get(
+                            'fund-transfers/create',
+                            [FundTransferController::class, 'create']
+                        )->name('fund-transfers.create');
 
-                Route::get(
-                    'fund-transfers/{fundTransfer}',
-                    [FundTransferController::class, 'show']
-                )->name('fund-transfers.show');
+                        Route::post(
+                            'fund-transfers',
+                            [FundTransferController::class, 'store']
+                        )->name('fund-transfers.store');
 
-                Route::post(
-                    'fund-transfers/{fundTransfer}/submit',
-                    [FundTransferController::class, 'submit']
-                )->name('fund-transfers.submit');
+                        Route::get(
+                            'fund-transfers/accounts',
+                            [FundTransferController::class, 'accounts']
+                        )->name('fund-transfers.accounts');
 
-                Route::post(
-                    'fund-transfers/{fundTransfer}/approve',
-                    [FundTransferController::class, 'approve']
-                )->name('fund-transfers.approve');
+                        Route::get(
+                            'fund-transfers/{fundTransfer}/data',
+                            [FundTransferController::class, 'showData']
+                        )->name('fund-transfers.data');
 
-                Route::post(
-                    'fund-transfers/{fundTransfer}/reject',
-                    [FundTransferController::class, 'reject']
-                )->name('fund-transfers.reject');
+                        Route::get(
+                            'fund-transfers/{fundTransfer}',
+                            [FundTransferController::class, 'show']
+                        )->name('fund-transfers.show');
 
-                Route::post(
-                    'fund-transfers/{fundTransfer}/post',
-                    [FundTransferController::class, 'post']
-                )->name('fund-transfers.post');
+                        Route::post(
+                            'fund-transfers/{fundTransfer}/submit',
+                            [FundTransferController::class, 'submit']
+                        )->name('fund-transfers.submit');
 
-                Route::post(
-                    'fund-transfers/{fundTransfer}/cancel',
-                    [FundTransferController::class, 'cancel']
-                )->name('fund-transfers.cancel');
+                        Route::post(
+                            'fund-transfers/{fundTransfer}/approve',
+                            [FundTransferController::class, 'approve']
+                        )->name('fund-transfers.approve');
+
+                        Route::post(
+                            'fund-transfers/{fundTransfer}/reject',
+                            [FundTransferController::class, 'reject']
+                        )->name('fund-transfers.reject');
+
+                        Route::post(
+                            'fund-transfers/{fundTransfer}/post',
+                            [FundTransferController::class, 'post']
+                        )->name('fund-transfers.post');
+
+                        Route::post(
+                            'fund-transfers/{fundTransfer}/cancel',
+                            [FundTransferController::class, 'cancel']
+                        )->name('fund-transfers.cancel');
 
             /*
             |--------------------------------------------------------------------------
@@ -361,7 +407,7 @@ Route::middleware('auth')
                     'accounting-periods/{accountingPeriod}/reopen',
                     [AccountingPeriodController::class, 'reopen']
                 )->name('accounting-periods.reopen');
-
+                
                /*
                 |--------------------------------------------------------------------------
                 | GENERAL LEDGER
