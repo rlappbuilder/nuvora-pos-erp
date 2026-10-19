@@ -469,9 +469,19 @@ const updateStockInfo = (detail) => {
     )
 
     console.log(
-        'MATCHED STOCK:',
-        stock
-    )
+    'MATCHED STOCK DETAIL:',
+    stock ? {
+        id: stock.id,
+        company_id: stock.company_id,
+        branch_id: stock.branch_id,
+        warehouse_id: stock.warehouse_id,
+        product_variant_id: stock.product_variant_id,
+        unit_id: stock.unit_id,
+        on_hand_qty: stock.on_hand_qty,
+        available_qty: stock.available_qty,
+        average_cost: stock.average_cost,
+    } : null
+)
 
     if (!stock) {
 

@@ -841,22 +841,13 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    public function getWarehouseStocks(
-    Warehouse $warehouse
-) {
-
+    public function getWarehouseStocks(Warehouse $warehouse)
+{
     $stocks = ProductStock::query()
-        ->with([
-            'variant.product',
-            'unit',
-        ])
-        ->where(
-            'warehouse_id',
-            $warehouse->id
-        )
-        ->orderBy(
-            'product_variant_id'
-        )
+        ->with(['variant.product', 'unit'])
+        ->where('warehouse_id', $warehouse->id)
+        ->whereNull('reseller_id')
+        ->orderBy('product_variant_id')
         ->get();
 
     return response()->json([

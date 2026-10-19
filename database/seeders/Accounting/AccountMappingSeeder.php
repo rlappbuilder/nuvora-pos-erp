@@ -36,6 +36,7 @@ class AccountMappingSeeder extends Seeder
             'pos_transfer' => '110102',
             'pos_e_wallet' => '110122',
             'company_cash' => '110123',
+     
         ];
 
         foreach ($companies as $company) {

@@ -56,6 +56,9 @@ class StockTransferHeader extends Model
 
         'status',
 
+        'source_journal_entry_id',
+
+        'destination_journal_entry_id',
 
         /*
         |--------------------------------------------------------------------------
@@ -311,4 +314,19 @@ class StockTransferHeader extends Model
             'STOCK_TRANSFER'
         );
     }
+    public function sourceJournalEntry()
+        {
+            return $this->belongsTo(
+                \App\Models\Accounting\JournalEntry::class,
+                'source_journal_entry_id'
+            );
+        }
+
+        public function destinationJournalEntry()
+        {
+            return $this->belongsTo(
+                \App\Models\Accounting\JournalEntry::class,
+                'destination_journal_entry_id'
+            );
+        }
 }

@@ -15,9 +15,9 @@ class BranchAccountMappingSeeder extends Seeder
 
         $mappings = [
             /*
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             | Ralisa Store LB 1
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             */
             [
                 'branch_code' => 'BR0002',
@@ -28,12 +28,15 @@ class BranchAccountMappingSeeder extends Seeder
                 'cash_bank_110105' => '110105', // Bank BCA
                 'cash_bank_110106' => '110106', // Bank Mandiri
                 'inventory_merchandise' => '110301',
+                'inventory_merchandise' => '110301',
+                'inventory_transfer_receivable' => '110205',
+                'inventory_transfer_payable' => '210105',
             ],
 
             /*
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             | Cab. GHAS
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             */
             [
                 'branch_code' => 'BR0003',
@@ -44,12 +47,15 @@ class BranchAccountMappingSeeder extends Seeder
                 'cash_bank_110105' => '110105', // Bank BCA
                 'cash_bank_110106' => '110106', // Bank Mandiri
                 'inventory_merchandise' => '110301',
+                'inventory_merchandise' => '110301',
+                'inventory_transfer_receivable' => '110205',
+                'inventory_transfer_payable' => '210105',
             ],
 
             /*
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             | Ralisa Konveksi
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------
             */
             [
                 'branch_code' => 'BR0005',
@@ -60,6 +66,9 @@ class BranchAccountMappingSeeder extends Seeder
                 'cash_bank_110105' => '110105', // Bank BCA
                 'cash_bank_110106' => '110106', // Bank Mandiri
                 'inventory_merchandise' => '110301',
+                'inventory_merchandise' => '110301',
+                'inventory_transfer_receivable' => '110205',
+                'inventory_transfer_payable' => '210105',
             ],
         ];
 

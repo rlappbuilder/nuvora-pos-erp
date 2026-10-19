@@ -61,7 +61,7 @@ class StockOpnameHeader extends Model
         */
 
         'description',
-
+      
 
         /*
         |--------------------------------------------------------------------------

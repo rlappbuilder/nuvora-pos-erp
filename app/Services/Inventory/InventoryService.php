@@ -5671,101 +5671,191 @@ public function postStockTransfer(
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create Journal Entry
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| Resolve Source Inter-Branch Receivable Account
+|--------------------------------------------------------------------------
+*/
 
-        $journalEntry =
-            $this->journalEntryService->create([
+$sourceReceivableMapping = BranchAccountMapping::query()
+    ->with('account')
+    ->where('company_id', $stockTransfer->company_id)
+    ->where('branch_id', $stockTransfer->from_branch_id)
+    ->where('key', 'inventory_transfer_receivable')
+    ->where('is_active', true)
+    ->first();
 
-                'company_id' =>
-                    $stockTransfer->company_id,
+if (
+    ! $sourceReceivableMapping ||
+    ! $sourceReceivableMapping->account
+) {
+    throw new \RuntimeException(
+        'Inter-Branch Receivable account is not configured for the source branch.'
+    );
+}
 
-                'branch_id' =>
-                    $stockTransfer->from_branch_id,
+/*
+|--------------------------------------------------------------------------
+| Resolve Destination Inter-Branch Payable Account
+|--------------------------------------------------------------------------
+*/
 
-                'accounting_journal_id' =>
-                    $accountingJournal->id,
+$destinationPayableMapping = BranchAccountMapping::query()
+    ->with('account')
+    ->where('company_id', $stockTransfer->company_id)
+    ->where('branch_id', $stockTransfer->to_branch_id)
+    ->where('key', 'inventory_transfer_payable')
+    ->where('is_active', true)
+    ->first();
 
-                'fiscal_year_id' =>
-                    $fiscalYear->id,
+if (
+    ! $destinationPayableMapping ||
+    ! $destinationPayableMapping->account
+) {
+    throw new \RuntimeException(
+        'Inter-Branch Payable account is not configured for the destination branch.'
+    );
+}
 
-                'accounting_period_id' =>
-                    $accountingPeriod->id,
+/*
+|--------------------------------------------------------------------------
+| Create Source Journal Entry
+|--------------------------------------------------------------------------
+|
+| Source branch:
+| Debit  Inter-Branch Receivable
+| Credit Merchandise Inventory
+|
+*/
 
-                'entry_date' =>
-                    $stockTransfer->transaction_date,
+$sourceJournalEntry = $this->journalEntryService->create([
+    'company_id' => $stockTransfer->company_id,
 
-                'reference' =>
-                    $stockTransfer->number,
+    'branch_id' => $stockTransfer->from_branch_id,
 
-                'description' =>
-                    'Stock transfer '
-                    . $stockTransfer->number,
+    'accounting_journal_id' => $accountingJournal->id,
 
-                'lines' => [
+    'fiscal_year_id' => $fiscalYear->id,
 
-                    [
-                        'account_id' =>
-                            $destinationInventoryMapping
-                                ->account
-                                ->id,
+    'accounting_period_id' => $accountingPeriod->id,
 
-                        'branch_id' =>
-                            $stockTransfer->to_branch_id,
+    'entry_date' => $stockTransfer->transaction_date,
 
-                        'description' =>
-                            'Inventory transfer in - '
-                            . $stockTransfer->number,
+    'reference' => $stockTransfer->number,
 
-                        'debit' =>
-                            $totalTransferValue,
+    'description' => 'Stock transfer out ' . $stockTransfer->number,
 
-                        'credit' =>
-                            0,
+    'lines' => [
+        [
+            'account_id' => $sourceReceivableMapping->account->id,
 
-                    ],
+            'branch_id' => $stockTransfer->from_branch_id,
 
-                    [
+            'description' => 'Inter-Branch Receivable - '
+                . $stockTransfer->number,
 
-                        'account_id' =>
-                            $sourceInventoryMapping
-                                ->account
-                                ->id,
+            'debit' => $totalTransferValue,
 
-                        'branch_id' =>
-                            $stockTransfer->from_branch_id,
+            'credit' => 0,
+        ],
+        [
+            'account_id' => $sourceInventoryMapping->account->id,
 
-                        'description' =>
-                            'Inventory transfer out - '
-                            . $stockTransfer->number,
+            'branch_id' => $stockTransfer->from_branch_id,
 
-                        'debit' =>
-                            0,
+            'description' => 'Inventory transfer out - '
+                . $stockTransfer->number,
 
-                        'credit' =>
-                            $totalTransferValue,
+            'debit' => 0,
 
-                    ],
+            'credit' => $totalTransferValue,
+        ],
+    ],
+]);
 
-                ],
+/*
+|--------------------------------------------------------------------------
+| Post Source Journal Entry
+|--------------------------------------------------------------------------
+*/
 
-            ]);
+$this->journalEntryService->post($sourceJournalEntry);
 
+/*
+|--------------------------------------------------------------------------
+| Create Destination Journal Entry
+|--------------------------------------------------------------------------
+|
+| Destination branch:
+| Debit  Merchandise Inventory
+| Credit Inter-Branch Payable
+|
+*/
 
-        /*
-        |--------------------------------------------------------------------------
-        | Post Journal Entry
-        |--------------------------------------------------------------------------
-        */
+$destinationJournalEntry = $this->journalEntryService->create([
+    'company_id' => $stockTransfer->company_id,
 
-        $this->journalEntryService
-            ->post(
-                $journalEntry
-            );
+    'branch_id' => $stockTransfer->to_branch_id,
 
+    'accounting_journal_id' => $accountingJournal->id,
+
+    'fiscal_year_id' => $fiscalYear->id,
+
+    'accounting_period_id' => $accountingPeriod->id,
+
+    'entry_date' => $stockTransfer->transaction_date,
+
+    'reference' => $stockTransfer->number,
+
+    'description' => 'Stock transfer in ' . $stockTransfer->number,
+
+    'lines' => [
+        [
+            'account_id' => $destinationInventoryMapping->account->id,
+
+            'branch_id' => $stockTransfer->to_branch_id,
+
+            'description' => 'Inventory transfer in - '
+                . $stockTransfer->number,
+
+            'debit' => $totalTransferValue,
+
+            'credit' => 0,
+        ],
+        [
+            'account_id' => $destinationPayableMapping->account->id,
+
+            'branch_id' => $stockTransfer->to_branch_id,
+
+            'description' => 'Inter-Branch Payable - '
+                . $stockTransfer->number,
+
+            'debit' => 0,
+
+            'credit' => $totalTransferValue,
+        ],
+    ],
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Post Destination Journal Entry
+|--------------------------------------------------------------------------
+*/
+
+$this->journalEntryService->post($destinationJournalEntry);
+
+/*
+|--------------------------------------------------------------------------
+| Save Journal References
+|--------------------------------------------------------------------------
+*/
+
+$stockTransfer->update([
+    'source_journal_entry_id' => $sourceJournalEntry->id,
+
+    'destination_journal_entry_id' => $destinationJournalEntry->id,
+]);
 
         /*
         |--------------------------------------------------------------------------
