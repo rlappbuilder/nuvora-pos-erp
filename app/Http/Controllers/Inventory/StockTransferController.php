@@ -29,7 +29,7 @@ class StockTransferController extends Controller
 }
 
 
-    /*
+/*
 |--------------------------------------------------------------------------
 | Index
 |--------------------------------------------------------------------------
@@ -43,25 +43,18 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $query =
-        StockTransferHeader::query()
-            ->with([
-                'fromBranch',
-                'fromWarehouse',
-                'toBranch',
-                'toWarehouse',
-                'creator',
-                'details.variant.product',
-                'details.unit',
-                
-            ])
-            ->withCount(
-                'details'
-            )
-            ->withSum(
-                'details',
-                'total_cost'
-            );
+    $query = StockTransferHeader::query()
+        ->with([
+            'fromBranch',
+            'fromWarehouse',
+            'toBranch',
+            'toWarehouse',
+            'creator',
+            'details.variant.product',
+            'details.unit',
+        ])
+        ->withCount('details')
+        ->withSum('details', 'total_cost');
 
 
     /*
@@ -73,89 +66,45 @@ public function index(Request $request)
     $query->when(
         $request->filled('search'),
         function ($query) use ($request) {
+            $search = $request->search;
 
-            $search =
-                $request->search;
-
-            $query->where(function ($query) use (
-                $search
-            ) {
-
+            $query->where(function ($query) use ($search) {
                 $query
-                    ->where(
-                        'number',
-                        'like',
-                        "%{$search}%"
-                    )
-
-                    ->orWhere(
-                        'description',
-                        'like',
-                        "%{$search}%"
-                    )
-
+                    ->where('number', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
                     ->orWhereHas(
                         'fromBranch',
-                        function ($branch) use (
-                            $search
-                        ) {
-
-                            $branch->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            );
-
-                        }
+                        fn ($branch) => $branch->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        )
                     )
-
                     ->orWhereHas(
                         'toBranch',
-                        function ($branch) use (
-                            $search
-                        ) {
-
-                            $branch->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            );
-
-                        }
+                        fn ($branch) => $branch->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        )
                     )
-
                     ->orWhereHas(
                         'fromWarehouse',
-                        function ($warehouse) use (
-                            $search
-                        ) {
-
-                            $warehouse->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            );
-
-                        }
+                        fn ($warehouse) => $warehouse->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        )
                     )
-
                     ->orWhereHas(
                         'toWarehouse',
-                        function ($warehouse) use (
-                            $search
-                        ) {
-
-                            $warehouse->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            );
-
-                        }
+                        fn ($warehouse) => $warehouse->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        )
                     );
-
             });
-
         }
     );
 
@@ -169,26 +118,13 @@ public function index(Request $request)
     $query->when(
         $request->filled('branch_id'),
         function ($query) use ($request) {
+            $branchId = $request->input('branch_id');
 
-            $branchId =
-                $request->branch_id;
-
-            $query->where(function ($query) use (
-                $branchId
-            ) {
-
+            $query->where(function ($query) use ($branchId) {
                 $query
-                    ->where(
-                        'from_branch_id',
-                        $branchId
-                    )
-                    ->orWhere(
-                        'to_branch_id',
-                        $branchId
-                    );
-
+                    ->where('from_branch_id', $branchId)
+                    ->orWhere('to_branch_id', $branchId);
             });
-
         }
     );
 
@@ -202,45 +138,27 @@ public function index(Request $request)
     $query->when(
         $request->filled('warehouse_id'),
         function ($query) use ($request) {
+            $warehouseId = $request->input('warehouse_id');
 
-            $warehouseId =
-                $request->warehouse_id;
-
-            $query->where(function ($query) use (
-                $warehouseId
-            ) {
-
+            $query->where(function ($query) use ($warehouseId) {
                 $query
-                    ->where(
-                        'from_warehouse_id',
-                        $warehouseId
-                    )
-                    ->orWhere(
-                        'to_warehouse_id',
-                        $warehouseId
-                    );
-
+                    ->where('from_warehouse_id', $warehouseId)
+                    ->orWhere('to_warehouse_id', $warehouseId);
             });
-
         }
     );
 
 
     /*
     |--------------------------------------------------------------------------
-    | Status
+    | Status Filter
     |--------------------------------------------------------------------------
     */
 
     $query->when(
         $request->filled('status'),
         function ($query) use ($request) {
-
-            $query->where(
-                'status',
-                $request->status
-            );
-
+            $query->where('status', $request->input('status'));
         }
     );
 
@@ -254,27 +172,22 @@ public function index(Request $request)
     $query->when(
         $request->filled('date_from'),
         function ($query) use ($request) {
-
             $query->whereDate(
                 'transaction_date',
                 '>=',
-                $request->date_from
+                $request->input('date_from')
             );
-
         }
     );
-
 
     $query->when(
         $request->filled('date_to'),
         function ($query) use ($request) {
-
             $query->whereDate(
                 'transaction_date',
                 '<=',
-                $request->date_to
+                $request->input('date_to')
             );
-
         }
     );
 
@@ -285,79 +198,39 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $sortBy =
-        $request->input(
-            'sort_by',
-            'id'
-        );
-
-    $sortDirection =
-        $request->input(
-            'sort_direction',
-            'desc'
-        );
-
-
     $allowedSorts = [
-
         'id',
-
         'number',
-
         'transaction_date',
-
         'status',
-
         'total_cost',
-
     ];
 
+    $sortBy = $request->input('sort_by', 'id');
 
-    if (
-        ! in_array(
-            $sortBy,
-            $allowedSorts,
-            true
-        )
-    ) {
+    $sortDirection = $request->input(
+        'sort_direction',
+        'desc'
+    );
 
+    if (! in_array($sortBy, $allowedSorts, true)) {
         $sortBy = 'id';
-
     }
 
-
-    if (
-        ! in_array(
-            $sortDirection,
-            [
-                'asc',
-                'desc',
-            ],
-            true
-        )
-    ) {
-
+    if (! in_array($sortDirection, ['asc', 'desc'], true)) {
         $sortDirection = 'desc';
-
     }
 
-
-    if (
-        $sortBy === 'total_cost'
-    ) {
-
+    if ($sortBy === 'total_cost') {
         $query->orderBy(
             'details_sum_total_cost',
             $sortDirection
         );
-
     } else {
-
         $query->orderBy(
             $sortBy,
             $sortDirection
         );
-
     }
 
 
@@ -366,44 +239,26 @@ public function index(Request $request)
     | Statistics
     |--------------------------------------------------------------------------
     |
-    | Clone BEFORE pagination.
+    | Statistics mengikuti filter aktif, tetapi tidak dibatasi pagination.
     |
     */
 
-    $statisticsQuery =
-        clone $query;
-
+    $statisticsQuery = clone $query;
 
     $statistics = [
+        'total' => (clone $statisticsQuery)->count(),
 
-        'total' =>
-            (clone $statisticsQuery)
-                ->count(),
+        'draft' => (clone $statisticsQuery)
+            ->where('status', 'Draft')
+            ->count(),
 
-        'draft' =>
-            (clone $statisticsQuery)
-                ->where(
-                    'status',
-                    'Draft'
-                )
-                ->count(),
+        'rejected' => (clone $statisticsQuery)
+            ->where('status', 'Rejected')
+            ->count(),
 
-        'rejected' =>
-            (clone $statisticsQuery)
-                ->where(
-                    'status',
-                    'Rejected'
-                )
-                ->count(),
-
-        'posted' =>
-            (clone $statisticsQuery)
-                ->where(
-                    'status',
-                    'Posted'
-                )
-                ->count(),
-
+        'posted' => (clone $statisticsQuery)
+            ->where('status', 'Posted')
+            ->count(),
     ];
 
 
@@ -413,15 +268,16 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $transfers =
-        $query
-            ->paginate(
-                $request->integer(
-                    'per_page',
-                    10
-                )
-            )
-            ->withQueryString();
+    $perPage = $request->integer('per_page', 10);
+
+    // Batasi jumlah per halaman agar parameter URL tidak berlebihan.
+    $perPage = in_array($perPage, [10, 25, 50, 100], true)
+        ? $perPage
+        : 10;
+
+    $transfers = $query
+        ->paginate($perPage)
+        ->withQueryString();
 
 
     /*
@@ -430,23 +286,17 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $transfers
-        ->getCollection()
-        ->transform(
-            function ($transfer) {
+    $transfers->getCollection()->transform(
+        function ($transfer) {
+            $transfer->details_count =
+                $transfer->details_count ?? 0;
 
-                $transfer->details_count =
-                    $transfer->details_count
-                    ?? 0;
+            $transfer->total_cost =
+                $transfer->details_sum_total_cost ?? 0;
 
-                $transfer->total_cost =
-                    $transfer->details_sum_total_cost
-                    ?? 0;
-
-                return $transfer;
-
-            }
-        );
+            return $transfer;
+        }
+    );
 
 
     /*
@@ -455,134 +305,47 @@ public function index(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $branches =
-        Branch::query()
-            ->orderBy('name')
-            ->get()
-            ->map(function ($branch) {
+    $companyId = auth()->user()->company_id;
 
-                return [
-                    'id' =>
-                        $branch->id,
+    $activeBranchId = session('current_branch_id');
 
-                    'label' =>
-                        $branch->name,
+    $branches = Branch::query()
+        ->where('company_id', $companyId)
+        ->orderBy('name')
+        ->get([
+            'id',
+            'company_id',
+            'name',
+        ])
+        ->map(fn ($branch) => [
+            'id' => $branch->id,
+            'company_id' => $branch->company_id,
+            'label' => $branch->name,
+        ])
+        ->values();
 
-                ];
+    $warehouses = Warehouse::query()
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($warehouse) => [
+            'id' => $warehouse->id,
+            'label' => $warehouse->name,
+            'branch_id' => $warehouse->branch_id,
+        ])
+        ->values();
 
-            })
-            ->values();
-
-
-    $warehouses =
-        Warehouse::query()
-            ->orderBy('name')
-            ->get()
-            ->map(function ($warehouse) {
-
-                return [
-                    'id' =>
-                        $warehouse->id,
-
-                    'label' =>
-                        $warehouse->name,
-
-                    'branch_id' =>
-                        $warehouse->branch_id,
-
-                ];
-
-            })
-            ->values();
-
-
-    $variants =
-        ProductVariant::query()
-            ->with('product')
-            ->orderBy('id')
-            ->get();
-
-
-    $units =
-        Unit::query()
-            ->orderBy('name')
-            ->get();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Preview Number
-    |--------------------------------------------------------------------------
-    */
-
-    $previewNumber =
-        $this->codeGeneratorService
-            ->preview(
-                'stock_transfer'
-            );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Return
-    |--------------------------------------------------------------------------
-    */
-
-    return Inertia::render(
-    'Inventory/Transfer/Index',
-    [
-
-        'title' =>
-            'Stock Transfer',
-
-        'transfers' =>
-            $transfers,
-
-        'statistics' =>
-            $statistics,
-
-                'branches' =>
-            \App\Models\MasterData\Branch::query()
-                ->orderBy('name')
-                ->get()
-                ->map(fn ($branch) => [
-                    'id' => $branch->id,
-                    'label' => $branch->name,
-                ])
-                ->values(),
-
-        'warehouses' =>
-            Warehouse::query()
-                ->orderBy('name')
-                ->get()
-                ->map(fn ($warehouse) => [
-                    'id' => $warehouse->id,
-                    'label' => $warehouse->name,
-                    'branch_id' => $warehouse->branch_id,
-                ])
-                ->values(),
-
-       'variants' =>
-    \App\Models\Product\ProductVariant::query()
+    $variants = ProductVariant::query()
         ->active()
-        ->whereHas(
-            'units',
-            function ($query) {
-
-                $query->active();
-
-            }
-        )
+        ->whereHas('units', function ($query) {
+            $query->active();
+        })
         ->with([
             'product',
-
             'units' => function ($query) {
-
                 $query
                     ->active()
                     ->with('unit')
                     ->orderBy('sort_order');
-
             },
         ])
         ->orderBy('sku')
@@ -593,59 +356,83 @@ public function index(Request $request)
             'name',
         ])
         ->map(fn ($variant) => [
+            'id' => $variant->id,
 
-            'id' =>
-                $variant->id,
+            'label' => implode(
+                ' - ',
+                array_filter([
+                    $variant->product?->name,
+                    $variant->name,
+                ])
+            ),
 
-            'label' =>
-                implode(
-                    ' - ',
-                    array_filter([
-                        $variant->product?->name,
-                        $variant->name,
-                    ])
-                ),
-
-            'units' =>
-                $variant->units
-                    ->map(fn ($variantUnit) => [
-
-                        'id' =>
-                            $variantUnit->unit_id,
-
-                        'label' =>
-                            $variantUnit->unit?->name,
-
-                        'conversion_factor' =>
-                            $variantUnit->conversion_factor,
-
-                        'is_base' =>
-                            $variantUnit->is_base,
-
-                        'is_default' =>
-                            $variantUnit->is_default,
-
-                    ])
-                    ->values(),
-
+            'units' => $variant->units
+                ->map(fn ($variantUnit) => [
+                    'id' => $variantUnit->unit_id,
+                    'label' => $variantUnit->unit?->name,
+                    'conversion_factor' => $variantUnit->conversion_factor,
+                    'is_base' => $variantUnit->is_base,
+                    'is_default' => $variantUnit->is_default,
+                ])
+                ->values(),
         ])
-        ->values(),
+        ->values();
 
-        'previewNumber' =>
-            $this->codeGeneratorService
-                ->preview('stock_transfer'),
+    $units = Unit::query()
+        ->orderBy('name')
+        ->get();
 
-        'filters' =>
-            $request->only([
-                'search',
-                'status',
-                'per_page',
-                'sort_by',
-                'sort_direction',
-            ]),
 
-    ]
-);
+    /*
+    |--------------------------------------------------------------------------
+    | Preview Number
+    |--------------------------------------------------------------------------
+    */
+
+    $previewNumber = $this->codeGeneratorService
+        ->preview('stock_transfer');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Filters
+    |--------------------------------------------------------------------------
+    */
+
+    $filters = $request->only([
+        'search',
+        'branch_id',
+        'warehouse_id',
+        'status',
+        'date_from',
+        'date_to',
+        'per_page',
+        'sort_by',
+        'sort_direction',
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return
+    |--------------------------------------------------------------------------
+    */
+
+    return Inertia::render(
+        'Inventory/Transfer/Index',
+        [
+            'title' => 'Stock Transfer',
+            'transfers' => $transfers,
+            'statistics' => $statistics,
+            'branches' => $branches,
+            'warehouses' => $warehouses,
+            'variants' => $variants,
+            'units' => $units,
+            'previewNumber' => $previewNumber,
+            'filters' => $filters,
+            'activeBranchId' => $activeBranchId,
+        ]
+    );
 }
 
 

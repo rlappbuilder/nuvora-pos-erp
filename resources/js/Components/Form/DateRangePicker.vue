@@ -90,7 +90,10 @@ const parseDate = (value) => {
 
     const parts = value.split('-').map(Number)
 
-    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    if (
+        parts.length !== 3 ||
+        parts.some(Number.isNaN)
+    ) {
         return null
     }
 
@@ -496,7 +499,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="dateRangePickerRef"
-        class="relative min-w-0"
+        class="relative min-w-0 w-full sm:w-auto"
     >
         <!-- TRIGGER -->
         <button
@@ -598,7 +601,7 @@ onBeforeUnmount(() => {
                 right-0
                 z-50
                 mt-2
-                w-max
+                w-[min(760px,calc(100vw-2rem))]
                 max-w-[calc(100vw-2rem)]
                 overflow-hidden
                 rounded-2xl
@@ -608,53 +611,72 @@ onBeforeUnmount(() => {
                 shadow-xl
             "
         >
-            <div class="flex flex-col sm:flex-row">
+            <div class="flex min-w-0 flex-col sm:flex-row">
                 <!-- PRESETS -->
                 <div
                     class="
                         w-full
+                        min-w-0
                         border-b
                         border-slate-100
                         p-2
                         sm:w-[170px]
+                        sm:shrink-0
                         sm:border-b-0
                         sm:border-r
                     "
                 >
-                    <button
-                        v-for="preset in [
-                            { value: 'today', label: 'Today' },
-                            { value: 'yesterday', label: 'Yesterday' },
-                            { value: 'last-7-days', label: 'Last 7 Days' },
-                            { value: 'last-30-days', label: 'Last 30 Days' },
-                            { value: 'this-month', label: 'This Month' },
-                            { value: 'last-month', label: 'Last Month' },
-                            { value: 'custom', label: 'Custom' },
-                        ]"
-                        :key="preset.value"
-                        type="button"
+                    <div
                         class="
-                            w-full
-                            rounded-lg
-                            px-3
-                            py-2
-                            text-left
-                            text-xs
-                            font-medium
-                            transition
+                            flex
+                            gap-1
+                            overflow-x-auto
+                            sm:flex-col
+                            sm:overflow-x-visible
                         "
-                        :class="
-                            selectedPreset === preset.value
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-slate-600 hover:bg-slate-50'
-                        "
-                        @click="selectPreset(preset.value)"
                     >
-                        {{ preset.label }}
-                    </button>
+                        <button
+                            v-for="preset in [
+                                { value: 'today', label: 'Today' },
+                                { value: 'yesterday', label: 'Yesterday' },
+                                { value: 'last-7-days', label: 'Last 7 Days' },
+                                { value: 'last-30-days', label: 'Last 30 Days' },
+                                { value: 'this-month', label: 'This Month' },
+                                { value: 'last-month', label: 'Last Month' },
+                                { value: 'custom', label: 'Custom' },
+                            ]"
+                            :key="preset.value"
+                            type="button"
+                            class="
+                                shrink-0
+                                whitespace-nowrap
+                                rounded-lg
+                                px-3
+                                py-2
+                                text-left
+                                text-xs
+                                font-medium
+                                transition
+                                sm:w-full
+                            "
+                            :class="
+                                selectedPreset === preset.value
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'text-slate-600 hover:bg-slate-50'
+                            "
+                            @click="selectPreset(preset.value)"
+                        >
+                            {{ preset.label }}
+                        </button>
+                    </div>
 
                     <button
-                        v-if="dateFrom || dateTo || draftDateFrom || draftDateTo"
+                        v-if="
+                            dateFrom ||
+                            dateTo ||
+                            draftDateFrom ||
+                            draftDateTo
+                        "
                         type="button"
                         class="
                             mt-1
@@ -677,7 +699,15 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- CALENDAR -->
-                <div class="min-w-0 overflow-auto p-3">
+                <div
+                    class="
+                        min-w-0
+                        flex-1
+                        overflow-x-auto
+                        p-2
+                        sm:p-3
+                    "
+                >
                     <FlatPickr
                         v-model="calendarRange"
                         :config="calendarConfig"
@@ -689,22 +719,39 @@ onBeforeUnmount(() => {
             <div
                 class="
                     flex
+                    min-w-0
                     flex-col
                     gap-3
                     border-t
                     border-slate-100
-                    px-4
+                    px-3
                     py-3
                     sm:flex-row
                     sm:items-center
                     sm:justify-between
+                    sm:px-4
                 "
             >
-                <p class="text-xs text-slate-500">
+                <p
+                    class="
+                        min-w-0
+                        break-words
+                        text-xs
+                        text-slate-500
+                    "
+                >
                     {{ draftRangeLabel }}
                 </p>
 
-                <div class="flex items-center justify-end gap-2">
+                <div
+                    class="
+                        flex
+                        shrink-0
+                        items-center
+                        justify-end
+                        gap-2
+                    "
+                >
                     <button
                         type="button"
                         class="

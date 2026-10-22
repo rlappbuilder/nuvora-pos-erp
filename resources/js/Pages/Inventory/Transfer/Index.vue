@@ -1,34 +1,16 @@
 <script setup>
-import {ref,reactive,computed,watch,onMounted,onUnmounted,toRefs,nextTick,} from 'vue'
+import {computed,ref,onMounted,onBeforeUnmount,} from 'vue'
+
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import PageHeader from '@/Components/Layout/PageHeader.vue'
-import Card from '@/Components/Layout/Card.vue'
-import StatsCard from '@/Components/Card/StatsCard.vue'
-import BaseButton from '@/Components/Button/BaseButton.vue'
-import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
-import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
-import DataTable from '@/Components/Table/DataTable.vue'
-import DataTableHead from '@/Components/Table/DataTableHead.vue'
-import DataTableBody from '@/Components/Table/DataTableBody.vue'
-import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
-import DataTableRow from '@/Components/Table/DataTableRow.vue'
-import DataTableCell from '@/Components/Table/DataTableCell.vue'
-import TablePagination from '@/Components/Table/TablePagination.vue'
-import TableEmpty from '@/Components/Table/TableEmpty.vue'
-import StatusBadge from '@/Components/Display/StatusBadge.vue'
-import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { LoadingOverlay,} from '@/Components/Feedback'
-import {PlusIcon,} from '@heroicons/vue/24/solid'
-import {success,error,currency,formatDate,} from '@/Utils'
-import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
-import { formatCurrency } from '@/Utils/currency'
-import StockTransferForm  from './Partials/StockTransferForm.vue'
-import StockTransferPostModal from './Partials/StockTransferPostModal.vue'
-import StockTransferRejectModal from './Partials/StockTransferRejectModal.vue'
-import StockTransferView from './Partials/StockTransferView.vue'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
+import StockTransferIndex from './StockTransferIndex.vue'
+//import StockTransferReturnIndex from './StockTransferReturnIndex.vue'
+//import StockTransferInIndex from './StockTransferInIndex.vue'
+//import StockTransferOutIndex from './StockTransferOutIndex.vue'
+//import StockTransferHistoryIndex from './StockTransferHistoryIndex.vue'
+import StockTransferFormModal from './StockTransferFormModal.vue'
 /*
 |--------------------------------------------------------------------------
 | Props
@@ -36,15 +18,15 @@ import 'flatpickr/dist/flatpickr.css'
 */
 
 const props = defineProps({
-
     transfers: {
-    type: Object,
-    default: () => ({
-        data: [],
-        current_page: 1,
-        last_page: 1,
-        per_page: 10,
-        total: 0,
+        type: Object,
+        default: () => ({
+            data: [],
+            links: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+            total: 0,
         }),
     },
 
@@ -59,8 +41,8 @@ const props = defineProps({
     },
 
     companyId: {
-    type: [Number, String],
-    default: null,
+        type: [Number, String],
+        default: null,
     },
 
     branches: {
@@ -92,1310 +74,319 @@ const props = defineProps({
         type: String,
         default: '',
     },
-
 })
 
-
-
-const {
-    transfers,
-    statistics,
-    branches,
-    warehouses,
-    variants,
-    units,
-    previewNumber,
-} = toRefs(props)
-
 /*
 |--------------------------------------------------------------------------
-| Page
+| Dashboard Tabs
 |--------------------------------------------------------------------------
 */
 
-const pageTitle = computed(() => 'Transfer Stock')
+const tabs = [
+    {
+        key: 'stock-transfer',
+        label: 'Stock Transfer',
+        description: 'Manage stock transfer transactions.',
+    },
+    {
+        key: 'transfer-return',
+        label: 'Transfer Return',
+        description: 'Manage returns against original stock transfers.',
+    },
+    {
+        key: 'transfer-in',
+        label: 'Transfer In',
+        description: 'Review stock received from other branches.',
+    },
+    {
+        key: 'transfer-out',
+        label: 'Transfer Out',
+        description: 'Review stock sent to other branches.',
+    },
+    {
+        key: 'history',
+        label: 'History',
+        description: 'Review stock transfer transaction history.',
+    },
+]
 
+function getInitialTab() {
+    if (typeof window === 'undefined') {
+        return 'stock-transfer'
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
+
+    return tabs.some((item) => item.key === tab)
+        ? tab
+        : 'stock-transfer'
+}
+
+const activeTab = ref(getInitialTab())
+
+const activeTabDetails = computed(() =>
+    tabs.find((tab) => tab.key === activeTab.value) ?? tabs[0]
+)
 
 /*
 |--------------------------------------------------------------------------
-| Loading
+| Tab Navigation
 |--------------------------------------------------------------------------
 */
 
-const loading = ref(false)
-
-let removeStartListener
-let removeFinishListener
-
-const startLoading = () => {
-    loading.value = true
-}
-
-const stopLoading = () => {
-    loading.value = false
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Filters
-|--------------------------------------------------------------------------
-*/
-
-const filters = reactive({
-
-    search:
-        props.filters?.search ?? '',
-
-    from_branch_id:
-        props.filters?.from_branch_id ?? '',
-
-    from_warehouse_id:
-        props.filters?.from_warehouse_id ?? '',
-
-    to_branch_id:
-        props.filters?.to_branch_id ?? '',
-
-    to_warehouse_id:
-        props.filters?.to_warehouse_id ?? '',
-
-    status:
-        props.filters?.status ?? '',
-
-    date_from:
-        props.filters?.date_from ?? '',
-
-    date_to:
-        props.filters?.date_to ?? '',
-
-    per_page:
-        props.filters?.per_page ?? 10,
-
-})
-
-let debounceTimer = null
-
-
-function loadData()
-{
-    router.get(
-        route('stock-transfers.index'),
-        filters,
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        }
-    )
-}
-function handleDateRangeChange(selectedDates)
-{
-    if (!selectedDates.length) {
-
-        filters.date_from = ''
-
-        filters.date_to = ''
-
-        loadData()
-
+function changeTab(tabKey) {
+    if (!tabs.some((tab) => tab.key === tabKey)) {
         return
     }
 
+    activeTab.value = tabKey
 
-    filters.date_from =
-        formatDateForFilter(
-            selectedDates[0]
-        )
+    const url = new URL(window.location.href)
 
+    if (tabKey === 'stock-transfer') {
+        url.searchParams.delete('tab')
+    } else {
+        url.searchParams.set('tab', tabKey)
+    }
 
-    filters.date_to =
-        selectedDates.length > 1
-            ? formatDateForFilter(
-                selectedDates[1]
-            )
-            : formatDateForFilter(
-                selectedDates[0]
-            )
-
-
-    loadData()
+    window.history.replaceState(
+        window.history.state,
+        '',
+        url,
+    )
 }
-function formatDateForFilter(date)
-{
-    const year =
-        date.getFullYear()
 
-    const month =
-        String(
-            date.getMonth() + 1
-        ).padStart(2, '0')
+/*
+|--------------------------------------------------------------------------
+| Date Range
+|--------------------------------------------------------------------------
+*/
 
-    const day =
-        String(
-            date.getDate()
-        ).padStart(2, '0')
+const showDateRangePicker = ref(false)
+const dateRangePickerRef = ref(null)
+const isMobile = ref(false)
 
+const selectedPreset = ref('custom')
+
+const dateFrom = ref(props.filters?.date_from ?? '')
+const dateTo = ref(props.filters?.date_to ?? '')
+
+const calendarRange = ref([])
+
+const presets = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: 'last-7-days', label: 'Last 7 Days' },
+    { key: 'last-30-days', label: 'Last 30 Days' },
+    { key: 'this-month', label: 'This Month' },
+    { key: 'last-month', label: 'Last Month' },
+    { key: 'custom', label: 'Custom Range' },
+]
+
+function updateIsMobile() {
+    isMobile.value = window.innerWidth < 640
+}
+
+function parseDate(value) {
+    if (!value || typeof value !== 'string') {
+        return null
+    }
+
+    const [year, month, day] = value.split('-').map(Number)
+
+    if (!year || !month || !day) {
+        return null
+    }
+
+    return new Date(year, month - 1, day)
+}
+
+function toDateString(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return ''
+    }
+
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
 
     return `${year}-${month}-${day}`
 }
-watch(
-    () => filters.search,
-    () => {
 
-        clearTimeout(debounceTimer)
+function startOfDay(date) {
+    const result = new Date(date)
+    result.setHours(0, 0, 0, 0)
 
-        debounceTimer = setTimeout(() => {
-
-            loadData()
-
-        }, 500)
-
-    }
-)
-
-
-watch(
-    () => filters.from_branch_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.from_warehouse_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.to_branch_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.to_warehouse_id,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.status,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.date_from,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.date_to,
-    () => {
-
-        loadData()
-
-    }
-)
-
-watch(
-    () => filters.per_page,
-    () => {
-
-        loadData()
-
-    }
-)
-
-const dateRange = ref('')
-function refresh()
-{
-    Object.assign(filters, {
-
-        search: '',
-
-        from_branch_id: '',
-        from_warehouse_id: '',
-
-        to_branch_id: '',
-        to_warehouse_id: '',
-
-        status: '',
-
-        date_from: '',
-        date_to: '',
-
-        per_page: 10,
-
-    })
-    dateRange.value=''
-    loadData()
+    return result
 }
 
+function formatDisplayDate(value) {
+    const date = parseDate(value)
 
-/*
-|--------------------------------------------------------------------------
-| Status
-|--------------------------------------------------------------------------
-*/
-
-const statusOptions = [
-
-    {
-        value: '',
-        label: 'All Status',
-    },
-
-    {
-        value: 'Draft',
-        label: 'Draft',
-    },
-
-    {
-        value: 'Rejected',
-        label: 'Rejected',
-    },
-
-    {
-        value: 'Posted',
-        label: 'Posted',
-    },
-
-]
-/*
-|--------------------------------------------------------------------------
-| Selection
-|--------------------------------------------------------------------------
-*/
-
-const selectedRows = ref([])
-
-const selectAllRef = ref(null)
-
-
-const isAllSelected = computed(() => {
-
-    const totalRows =
-        transfers.value?.data?.length ?? 0
-
-    return (
-        totalRows > 0 &&
-        selectedRows.value.length === totalRows
-    )
-
-})
-
-
-const isIndeterminate = computed(() => {
-
-    const totalRows =
-        transfers.value?.data?.length ?? 0
-
-    return (
-        selectedRows.value.length > 0 &&
-        selectedRows.value.length < totalRows
-    )
-
-})
-
-
-watch(
-    isIndeterminate,
-    (value) => {
-
-        if (selectAllRef.value) {
-
-            selectAllRef.value.indeterminate = value
-
-        }
-
-    },
-    {
-        immediate: true,
+    if (!date) {
+        return ''
     }
-)
 
-
-function toggleSelectAll(event)
-{
-    if (event.target.checked) {
-
-        selectedRows.value =
-            transfers.value?.data?.map(
-                item => item.id
-            ) ?? []
-
-    } else {
-
-        selectedRows.value = []
-
-    }
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(date)
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| View State
-|--------------------------------------------------------------------------
-*/
-
-const view = ref('list')
-
-const formMode = ref('create')
-
-const editingItem = ref(null)
-
-
-/*
-|--------------------------------------------------------------------------
-| Form
-|--------------------------------------------------------------------------
-*/
-const createEmptyDetail = () => ({
-    product_variant_id: null,
-    unit_id: null,
-
-    qty: 0,
-
-    unit_cost: 0,
-    total_cost: 0,
-
-    description: null,
-})
-
-const form = useForm({
-
-    number:
-        props.previewNumber ?? '',
-
-     transaction_date:
-        new Date()
-            .toISOString()
-            .slice(0, 10),
-
-    from_branch_id:
-        null,
-
-    from_warehouse_id:
-        null,
-
-    to_branch_id:
-        null,
-
-    to_warehouse_id:
-        null,
-
-    description:
-        null,
-
-    details: [
-        createEmptyDetail(),
-    ],
-
-})
-console.log(
-    '🔥 STOCK TRANSFER COMPANY:',
-    props.companyId
-)
-
-console.log(
-    '🔥 FORM COMPANY:',
-    form.company_id
-)
-watch(
-    () => form.from_warehouse_id,
-    (newValue, oldValue) => {
-
-        console.log(
-            '🔥 PARENT FROM WAREHOUSE:',
-            oldValue,
-            '=>',
-            newValue
-        )
-
+const dateRangeLabel = computed(() => {
+    if (!dateFrom.value || !dateTo.value) {
+        return 'All Dates'
     }
-)
 
-
-watch(
-    () => form.to_warehouse_id,
-    (newValue, oldValue) => {
-
-        console.log(
-            '🔥 PARENT TO WAREHOUSE:',
-            oldValue,
-            '=>',
-            newValue
-        )
-
-    }
-)
-
-/*
-|--------------------------------------------------------------------------
-| Filtered Options
-|--------------------------------------------------------------------------
-*/
-
-const filteredVariants = computed(() => {
-
-    return props.variants ?? []
-
+    return `${formatDisplayDate(dateFrom.value)} - ${formatDisplayDate(dateTo.value)}`
 })
 
-
-const filteredUnits = computed(() => {
-
-    return props.units ?? []
-
-})
-
-
-/*
-|--------------------------------------------------------------------------
-| Create
-|--------------------------------------------------------------------------
-*/
-
-function create()
-{
-      console.log(
-        '🚨 CREATE() DIPANGGIL',
-        new Error().stack
-    )
-    isEditing.value = false
-
-    formMode.value = 'create'
-
-    editingItem.value = null
-
-    form.reset()
-
-    form.clearErrors()
-
-    form.number =
-        props.previewNumber ?? ''
-
-    form.company_id =
-        props.companyId ?? null
-
-    form.transaction_date =
-        new Date()
-            .toISOString()
-            .slice(0, 10)
-
-    form.from_branch_id =
-        null
-
-    form.from_warehouse_id =
-        null
-
-    form.to_branch_id =
-        null
-
-    form.to_warehouse_id =
-        null
-
-    form.description =
-        null
-
-    form.details = [
-        createEmptyDetail(),
-    ]
-
-    view.value = 'form'
-}
-
-/*
-|--------------------------------------------------------------------------
-| Cancel Form
-|--------------------------------------------------------------------------
-*/
-
-function cancelForm()
-{
-    form.reset()
-
-    form.clearErrors()
-
-    editingItem.value = null
-
-    view.value = 'list'
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Submit
-|--------------------------------------------------------------------------
-*/
-
-function submit()
-{
+function handleClickOutsideDateRange(event) {
     if (
-        formMode.value === 'create'
+        showDateRangePicker.value &&
+        dateRangePickerRef.value &&
+        !dateRangePickerRef.value.contains(event.target)
     ) {
+        showDateRangePicker.value = false
+    }
+}
 
-        console.log(
-            'SUBMIT STOCK TRANSFER:',
-            JSON.parse(
-                JSON.stringify(
-                    form.data()
-                )
+function applyDateRange(from, to, preset = 'custom') {
+    dateFrom.value = from
+    dateTo.value = to
+    selectedPreset.value = preset
+
+    calendarRange.value = [
+        parseDate(from),
+        parseDate(to),
+    ].filter(Boolean)
+
+    showDateRangePicker.value = false
+
+    loadDateFilteredData()
+}
+
+function applyPreset(preset) {
+    if (preset === 'custom') {
+        selectedPreset.value = 'custom'
+        return
+    }
+
+    const today = startOfDay(new Date())
+
+    let from
+    let to
+
+    switch (preset) {
+        case 'today':
+            from = today
+            to = today
+            break
+
+        case 'yesterday':
+            from = new Date(today)
+            from.setDate(from.getDate() - 1)
+            to = from
+            break
+
+        case 'last-7-days':
+            from = new Date(today)
+            from.setDate(from.getDate() - 6)
+            to = today
+            break
+
+        case 'last-30-days':
+            from = new Date(today)
+            from.setDate(from.getDate() - 29)
+            to = today
+            break
+
+        case 'this-month':
+            from = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1,
             )
-        )
+            to = today
+            break
 
-        form.post(
-            route(
-                'stock-transfers.store'
-            ),
+        case 'last-month':
+            from = new Date(
+                today.getFullYear(),
+                today.getMonth() - 1,
+                1,
+            )
+            to = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                0,
+            )
+            break
+
+        default:
+            return
+    }
+
+    applyDateRange(
+        toDateString(from),
+        toDateString(to),
+        preset,
+    )
+}
+
+function handleCalendarChange(selectedDates) {
+    if (selectedDates.length !== 2) {
+        return
+    }
+
+    applyDateRange(
+        toDateString(selectedDates[0]),
+        toDateString(selectedDates[1]),
+        'custom',
+    )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Date Filter Integration
+|--------------------------------------------------------------------------
+|
+| Dashboard passes the selected range to the active tab.
+| The active tab remains responsible for loading its own data.
+|--------------------------------------------------------------------------
+*/
+
+function loadDateFilteredData() {
+    if (activeTab.value === 'stock-transfer') {
+        router.get(
+            route('stock-transfers.index'),
             {
+                ...props.filters,
+                date_from: dateFrom.value,
+                date_to: dateTo.value,
+            },
+            {
+                preserveState: true,
                 preserveScroll: true,
-
-                onSuccess: () => {
-
-                    success(
-                        'Success',
-                        'Stock Transfer created successfully.'
-                    )
-
-                    view.value =
-                        'list'
-
-                },
-
-                onError: (errors) => {
-
-                    console.error(
-                        'CREATE STOCK TRANSFER ERRORS:',
-                        errors
-                    )
-
-                    error(
-                        'Failed to create Stock Transfer.'
-                    )
-
-                },
-            }
+                replace: true,
+                only: ['transfers', 'statistics', 'filters'],
+            },
         )
-
-        return
     }
-
-
-    form.put(
-        route(
-            'stock-transfers.update',
-            editingItem.value.id
-        ),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                success(
-                    'Success',
-                    'Stock Transfer updated successfully.'
-                )
-
-                view.value =
-                    'list'
-
-            },
-
-            onError: (errors) => {
-
-                console.error(
-                    'UPDATE STOCK TRANSFER ERRORS:',
-                    errors
-                )
-
-                error(
-                    'Failed to update Stock Transfer.'
-                )
-
-            },
-        }
-    )
 }
 
-/*
-|--------------------------------------------------------------------------
-| Save & New
-|--------------------------------------------------------------------------
-*/
+function resetDateRange() {
+    dateFrom.value = ''
+    dateTo.value = ''
+    calendarRange.value = []
+    selectedPreset.value = 'custom'
+    showDateRangePicker.value = false
 
-function submitAndNew()
-{
-    form.post(
-        route(
-            'stock-transfers.store'
-        ),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                success(
-                    'Success',
-                    'Stock Transfer created successfully.'
-                )
-
-                form.reset()
-
-                form.clearErrors()
-
-                form.number =
-                    props.previewNumber ?? ''
-
-                form.company_id =
-                    props.companyId ?? null
-
-                form.transaction_date =
-                    new Date()
-                        .toISOString()
-                        .slice(0, 10)
-
-                form.from_branch_id =
-                    null
-
-                form.from_warehouse_id =
-                    null
-
-                form.to_branch_id =
-                    null
-
-                form.to_warehouse_id =
-                    null
-
-                form.description =
-                    null
-
-                form.details = [
-                    createEmptyDetail(),
-                ]
-
-            },
-
-            onError: (errors) => {
-
-                console.error(
-                    'SAVE & NEW STOCK TRANSFER ERRORS:',
-                    errors
-                )
-
-            },
-        }
-    )
+    loadDateFilteredData()
 }
 
-/*
-|--------------------------------------------------------------------------
-| Edit
-|--------------------------------------------------------------------------
-*/
-
-function editTransfer(item)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | DEBUG — Edit Stock Transfer
-    |--------------------------------------------------------------------------
-    */
-
-    console.log(
-        '========== EDIT STOCK TRANSFER ITEM =========='
-    )
-
-    console.log(
-        'EDIT ITEM:',
-        item
-    )
-
-    console.log(
-        'FROM BRANCH ID:',
-        item?.from_branch_id
-    )
-
-    console.log(
-        'FROM WAREHOUSE ID:',
-        item?.from_warehouse_id
-    )
-
-    console.log(
-        'FROM WAREHOUSE:',
-        item?.from_warehouse
-    )
-
-    console.log(
-        'TO BRANCH ID:',
-        item?.to_branch_id
-    )
-
-    console.log(
-        'TO WAREHOUSE ID:',
-        item?.to_warehouse_id
-    )
-
-    console.log(
-        'TO WAREHOUSE:',
-        item?.to_warehouse
-    )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate Status
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        ![
-            'Draft',
-            'Rejected',
-        ].includes(item.status)
-    ) {
-
-        error(
-            'Posted Stock Transfer cannot be edited.'
-        )
-
-        return
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Edit State
-    |--------------------------------------------------------------------------
-    */
-
-    isEditing.value =
-        true
-
-    editingItem.value =
-        item
-
-    formMode.value =
-        'edit'
-
-    form.clearErrors()
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Header
-    |--------------------------------------------------------------------------
-    */
-
-    form.number =
-        item.number
-
-
-    form.company_id =
-        item.company_id
-
-
-    form.transaction_date =
-        item.transaction_date
-            ? String(
-                item.transaction_date
-            ).slice(0, 10)
-            : null
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Source Location
-    |--------------------------------------------------------------------------
-    */
-
-    form.from_branch_id =
-    item?.from_branch_id ?? null
-
-
-/*
-|--------------------------------------------------------------------------
-| Destination Location
-|--------------------------------------------------------------------------
-*/
-
-form.to_branch_id =
-    item?.to_branch_id ?? null
-    /*
-    |--------------------------------------------------------------------------
-    | Description
-    |--------------------------------------------------------------------------
-    */
-
-    form.description =
-        item.description
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Details
-    |--------------------------------------------------------------------------
-    */
-
-    form.details =
-    item.details?.map(
-        detail => ({
-
-            product_variant_id:
-                detail.product_variant_id,
-
-            unit_id:
-                detail.unit_id,
-
-            available_qty:
-                0,
-
-            qty:
-                detail.qty,
-
-            unit_cost:
-                0,
-
-            total_cost:
-                detail.total_cost,
-
-            description:
-                detail.description,
-
-        })
-    ) ?? [
-        createEmptyDetail(),
-    ]
-
-
-    view.value =
-    'form'
-
-
-/*
-|--------------------------------------------------------------------------
-| Hydrate Warehouses After Form Mount
-|--------------------------------------------------------------------------
-*/
-
-nextTick(() => {
-
-    form.from_warehouse_id =
-        item.from_warehouse_id
-
-    form.to_warehouse_id =
-        item.to_warehouse_id
-
-
-    console.log(
-        '========== EDIT WAREHOUSE HYDRATED =========='
-    )
-
-    console.log(
-        'FORM FROM WAREHOUSE:',
-        form.from_warehouse_id
-    )
-
-    console.log(
-        'FORM TO WAREHOUSE:',
-        form.to_warehouse_id
-    )
-
-})
-
-}/*
-|--------------------------------------------------------------------------
-| Show
-|--------------------------------------------------------------------------
-*/
-
-const selectedItem = ref(null)
-
-/*
-|--------------------------------------------------------------------------
-| Back From Show
-|--------------------------------------------------------------------------
-*/
-
-function backToList()
-{
-    selectedItem.value = null
-
-    view.value = 'list'
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Duplicate
-|--------------------------------------------------------------------------
-*/
-
-function duplicate(item)
-{
-    router.post(
-        route(
-            'stock-transfers.duplicate',
-            item.id
-        ),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                success(
-                    'Success',
-                    'Stock Transfer duplicated successfully.'
-                )
-
-            },
-
-            onError: () => {
-
-                error(
-                    'Failed to duplicate Stock Transfer.'
-                )
-
-            },
-        }
-    )
-}
-
-/*
-|--------------------------------------------------------------------------
-| Delete
-|--------------------------------------------------------------------------
-*/
-
-const deleteItem = ref(null)
-
-const showDelete = ref(false)
-
-
-function openDelete(item)
-{
-    if (
-        ![
-            'Draft',
-            'Rejected',
-        ].includes(item.status)
-    ) {
-
-        error(
-            'Only Draft or Rejected Stock Transfer can be deleted.'
-        )
-
-        return
-    }
-
-    deleteItem.value =
-        item
-
-    showDelete.value =
-        true
-}
-
-
-function closeDelete()
-{
-    deleteItem.value = null
-
-    showDelete.value = false
-}
-
-
-const deleteMessage = computed(() => {
-
-    if (!deleteItem.value) {
-
-        return ''
-
-    }
-
-    return `Are you sure you want to delete "${deleteItem.value.number}"?`
-
-})
-
-
-function confirmDelete()
-{
-    if (!deleteItem.value) {
-
-        return
-
-    }
-
-    router.delete(
-        route(
-            'stock-transfers.destroy',
-            deleteItem.value.id
-        ),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                closeDelete()
-
-                success(
-                    'Success',
-                    'Stock Transfer deleted successfully.'
-                )
-
-            },
-
-            onError: () => {
-
-                error(
-                    'Failed to delete Stock transfer.'
-                )
-
-            },
-        }
-    )
-}
-
-/*
-|--------------------------------------------------------------------------
-| Bulk Delete
-|--------------------------------------------------------------------------
-*/
-
-const showBulkDelete = ref(false)
-
-
-function openBulkDelete()
-{
-    if (!selectedRows.value.length) {
-
-        return
-
-    }
-
-    showBulkDelete.value = true
-}
-
-
-const bulkDeleteMessage = computed(() => {
-
-    const total =
-        selectedRows.value.length
-
-    if (!total) {
-
-        return ''
-
-    }
-
-    return `Are you sure you want to delete ${total} selected Stock Transfer document(s)?`
-
-})
-
-
-function bulkDelete()
-{
-    router.delete(
-        route('Stock Transfer.bulk-delete'),
-        {
-            data: {
-                ids: selectedRows.value,
-            },
-
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                showBulkDelete.value = false
-
-                selectedRows.value = []
-
-                success(
-                    'Success',
-                    'Stock Transfer deleted successfully.'
-                )
-
-            },
-
-        }
-    )
-}
-/*
-|--------------------------------------------------------------------------
-| Post
-|--------------------------------------------------------------------------
-*/
-
-const postItem = ref(null)
-
-const showPost = ref(false)
-
-
-/*
-|--------------------------------------------------------------------------
-| Reject
-|--------------------------------------------------------------------------
-*/
-
-const rejectItem = ref(null)
-
-const showReject = ref(false)
-
-const rejectReason = ref('')
-
-function openPost(transfer)
-{
-    postItem.value = transfer
-
-    showPost.value = true
-}
-function closePost()
-{
-    postItem.value = null
-
-    showPost.value = false
-}
-function openReject(transfer)
-{
-    rejectItem.value = transfer
-
-    rejectReason.value = ''
-
-    showReject.value = true
-}
-function closeReject()
-{
-    rejectItem.value = null
-
-    rejectReason.value = ''
-
-    showReject.value = false
-}
-function confirmPost()
-{
-    if (!postItem.value) {
-
-        return
-
-    }
-
-    router.post(
-
-        route(
-            'stock-transfers.post',
-            postItem.value.id
-        ),
-
-        {},
-
-        {
-
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                closePost()
-
-                success(
-                    'Success',
-                    'Stock Transfers posted successfully.'
-                )
-
-            },
-
-            onError: (errors) => {
-
-                   error(
-                    'Failed to post stock Transer.'
-                )
-
-            },
-
-        }
-
-    )
-}
-function confirmReject()
-{
-    if (!rejectItem.value) {
-
-        return
-
-    }
-
-    if (!rejectReason.value.trim()) {
-
-        error(
-            'Cancellation reason is required.'
-        )
-
-        return
-
-    }
-
-    router.post(
-        route(
-            'stock-transfers.cancel',
-            rejectItem.value.id
-        ),
-        {
-            reason:
-                rejectReason.value.trim(),
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-
-                closeReject()
-
-                success(
-                    'Success',
-                    'Stock Transfer cancelled successfully.'
-                )
-
-            },
-
-            onError: () => {
-
-                error(
-                    'Failed to cancel Stock Transfer.'
-                )
-
-            },
-        }
-    )
-}
-
-const postMessage = computed(() => {
-
-    if (!postItem.value) {
-        return ''
-    }
-
-    return `Are you sure you want to post "${postItem.value.number}"? Once posted, Stock Transer will be updated.`
-})
 /*
 |--------------------------------------------------------------------------
 | Lifecycle
@@ -1403,1103 +394,394 @@ const postMessage = computed(() => {
 */
 
 onMounted(() => {
+    updateIsMobile()
 
-    removeStartListener =
-        router.on(
-            'start',
-            startLoading
-        )
-
-    removeFinishListener =
-        router.on(
-            'finish',
-            stopLoading
-        )
-
+    window.addEventListener('resize', updateIsMobile)
+    document.addEventListener('mousedown', handleClickOutsideDateRange)
 })
 
-
-onUnmounted(() => {
-
-    removeStartListener?.()
-
-    removeFinishListener?.()
-
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateIsMobile)
+    document.removeEventListener('mousedown', handleClickOutsideDateRange)
 })
-
 /*
 |--------------------------------------------------------------------------
-| Sorting
+| Stock Transfer Form Modal
 |--------------------------------------------------------------------------
 */
 
-const sort = ref(
-    props.filters?.sort_by ?? 'id'
-)
+const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const selectedTransfer = ref(null)
 
-const direction = ref(
-    props.filters?.sort_direction ?? 'desc'
-)
-
-function sortBy(column)
-{
-    if (sort.value === column) {
-
-        direction.value =
-            direction.value === 'asc'
-                ? 'desc'
-                : 'asc'
-
-    } else {
-
-        sort.value = column
-
-        direction.value = 'asc'
-
-    }
-
-    router.get(
-        route('stock-transfers.index'),
-        {
-            search:
-                filters.search,
-
-            from_branch_id:
-                filters.from_branch_id,
-
-            from_warehouse_id:
-                filters.from_warehouse_id,
-
-            to_branch_id:
-                filters.to_branch_id,
-
-            to_warehouse_id:
-                filters.to_warehouse_id,
-
-            date_from:
-                filters.date_from,
-
-            date_to:
-                filters.date_to,
-
-            status:
-                filters.status,
-
-            per_page:
-                filters.per_page,
-
-            sort_by:
-                sort.value,
-
-            sort_direction:
-                direction.value,
-        },
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        }
-    )
-}
-/** filtered warehouse */
-const isEditing = ref(false)
-const filteredFromWarehouses = computed(() => {
-
-    if (!form.from_branch_id) {
-        return []
-    }
-
-    return props.warehouses.filter(
-        warehouse =>
-            Number(warehouse.branch_id) ===
-            Number(form.from_branch_id)
-    )
-
+const form = useForm({
+    number: '',
+    transaction_date: '',
+    from_branch_id: null,
+    from_warehouse_id: null,
+    to_branch_id: null,
+    to_warehouse_id: null,
+    description: '',
+    details: [],
 })
 
+function resetTransferForm() {
+    form.reset()
 
-const filteredToWarehouses = computed(() => {
+    form.number = props.previewNumber ?? ''
+    form.transaction_date = new Date().toISOString().slice(0, 10)
 
-    if (!form.to_branch_id) {
-        return []
-    }
+    form.from_branch_id = null
+    form.from_warehouse_id = null
+    form.to_branch_id = null
+    form.to_warehouse_id = null
 
-    return props.warehouses.filter(
-        warehouse =>
-            Number(warehouse.branch_id) ===
-            Number(form.to_branch_id)
-    )
-
-})
-watch(
-    () => form.from_branch_id,
-    (newBranch, oldBranch) => {
-
-        /*
-        |--------------------------------------------------------------------------
-        | Initial Edit Load
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            props.mode === 'edit' &&
-            oldBranch === null &&
-            newBranch !== null
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | No Actual Change
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            newBranch === oldBranch
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Reset Source Warehouse
-        |--------------------------------------------------------------------------
-        */
-
-        form.from_warehouse_id =
-            null
-
-        warehouseStocks.value =
-            []
-
-    }
-)
-
-
-watch(
-    () => form.to_branch_id,
-    (newBranch, oldBranch) => {
-
-        /*
-        |--------------------------------------------------------------------------
-        | Initial Edit Load
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            props.mode === 'edit' &&
-            oldBranch === null &&
-            newBranch !== null
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | No Actual Change
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            newBranch === oldBranch
-        ) {
-
-            return
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Reset Destination Warehouse
-        |--------------------------------------------------------------------------
-        */
-
-        form.to_warehouse_id =
-            null
-
-    }
-)
-
-function canEdit(item)
-{
-    return [
-        'Draft',
-        'Rejected',
-    ].includes(item.status)
+    form.description = ''
+    form.details = []
+    form.clearErrors()
 }
 
-function canPost(item)
-{
-    return item.status === 'Draft'
+function openCreate() {
+    selectedTransfer.value = null
+
+    showEditModal.value = false
+
+    resetTransferForm()
+
+    showCreateModal.value = true
 }
 
-function canReject(item)
-{
-    return item.status === 'Draft'
+function openEdit(transfer) {
+    selectedTransfer.value = transfer
+
+    showCreateModal.value = false
+    showEditModal.value = true
 }
 
-function canDelete(item)
-{
-    return [
-        'Draft',
-        'Rejected',
-    ].includes(item.status)
-}
-/** view modal */
-const viewLoading = ref(false)
-const showView = ref(false)
-const viewItem = ref(null)
+function closeFormModal() {
+    showCreateModal.value = false
+    showEditModal.value = false
+    selectedTransfer.value = null
 
-
-async function openView(item)
-{
-    viewLoading.value = true
-
-    viewItem.value = null
-
-    showView.value = true
-
-    try {
-
-        const response = await fetch(
-            route(
-                'stock-transfers.data',
-                item.id
-            ),
-            {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            }
-        )
-
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP ${response.status}`
-            )
-
-        }
-
-        const responseData =
-            await response.json()
-
-        console.log(
-            'stock transfer VIEW RESPONSE:',
-            responseData
-        )
-
-        viewItem.value =
-            responseData.data
-
-    } catch (exception) {
-
-        console.error(
-            'stock transfer VIEW ERROR:',
-            exception
-        )
-
-        showView.value = false
-
-        viewItem.value = null
-
-        error(
-            'Failed to load Stock Transfer detail.'
-        )
-
-    } finally {
-
-        viewLoading.value = false
-
-    }
+    resetTransferForm()
 }
 
-function closeView()
-{
-    viewItem.value = null
+function handleCreateSuccess() {
+    closeFormModal()
 
-    showView.value = false
-}
-/** view */
-
-function exportSelected()
-{
-    console.log(
-        'EXPORT SELECTED:',
-        selectedRows.value
-    )
-}
-function formatNumber(value)
-{
-    return new Intl.NumberFormat(
-        'id-ID',
-        {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-        }
-    ).format(
-        Number(value ?? 0)
-    )
+    router.reload({
+        only: [
+            'transfers',
+            'statistics',
+            'filters',
+            'previewNumber',
+        ],
+        preserveScroll: true,
+    })
 }
 
-const sameWarehouse = computed(() => {
+/*
+|--------------------------------------------------------------------------
+| Sync Date Filters
+|--------------------------------------------------------------------------
+*/
 
-    return (
-        form.from_warehouse_id &&
-        form.to_warehouse_id &&
-        Number(
-            form.from_warehouse_id
-        ) ===
-        Number(
-            form.to_warehouse_id
-        )
-    )
+function syncDateFilters() {
+    dateFrom.value = props.filters?.date_from ?? ''
+    dateTo.value = props.filters?.date_to ?? ''
 
-})
-const warehouseStocks = ref([])
-
-const warehouseStockLoading = ref(false)
-
-const availableWarehouseStocks = computed(() => {
-
-    return warehouseStocks.value ?? []
-
-})
-const datePreset = ref(
-    props.filters?.date_preset ?? ''
-)
+    calendarRange.value = [
+        parseDate(dateFrom.value),
+        parseDate(dateTo.value),
+    ].filter(Boolean)
+}
 
 
-const datePresetOptions = [
-
-    {
-        value: '',
-        label: 'All Dates',
-    },
-
-    {
-        value: 'today',
-        label: 'Today',
-    },
-
-    {
-        value: 'this_week',
-        label: 'This Week',
-    },
-
-    {
-        value: 'this_month',
-        label: 'This Month',
-    },
-
-    {
-        value: 'this_year',
-        label: 'This Year',
-    },
-
-    {
-        value: 'custom',
-        label: 'Custom',
-    },
-
-]
 </script>
+
 <template>
-<AppLayout>
-   
-    <Transition
-        name="page"
-        mode="out-in"
-    >
-
-        <!-- LIST part b-->
-        <div
-            v-if="view === 'list'"
-            key="list"
-        >
-
-        <div class="space-y-6">
-
-            <!-- ===================================================== -->
-            <!-- Page Header 
-            <PageHeader
-                icon="📦"
-                title="Stock Transfer"
-                subtitle="Manage Stock Transfer transactions."
-            />
-            -->
-            <!-- ===================================================== -->
-
-            
-
-
-            <!-- ===================================================== -->
-            <!-- Statistics -->
-            <!-- ===================================================== -->
-
-            <div
-                class="
-                    grid
-                    grid-cols-1
-                    gap-4
-                    md:grid-cols-4
-                "
-            >
-
-               <StatsCard
-                    title="Total Transfers Stock"
-                    :value="statistics?.total ?? 0"
-                    icon="📦"
-                />
-
-                <StatsCard
-                    title="Draft"
-                    :value="statistics?.draft ?? 0"
-                    icon="📝"
-                />
-
-                <StatsCard
-                    title="Rejected"
-                    :value="statistics?.rejected ?? 0"
-                    icon="❌"
-                />
-
-                <StatsCard
-                    title="Posted"
-                    :value="statistics?.posted ?? 0"
-                    icon="✅"
-                />
-            </div>
-
-        </div>
-
-
-        <!-- ========================================================= -->
-        <!-- List Card -->
-        <!-- ========================================================= -->
-
-        <Card class="mt-4">
-
-            <!-- ===================================================== -->
-<!-- Toolbar -->
-<!-- ===================================================== -->
-
-<div
-    class="
-        flex
-        flex-col
-        gap-4
-        lg:flex-row
-        lg:items-center
-        lg:justify-between
-    "
->
-
-    <!-- Left -->
-    <div
-        class="
-            flex
-            flex-1
-            flex-col
-            gap-3
-            lg:flex-row
-            lg:items-center
-        "
-    >
-
-        <!-- Search -->
-
-        <input
-            v-model="filters.search"
-            type="text"
-            placeholder="Search number..."
-            class="
-                w-full
-                lg:w-72
-                rounded-xl
-                border
-                border-gray-300
-                px-4
-                py-2.5
-            "
-        />
-
-
-        <!-- Date From -->
-
-        <FlatPickr
-            v-model="dateRange"
-            :config="{
-                mode: 'range',
-                dateFormat: 'Y-m-d',
-            }"
-            placeholder="Date Range"
-            class="
-                w-full
-                lg:w-77
-                rounded-xl
-                border
-                border-gray-300
-                px-4
-                py-2.5
-                text-sm
-            "
-            @on-change="handleDateRangeChange"
-        />
-
-
-        <!-- Status -->
-
-        <SearchableSelect
-            v-model="filters.status"
-            :options="statusOptions"
-            label="label"
-            value-key="value"
-            placeholder="All Status"
-        />
-
-    </div>
-
-
-    <!-- Right -->
-
-    <div
-        class="
-            flex
-            flex-col
-            gap-2
-            w-full
-            lg:w-auto
-            lg:flex-row
-            lg:items-center
-        "
-    >
-
-        <!-- Refresh -->
-
-        <BaseButton
-            variant="secondary"
-            class="
-                w-full
-                shrink-0
-                whitespace-nowrap
-                lg:w-auto
-            "
-            @click="refresh"
-        >
-            Refresh
-        </BaseButton>
-
-
-        <!-- Add -->
-
-        <BaseButton
-            class="
-                w-full
-                shrink-0
-                whitespace-nowrap
-                lg:w-auto
-            "
-            @click="create"
-        >
-
-            <template #icon>
-
-                <PlusIcon class="h-5 w-5" />
-
-            </template>
-
-            Add
-
-        </BaseButton>
-
-
-        <!-- Bulk -->
-
-        <BulkActionDropdown
-            :count="selectedRows.length"
-            :disabled="
-                selectedRows.length === 0
-            "
-            :actions="[
-                'export',
-                'delete',
-            ]"
-            @delete="openBulkDelete"
-            @export="exportSelected"
-            class="w-full lg:w-auto"
-        />
-
-    </div>
-
-</div>
-
-
-            <!-- ===================================================== -->
-            <!-- Table -->
-            <!-- ===================================================== -->
-
-            <div class="mt-6">
-
-                <!-- Loading -->
-
-                <LoadingOverlay
-                    :show="loading"
-                    text="Loading Transfer Stock..."
-                />
-
-
-                <!-- Data -->
-
-                <DataTable
-                    v-if="transfers?.data?.length"
-                    sticky-header
-                    max-height="650px"
+    <AppLayout title="Stock Transfer">
+        <div class="min-h-screen bg-slate-50">
+            <!-- PAGE HEADER -->
+            <header class="border-b border-slate-200 bg-white">
+                <div
+                    class="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
                 >
-
-                    <DataTableHead sticky>
-
-                        <!-- Select All -->
-
-                        <DataTableHeaderCell
-                            width="60px"
-                            align="center"
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20"
                         >
-
-                            <input
-                                ref="selectAllRef"
-                                type="checkbox"
-                                :checked="isAllSelected"
-                                @change="toggleSelectAll"
-                                class="rounded border-gray-300"
-                            />
-
-                        </DataTableHeaderCell>
-
-
-                        <!-- Number -->
-
-                        <DataTableHeaderCell
-                            sortable
-                            column="number"
-                            :sort="sort"
-                            :direction="direction"
-                            @sort="sortBy"
-                            width="180px"
-                        >
-                            Number
-                        </DataTableHeaderCell>
-
-
-                        <!-- Date -->
-
-                        <DataTableHeaderCell
-                            sortable
-                            column="transaction_date"
-                            :sort="sort"
-                            :direction="direction"
-                            @sort="sortBy"
-                            width="160px"
-                        >
-                            Transaction Date
-                        </DataTableHeaderCell>
-
-
-                        <!-- From -->
-
-                        <DataTableHeaderCell
-                            width="260px"
-                        >
-                            From
-                        </DataTableHeaderCell>
-
-
-                        <!-- To -->
-
-                        <DataTableHeaderCell
-                            width="260px"
-                        >
-                            To
-                        </DataTableHeaderCell>
-
-
-                        <!-- Items -->
-
-                        <DataTableHeaderCell
-                            width="100px"
-                            align="right"
-                        >
-                            Items
-                        </DataTableHeaderCell>
-
-
-                        <!-- Total Qty -->
-
-                        <DataTableHeaderCell
-                            width="120px"
-                            align="right"
-                        >
-                            Total Qty
-                        </DataTableHeaderCell>
-
-
-                        <!-- Total Cost -->
-
-                        <DataTableHeaderCell
-                            sortable
-                            column="total_cost"
-                            :sort="sort"
-                            :direction="direction"
-                            @sort="sortBy"
-                            width="180px"
-                            align="right"
-                        >
-                            Total Cost
-                        </DataTableHeaderCell>
-
-
-                        <!-- Status -->
-
-                        <DataTableHeaderCell
-                            sortable
-                            column="status"
-                            :sort="sort"
-                            :direction="direction"
-                            @sort="sortBy"
-                            width="120px"
-                            align="center"
-                        >
-                            Status
-                        </DataTableHeaderCell>
-
-
-                        <!-- Actions -->
-
-                        <DataTableHeaderCell
-                            width="100px"
-                            align="center"
-                        >
-                            Actions
-                        </DataTableHeaderCell>
-
-                    </DataTableHead>
-
-
-                    <DataTableBody>
-
-                        <DataTableRow
-                            v-for="item in transfers.data"
-                            :key="item.id"
-                        >
-
-                            <!-- Checkbox -->
-
-                            <DataTableCell align="center">
-
-                                <input
-                                    v-model="selectedRows"
-                                    :value="item.id"
-                                    type="checkbox"
-                                    class="rounded border-gray-300"
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-6 w-6"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M4 7h11m0 0-3-3m3 3-3 3M20 17H9m0 0 3 3m-3-3 3-3"
                                 />
+                                <rect
+                                    x="3"
+                                    y="12"
+                                    width="5"
+                                    height="5"
+                                    rx="1"
+                                />
+                                <rect
+                                    x="16"
+                                    y="4"
+                                    width="5"
+                                    height="5"
+                                    rx="1"
+                                />
+                            </svg>
+                        </div>
 
-                            </DataTableCell>
+                        <div class="min-w-0">
+                            <h1
+                                class="text-xl font-semibold tracking-tight text-slate-900"
+                            >
+                                Stock Transfer
+                            </h1>
 
+                            <p class="mt-1 text-sm text-slate-500">
+                                Manage stock transfers, returns, incoming and outgoing stock.
+                            </p>
+                        </div>
+                    </div>
 
-                            <!-- Number -->
+                    <div
+                        v-if="activeTab === 'stock-transfer'"
+                        class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto"
+                    >
+                        <!-- DATE RANGE -->
+                        <div
+                            ref="dateRangePickerRef"
+                            class="relative w-full sm:w-auto"
+                        >
+                            <button
+                                type="button"
+                                class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm transition hover:bg-slate-50 sm:min-w-[270px]"
+                                @click="showDateRangePicker = !showDateRangePicker"
+                            >
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-4 w-4 shrink-0 text-slate-500"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="4"
+                                            width="18"
+                                            height="17"
+                                            rx="2"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            d="M16 2v4M8 2v4M3 10h18"
+                                        />
+                                    </svg>
 
-                            <DataTableCell>
-
-                                <span class="font-medium">
-                                    {{ item.number }}
+                                    <span class="truncate text-slate-700">
+                                        {{ dateRangeLabel }}
+                                    </span>
                                 </span>
 
-                            </DataTableCell>
-
-
-                            <!-- Transaction Date -->
-
-                            <DataTableCell>
-                                {{ formatDate(item.transaction_date) }}
-
-                            </DataTableCell>
-
-
-                            <!-- From Branch warehouse -->
-
-                            <DataTableCell>
-
-                                <div
-                                    class="
-                                        font-medium
-                                        text-gray-900
-                                    "
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4 shrink-0 text-slate-400"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
                                 >
-                                    {{ item.from_branch?.name ?? '-' }}
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="m6 9 6 6 6-6"
+                                    />
+                                </svg>
+                            </button>
+
+                            <!-- DATE RANGE POPUP -->
+                            <div
+                                v-if="showDateRangePicker"
+                                class="absolute right-0 z-50 mt-2 w-[min(760px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+                            >
+                                <div class="flex flex-col sm:flex-row">
+                                    <!-- PRESETS -->
+                                    <div
+                                        class="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-slate-200 p-2 sm:w-[170px] sm:flex-col sm:gap-0 sm:border-b-0 sm:border-r sm:p-2"
+                                    >
+                                        <button
+                                            v-for="preset in presets"
+                                            :key="preset.key"
+                                            type="button"
+                                            class="shrink-0 rounded-lg px-3 py-2.5 text-left text-sm transition sm:w-full"
+                                            :class="
+                                                selectedPreset === preset.key
+                                                    ? 'bg-blue-600 font-medium text-white'
+                                                    : 'text-slate-600 hover:bg-slate-50'
+                                            "
+                                            @click="applyPreset(preset.key)"
+                                        >
+                                            {{ preset.label }}
+                                        </button>
+
+                                        <button
+                                            v-if="dateFrom || dateTo"
+                                            type="button"
+                                            class="shrink-0 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 sm:mt-2"
+                                            @click="resetDateRange"
+                                        >
+                                            Clear Dates
+                                        </button>
+                                    </div>
+
+                                    <!-- CALENDAR -->
+                                    <div class="min-w-0 flex-1 overflow-x-auto p-3 sm:p-4">
+                                        <FlatPickr
+                                            :model-value="calendarRange"
+                                            :config="{
+                                                mode: 'range',
+                                                inline: true,
+                                                showMonths: isMobile ? 1 : 2,
+                                                dateFormat: 'Y-m-d',
+                                                allowInput: false,
+                                                clickOpens: true,
+                                                onChange: handleCalendarChange,
+                                            }"
+                                        />
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <div
-                                    class="
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
-                                    {{ item.from_warehouse?.name ?? '-' }}
-                                </div>
-
-                            </DataTableCell>
-
-                            <!-- Warehouse -->
-
-                            <DataTableCell>
-
-                                <div
-                                    class="
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-                                    {{ item.to_branch?.name ?? '-' }}
-                                </div>
-
-                                <div
-                                    class="
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
-                                    {{ item.to_warehouse?.name ?? '-' }}
-                                </div>
-
-                            </DataTableCell>
-
-                            <!-- Items -->
-                            <DataTableCell align="right">
-
-                                {{
-                                    item.details_count
-                                    ?? item.details?.length
-                                    ?? 0
-                                }}
-
-                            </DataTableCell>
-                            
-
-
-                            <!-- Total qty -->
-
-                            <DataTableCell align="right">
-
-                                {{
-                                    formatNumber(
-                                        item.total_qty
-                                        ??
-                                        item.details?.reduce(
-                                            (
-                                                total,
-                                                detail
-                                            ) =>
-                                                total +
-                                                Number(
-                                                    detail.qty ?? 0
-                                                ),
-                                            0
-                                        )
-                                    )
-                                }}
-
-                            </DataTableCell>
-                            <DataTableCell align="right">
-
-                                {{
-                                    currency(
-                                        item.total_cost ?? 0
-                                    )
-                                }}
-
-                            </DataTableCell>
-
-                            <!-- Status -->
-
-                            <DataTableCell align="center">
-
-                                <StatusBadge
-                                    :status="item.status"
-                                />
-
-                            </DataTableCell>
-
-
-                            <!-- Actions -->
-                            <DataTableCell align="center">
-
-                                <ActionDropdown
-                                    @view="openView(item)"
-                                    @edit="editTransfer(item)"
-                                    @duplicate="duplicate(item)"
-                                    @post="openPost(item)"
-                                    @reject="openReject(item)"
-                                    @delete="openDelete(item)"
-
-                                    :showEdit="canEdit(item)"
-                                    :showDuplicate="true"
-                                    :showPost="canPost(item)"
-                                    :showReject="canReject(item)"
-                                    :showExport="false"
-                                    :showHistory="false"
-                                    :showDelete="canDelete(item)"
-                                />
-
-                            </DataTableCell>
-
-                        </DataTableRow>
-
-                    </DataTableBody>
-
-                </DataTable>
-
-
-                <!-- Empty -->
-
-                <TableEmpty
-                    v-else
-                    icon="🔄"
-                    title="No Stock Transfer Found"
-                    description="There are no stock transfer transactions available."
-                >
-
-                    <template #action>
-
-                        <BaseButton
-                            @click="create"
+                        <!-- NEW TRANSFER -->
+                        <button
+                            type="button"
+                            class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20 sm:w-auto"
+                            @click="openCreate"
                         >
-                            Create Stock Transfer
-                        </BaseButton>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    d="M12 5v14M5 12h14"
+                                />
+                            </svg>
 
-                    </template>
+                            New Transfer
+                        </button>
+                    </div>
+                </div>
+            </header>
 
-                </TableEmpty>
+            <!-- MAIN CONTENT -->
+            <main class="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
+                <!-- TABS -->
+                <nav
+                    class="mb-7 flex overflow-x-auto border-b border-slate-200"
+                    aria-label="Stock Transfer Sections"
+                >
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.key"
+                        type="button"
+                        class="relative whitespace-nowrap px-4 pb-3 text-sm font-medium transition"
+                        :class="
+                            activeTab === tab.key
+                                ? 'text-blue-600'
+                                : 'text-slate-500 hover:text-slate-800'
+                        "
+                        @click="changeTab(tab.key)"
+                    >
+                        {{ tab.label }}
 
-            </div>
+                        <span
+                            v-if="activeTab === tab.key"
+                            class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-blue-600"
+                        />
+                    </button>
+                </nav>
 
+                <!-- ACTIVE TAB -->
+                <section>
+                    <div
+                        v-if="activeTab !== 'stock-transfer'"
+                        class="mb-5"
+                    >
+                        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-700">
+                            {{ activeTabDetails.label }}
+                        </h2>
 
-            <!-- ===================================================== -->
-            <!-- Pagination -->
-            <!-- ===================================================== -->
+                        <p class="mt-1 text-xs text-slate-500">
+                            {{ activeTabDetails.description }}
+                        </p>
+                    </div>
 
-            <div class="mt-6">
+                    <StockTransferIndex
+                        v-if="activeTab === 'stock-transfer'"
+                        :transfers="transfers"
+                        :statistics="statistics"
+                        :branches="branches"
+                        :warehouses="warehouses"
+                        :variants="variants"
+                        :units="units"
+                        :filters="filters"
+                        :preview-number="previewNumber"
+                        :date-from="dateFrom"
+                        :date-to="dateTo"
+                        @create="openCreate"
+                    />
 
-                <TablePagination
-                    :data="transfers"
-                    label="Transfers Stock"
-                />
+                    <StockTransferReturnIndex
+                        v-else-if="activeTab === 'transfer-return'"
+                    />
 
-            </div>
+                    <StockTransferInIndex
+                        v-else-if="activeTab === 'transfer-in'"
+                    />
 
-        </Card>
-            
+                    <StockTransferOutIndex
+                        v-else-if="activeTab === 'transfer-out'"
+                    />
+
+                    <StockTransferHistoryIndex
+                        v-else-if="activeTab === 'history'"
+                    />
+                </section>
+            </main>
         </div>
-        <!-- end part b-->
 
-        <!-- FORM -->
-        <div
-            v-else-if="view === 'form'"
-            key="form"
-            class="space-y-6"
-        >
-
-            <PageHeader
-                icon="📦"
-                :title="
-                    formMode === 'create'
-                        ? 'Create Stock Transfer'
-                        : 'Edit Strock Transfer'
-                "
-                :subtitle="
-                    formMode === 'create'
-                        ? 'Create a new Transfer Stock transaction.'
-                        : 'Update Transfer Stock transaction.'
-                "
-            />
-
-        <Card>
-
-               <StockTransferForm
-                    :form="form"
-                    :branches="branches"
-                    :warehouses="warehouses"
-                    :filtered-variants="filteredVariants"
-                    :mode="formMode"
-                    @submit="submit"
-                    @submit-and-new="submitAndNew"
-                    @cancel="cancelForm"
-                />
-            </Card>
-          
-
-        </div>
-
-    </Transition>
-
-</AppLayout>
-  <ConfirmDeleteModal
-    :show="showDelete"
-    title="Delete Stock Transfer"
-    :message="deleteMessage"
-    confirm-text="Delete"
-    @close="closeDelete"
-    @confirm="confirmDelete"
-/>
-<StockTransferPostModal
-    :show="showPost"
-    :transfer="postItem"
-    :loading="postLoading"
-    @close="closePost"
-    @confirm="confirmPost"
-/>
-<StockTransferRejectModal
-    :show="showReject"
-    :transfer="rejectItem"
-    :reason="rejectReason"
-    @close="closeReject"
-    @confirm="confirmReject"
-    @update:reason="rejectReason = $event"
-/>
-<StockTransferView
-    :show="showView"
-    :transfer="viewItem"
-    :loading="viewLoading"
-    @close="closeView"
-/>
+        <!-- CREATE MODAL INTEGRATION -->
+        <!-- StockTransferFormModal will be connected in the next step. -->
+    </AppLayout>
+         <StockTransferFormModal
+            :show="showCreateModal || showEditModal"
+            :transfer="selectedTransfer"
+            :form="form"
+            :branches="branches"
+            :warehouses="warehouses"
+            :variants="variants"
+            :units="units"
+            :preview-number="previewNumber"
+            :mode="showEditModal ? 'edit' : 'create'"
+            @close="closeFormModal"
+            @success="handleCreateSuccess"
+        />
 </template>
-<style scoped>
-
-.page-enter-active,
-.page-leave-active {
-    transition:
-        opacity 0.2s ease,
-        transform 0.2s ease;
-}
-
-.page-enter-from {
-    opacity: 0;
-    transform: translateY(8px);
-}
-
-.page-leave-to {
-    opacity: 0;
-    transform: translateY(-8px);
-}
-</style>
