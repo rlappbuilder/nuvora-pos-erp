@@ -434,8 +434,47 @@ public function index(Request $request)
         ]
     );
 }
+    /*
+    |--------------------------------------------------------------------------
 
+    Submit
+    */
 
+    public function submit(
+    StockTransferHeader $stockTransfer
+    ) {
+    $this->inventoryService
+    ->submitStockTransfer($stockTransfer);
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock transfer submitted successfully.'
+        );
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+
+    Approve
+    */
+
+    public function approve(
+    StockTransferHeader $stockTransfer
+    ) {
+    $this->inventoryService
+    ->approveStockTransfer($stockTransfer);
+
+    return redirect()
+        ->back()
+        ->with(
+            'success',
+            'Stock transfer approved successfully.'
+        );
+
+    }
     /*
     |--------------------------------------------------------------------------
     | Create
@@ -621,7 +660,24 @@ public function index(Request $request)
             );
     }
 
+public function cancelTransfer(
+    Request $request,
+    StockTransferHeader $stockTransfer
+) {
+    $validated = $request->validate([
+        'reason' => ['required', 'string', 'max:2000'],
+    ]);
 
+    $this->inventoryService->cancelApprovedStockTransfer(
+        $stockTransfer,
+        $validated['reason']
+    );
+
+    return redirect()->back()->with(
+        'success',
+        'Stock transfer cancelled successfully.'
+    );
+}
     /*
     |--------------------------------------------------------------------------
     | Warehouse Stocks

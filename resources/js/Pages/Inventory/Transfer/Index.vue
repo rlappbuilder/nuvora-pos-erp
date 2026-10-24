@@ -1,11 +1,12 @@
 <script setup>
 import {computed,ref,onMounted,onBeforeUnmount,} from 'vue'
-
+import Swal from 'sweetalert2'
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 import StockTransferIndex from './StockTransferIndex.vue'
+import ViewStockTransferModal from './ViewStockTransferModal.vue'
 //import StockTransferReturnIndex from './StockTransferReturnIndex.vue'
 //import StockTransferInIndex from './StockTransferInIndex.vue'
 //import StockTransferOutIndex from './StockTransferOutIndex.vue'
@@ -156,7 +157,146 @@ function changeTab(tabKey) {
         url,
     )
 }
+/*
+|--------------------------------------------------------------------------
+| Stock Transfer View Modal
+|--------------------------------------------------------------------------
+*/
 
+const showViewModal = ref(false)
+const viewTransfer = ref(null)
+const viewLoading = ref(false)
+const viewProcessing = ref(false)
+
+let viewRequestId = 0
+
+async function openView(item) {
+    if (!item?.id) return
+
+    const requestId = ++viewRequestId
+
+    viewTransfer.value = item
+    showViewModal.value = true
+    viewLoading.value = true
+
+    try {
+        const response = await fetch(
+            route('stock-transfers.data', item.id),
+            {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            },
+        )
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to load stock transfer (${response.status})`,
+            )
+        }
+
+        const result = await response.json()
+
+        if (requestId !== viewRequestId) return
+
+        viewTransfer.value = result.data ?? result
+    } catch (error) {
+        console.error(
+            'Failed to load stock transfer details:',
+            error,
+        )
+    } finally {
+        if (requestId === viewRequestId) {
+            viewLoading.value = false
+        }
+    }
+}
+
+function closeViewModal() {
+    if (viewProcessing.value) return
+
+    viewRequestId++
+    showViewModal.value = false
+    viewTransfer.value = null
+    viewLoading.value = false
+}
+
+function editFromView(transfer) {
+    if (!transfer) return
+
+    closeViewModal()
+    openEdit(transfer)
+}
+
+async function postFromView(transfer) {
+    if (!transfer?.id || viewProcessing.value) return
+
+    const result = await Swal.fire({
+        title: 'Post Stock Transfer?',
+        text: `Stock transfer ${transfer.number} will be posted. This action will update inventory and accounting.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Post Transfer',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) return
+
+    viewProcessing.value = true
+
+    router.post(
+        route('stock-transfers.post', transfer.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showViewModal.value = false
+                viewTransfer.value = null
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Stock transfer posted successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'transfers',
+                        'statistics',
+                        'filters',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Post Stock Transfer Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Post Failed',
+                    text: 'Unable to post stock transfer. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                viewProcessing.value = false
+            },
+        },
+    )
+}
 /*
 |--------------------------------------------------------------------------
 | Date Range
@@ -495,8 +635,280 @@ function syncDateFilters() {
         parseDate(dateTo.value),
     ].filter(Boolean)
 }
+async function rejectFromView(transfer) {
+    if (!transfer?.id || viewProcessing.value) return
 
+    const result = await Swal.fire({
+        title: 'Reject Stock Transfer?',
+        text: `Are you sure you want to reject stock transfer ${transfer.number}?`,
+        icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'Rejection Reason',
+        inputPlaceholder: 'Enter the reason for rejection...',
+        inputAttributes: {
+            'aria-label': 'Rejection reason',
+        },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Rejection reason is required.'
+            }
 
+            return undefined
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Reject',
+        cancelButtonText: 'Back',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) return
+
+    viewProcessing.value = true
+
+    router.post(
+        route('stock-transfers.cancel', transfer.id),
+        {
+            reason: result.value.trim(),
+        },
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showViewModal.value = false
+                viewTransfer.value = null
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Stock transfer rejected successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'transfers',
+                        'statistics',
+                        'filters',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Reject Stock Transfer Error:',
+                    errors,
+                )
+            },
+
+            onFinish: () => {
+                viewProcessing.value = false
+            },
+        },
+    )
+}
+async function cancelFromView(transfer) {
+    if (!transfer?.id || viewProcessing.value) return
+
+    const result = await Swal.fire({
+        title: 'Cancel Stock Transfer?',
+        text: `Are you sure you want to cancel stock transfer ${transfer.number}?`,
+        icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'Cancellation Reason',
+        inputPlaceholder: 'Enter the reason for cancellation...',
+        inputAttributes: {
+            'aria-label': 'Cancellation reason',
+        },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Cancellation reason is required.'
+            }
+
+            return undefined
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Cancel Transfer',
+        cancelButtonText: 'Back',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) return
+
+    viewProcessing.value = true
+
+    router.post(
+        route('stock-transfers.cancelled', transfer.id),
+        {
+            reason: result.value.trim(),
+        },
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+            showViewModal.value = false
+            viewTransfer.value = null
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Stock transfer cancelled successfully.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            })
+
+            router.reload({
+                only: [
+                    'transfers',
+                    'statistics',
+                    'filters',
+                ],
+                preserveScroll: true,
+            })
+        },
+
+            onError: (errors) => {
+                console.error(
+                    'Cancel Stock Transfer Error:',
+                    errors,
+                )
+            },
+
+            onFinish: () => {
+                viewProcessing.value = false
+            },
+        },
+    )
+}
+function refreshViewModal() {
+    if (!viewTransfer.value) return
+
+    openView(viewTransfer.value)
+}
+
+function printFromView(transfer) {
+    if (!transfer) return
+
+    window.print()
+}
+async function submitFromView(transfer) {
+    if (!transfer?.id || viewProcessing.value) return
+
+    viewProcessing.value = true
+
+    router.post(
+        route('stock-transfers.submit', transfer.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showViewModal.value = false
+                viewTransfer.value = null
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Stock transfer submitted successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'transfers',
+                        'statistics',
+                        'filters',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Submit Stock Transfer Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Submit Failed',
+                    text: 'Unable to submit stock transfer.',
+                })
+            },
+
+            onFinish: () => {
+                viewProcessing.value = false
+            },
+        },
+    )
+}
+
+async function approveFromView(transfer) {
+    if (!transfer?.id || viewProcessing.value) return
+
+    viewProcessing.value = true
+
+    router.post(
+        route('stock-transfers.approve', transfer.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showViewModal.value = false
+                viewTransfer.value = null
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Stock transfer approved successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'transfers',
+                        'statistics',
+                        'filters',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Approve Stock Transfer Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Approval Failed',
+                    text: 'Unable to approve stock transfer.',
+                })
+            },
+
+            onFinish: () => {
+                viewProcessing.value = false
+            },
+        },
+    )
+}
 </script>
 
 <template>
@@ -734,20 +1146,21 @@ function syncDateFilters() {
                         </p>
                     </div>
 
-                    <StockTransferIndex
-                        v-if="activeTab === 'stock-transfer'"
-                        :transfers="transfers"
-                        :statistics="statistics"
-                        :branches="branches"
-                        :warehouses="warehouses"
-                        :variants="variants"
-                        :units="units"
-                        :filters="filters"
-                        :preview-number="previewNumber"
-                        :date-from="dateFrom"
-                        :date-to="dateTo"
-                        @create="openCreate"
-                    />
+               <StockTransferIndex
+                    v-if="activeTab === 'stock-transfer'"
+                    :transfers="transfers"
+                    :statistics="statistics"
+                    :branches="branches"
+                    :warehouses="warehouses"
+                    :variants="variants"
+                    :units="units"
+                    :filters="filters"
+                    :preview-number="previewNumber"
+                    :date-from="dateFrom"
+                    :date-to="dateTo"
+                    @create="openCreate"
+                    @view="openView"
+                />
 
                     <StockTransferReturnIndex
                         v-else-if="activeTab === 'transfer-return'"
@@ -783,5 +1196,21 @@ function syncDateFilters() {
             :mode="showEditModal ? 'edit' : 'create'"
             @close="closeFormModal"
             @success="handleCreateSuccess"
+        />
+        <!-- VIEW STOCK TRANSFER MODAL -->
+        <ViewStockTransferModal
+            :show="showViewModal"
+            :transfer="viewTransfer"
+            :loading="viewLoading"
+            :processing="viewProcessing"
+            @close="closeViewModal"
+            @edit="editFromView"
+            @submit="submitFromView"
+            @approve="approveFromView"
+            @post="postFromView"
+            @reject="rejectFromView"
+            @cancel="cancelFromView"
+            @print="printFromView"
+            @refresh="refreshViewModal"
         />
 </template>

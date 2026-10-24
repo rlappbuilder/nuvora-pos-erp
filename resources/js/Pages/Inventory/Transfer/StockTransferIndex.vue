@@ -5,7 +5,8 @@ import TablePagination from '@/Components/Table/TablePagination.vue'
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import { formatDate, currency } from '@/Utils'
-import StockTransferViewModal from './StockTransferViewModal.vue'
+
+
 /*
 |--------------------------------------------------------------------------
 | Props
@@ -86,7 +87,9 @@ const emit = defineEmits([
     'view',
     'edit',
 ])
-
+function openView(item) {
+    emit('view', item)
+}
 /*
 |--------------------------------------------------------------------------
 | State
@@ -401,157 +404,7 @@ function visitPage(url) {
         },
     })
 }
-/*
-|--------------------------------------------------------------------------
-| View Modal
-|--------------------------------------------------------------------------
-*/
 
-const showViewModal = ref(false)
-const selectedTransfer = ref(null)
-const detailLoading = ref(false)
-const detailProcessing = ref(false)
-
-let detailRequestId = 0
-
-async function openView(item) {
-    const requestId = ++detailRequestId
-
-    selectedTransfer.value = item
-    showViewModal.value = true
-    detailLoading.value = true
-
-    try {
-        const response = await fetch(
-            route('stock-transfers.data', item.id),
-            {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            },
-        )
-
-        if (!response.ok) {
-            throw new Error(
-                `Failed to load stock transfer (${response.status})`,
-            )
-        }
-
-        const result = await response.json()
-
-        if (requestId !== detailRequestId) {
-            return
-        }
-
-        selectedTransfer.value = result.data ?? result
-    } catch (error) {
-        console.error(
-            'Failed to load stock transfer details:',
-            error,
-        )
-    } finally {
-        if (requestId === detailRequestId) {
-            detailLoading.value = false
-        }
-    }
-}
-
-function closeViewModal() {
-    if (detailProcessing.value) return
-
-    detailRequestId++
-    showViewModal.value = false
-    selectedTransfer.value = null
-    detailLoading.value = false
-}
-
-function refreshViewModal() {
-    if (!selectedTransfer.value) return
-
-    openView(selectedTransfer.value)
-}
-
-function editTransfer(item) {
-    if (!item) return
-
-    closeViewModal()
-
-    // Event untuk integrasi dengan Form Modal nantinya.
-    emit('edit', item)
-}
-
-function postTransfer(item) {
-    if (!item || detailProcessing.value) return
-
-    if (!confirm(`Post stock transfer ${item.number}?`)) {
-        return
-    }
-
-    detailProcessing.value = true
-
-    router.post(
-        route('stock-transfers.post', item.id),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                closeViewModal()
-                loadData()
-            },
-
-            onFinish: () => {
-                detailProcessing.value = false
-            },
-        },
-    )
-}
-
-function rejectTransfer(item) {
-    if (!item || detailProcessing.value) return
-
-    const reason = window.prompt(
-        `Enter rejection reason for ${item.number}:`,
-    )
-
-    if (reason === null) return
-
-    if (!reason.trim()) {
-        window.alert('Rejection reason is required.')
-        return
-    }
-
-    detailProcessing.value = true
-
-    router.post(
-        route('stock-transfers.cancel', item.id),
-        {
-            reason: reason.trim(),
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                closeViewModal()
-                loadData()
-            },
-
-            onFinish: () => {
-                detailProcessing.value = false
-            },
-        },
-    )
-}
-
-function printTransfer(item) {
-    if (!item) return
-
-    // Print akan diintegrasikan mengikuti pola print Nuvora
-    // setelah implementasi print Stock Transfer tersedia.
-    window.print()
-}
 </script>
 
 <template>
@@ -1075,20 +928,5 @@ function printTransfer(item) {
             </div>
         </section>
     </div>
-    <!-- ===================================================== -->
-    <!-- VIEW STOCK TRANSFER MODAL -->
-    <!-- ===================================================== -->
-
-    <ViewStockTransferModal
-        :show="showViewModal"
-        :transfer="selectedTransfer"
-        :loading="detailLoading"
-        :processing="detailProcessing"
-        @close="closeViewModal"
-        @edit="editTransfer"
-        @post="postTransfer"
-        @reject="rejectTransfer"
-        @print="printTransfer"
-        @refresh="refreshViewModal"
-    />
+   
 </template>

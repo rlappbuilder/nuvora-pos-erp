@@ -3324,11 +3324,99 @@ public function createStockTransfer(
             ]);
             
         }
-
+   $this->documentActivityService->record(
+    $transfer,
+    'CREATED',
+    null,
+    'Draft',
+    'Stock transfer created.'
+    );
 
         return $transfer;
     });
+
+ 
 }
+/**
+
+* Submit Stock Transfer.
+  */
+  public function submitStockTransfer(
+  StockTransferHeader $stockTransfer
+  ): StockTransferHeader {
+  
+  return DB::transaction(function () use ($stockTransfer) {
+  
+   $stockTransfer->refresh();
+
+ if ($stockTransfer->status !== 'Draft') {
+     throw new \RuntimeException(
+         'Only Draft Stock Transfer can be submitted.'
+     );
+ }
+
+ if ($stockTransfer->details()->count() === 0) {
+     throw new \RuntimeException(
+         'Stock Transfer must contain at least one detail.'
+     );
+ }
+
+ $stockTransfer->update([
+     'status' => 'Submitted',
+     'submitted_at' => now(),
+     'submitted_by' => auth()->id(),
+     'updated_by' => auth()->id(),
+ ]);
+
+ $this->documentActivityService->record(
+     $stockTransfer,
+     'SUBMITTED',
+     'Draft',
+     'Submitted',
+     'Stock Transfer submitted.'
+ );
+
+ return $stockTransfer->fresh('details');
+  
+  });
+  }
+/**
+
+* Approve Stock Transfer.
+  */
+  public function approveStockTransfer(
+  StockTransferHeader $stockTransfer
+  ): StockTransferHeader {
+  
+  return DB::transaction(function () use ($stockTransfer) {
+  
+   $stockTransfer->refresh();
+
+ if ($stockTransfer->status !== 'Submitted') {
+     throw new \RuntimeException(
+         'Only Submitted Stock Transfer can be approved.'
+     );
+ }
+
+ $stockTransfer->update([
+     'status' => 'Approved',
+     'approved_at' => now(),
+     'approved_by' => auth()->id(),
+     'updated_by' => auth()->id(),
+ ]);
+
+ $this->documentActivityService->record(
+     $stockTransfer,
+     'APPROVED',
+     'Submitted',
+     'Approved',
+     'Stock Transfer approved.'
+ );
+
+ return $stockTransfer->fresh('details');
+  
+  });
+  }
 /** create Stock Issue */
 /** post stock issue */
 public function postStockIssue(
@@ -5125,11 +5213,11 @@ public function postStockTransfer(
         */
 
         if (
-            $stockTransfer->status !== 'Draft'
+            $stockTransfer->status !== 'Approved'
         ) {
 
             throw new \RuntimeException(
-                'Only Draft stock transfer can be posted.'
+                'Only Approved stock transfer can be posted.'
             );
 
         }
@@ -5922,11 +6010,11 @@ public function cancelStockTransfer(
 
 
         if (
-            $stockTransfer->status !== 'Draft'
+            $stockTransfer->status !== 'Submitted'
         ) {
 
             throw new \RuntimeException(
-                'Only Draft stock transfer can be cancelled.'
+                'Only Submitted stock transfer can be cancelled.'
             );
 
         }
@@ -5972,6 +6060,54 @@ public function cancelStockTransfer(
 
             );
 
+    });
+}
+public function cancelApprovedStockTransfer(
+    StockTransferHeader $stockTransfer,
+    string $reason
+): void {
+    DB::transaction(function () use ($stockTransfer, $reason) {
+
+        $stockTransfer = StockTransferHeader::query()
+            ->lockForUpdate()
+            ->findOrFail($stockTransfer->id);
+
+        if (! in_array($stockTransfer->status, [
+            'Draft',
+            'Submitted',
+            'Approved',
+        ], true)) {
+            throw new \RuntimeException(
+                'Only Draft, Submitted, or Approved stock transfer can be cancelled.'
+            );
+        }
+
+        if (trim($reason) === '') {
+            throw new \RuntimeException(
+                'Cancellation reason is required.'
+            );
+        }
+
+        $oldStatus = $stockTransfer->status;
+
+        $stockTransfer->update([
+            'status' => 'Cancelled',
+            'cancelled_at' => now(),
+            'cancelled_by' => auth()->id(),
+            'cancelled_reason' => trim($reason),
+            'updated_by' => auth()->id(),
+        ]);
+
+        $this->documentActivityService->record(
+            $stockTransfer,
+            'CANCELLED',
+            $oldStatus,
+            'Cancelled',
+            'Stock transfer cancelled.',
+            [
+                'reason' => trim($reason),
+            ]
+        );
     });
 }
 public function duplicateStockTransfer(

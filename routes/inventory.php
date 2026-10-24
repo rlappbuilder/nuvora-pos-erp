@@ -242,8 +242,17 @@ Route::middleware(
         | Stock Transfer
         |--------------------------------------------------------------------------
         */
+        Route::post(
+            '/transfers/{stockTransfer}/submit',
+            [StockTransferController::class, 'submit']
+        )->name('stock-transfers.submit');
+
+        Route::post(
+            '/transfers/{stockTransfer}/approve',
+            [StockTransferController::class, 'approve']
+        )->name('stock-transfers.approve');
         Route::get(
-    'stock-transfers/{stockTransfer}/data',[StockTransferController::class,'data',]
+         'stock-transfers/{stockTransfer}/data',[StockTransferController::class,'data',]
           )->name('stock-transfers.data' );
         Route::get('/transfers',[StockTransferController::class,'index'])
 
@@ -276,7 +285,10 @@ Route::middleware(
         Route::post('/transfers/{stockTransfer}/complete',[StockTransferController::class,'complete'])
 
         ->name('stock-transfers.complete');
-
+        Route::post(
+                '/transfers/{stockTransfer}/cancelled',
+                [StockTransferController::class, 'cancelTransfer']
+            )->name('stock-transfers.cancelled');
         Route::post('/transfers/{stockTransfer}/cancel',[StockTransferController::class, 'cancel'] )
 
         ->name('stock-transfers.cancel');
