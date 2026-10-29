@@ -6,25 +6,14 @@ use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockBalanceController;
 use App\Http\Controllers\Inventory\StockCardController;
 use App\Http\Controllers\Inventory\StockOpnameController;
-
+use App\Http\Controllers\Inventory\StockTransferReturnController;
 use App\Http\Controllers\Inventory\InventoryAdjustmentController;
 use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Inventory\StockIssueController;
 
-Route::middleware(
-
-    'auth'
-
-)
-
-->prefix(
-
-    'inventory'
-
-)
-
+Route::middleware('auth')
+->prefix('inventory')
 ->group(
-
     function () {
 
         /*
@@ -237,6 +226,67 @@ Route::middleware(
         Route::get('/adjustments/warehouse/{warehouse}',[InventoryAdjustmentController::class,'getWarehouseStocks'])
 
         ->name('inventory-adjustments.warehouse-stocks');
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Transfer Return
+        |--------------------------------------------------------------------------
+        */
+
+        Route::prefix('transfer-returns')
+            ->name('stock-transfer-returns.')
+            ->controller(StockTransferReturnController::class)
+            ->group(function () {
+
+                Route::get(
+                    '/',
+                    'index'
+                )->name('index');
+
+                Route::get(
+                    '/create',
+                    'create'
+                )->name('create');
+
+                Route::post(
+                    '/',
+                    'store'
+                )->name('store');
+
+                Route::get(
+                    '/{stockTransferReturn}/data',
+                    'data'
+                )->name('data');
+
+                Route::get(
+                    '/{stockTransferReturn}',
+                    'show'
+                )->name('show');
+
+                Route::post(
+                    '/{stockTransferReturn}/submit',
+                    'submit'
+                )->name('submit');
+
+                Route::post(
+                    '/{stockTransferReturn}/approve',
+                    'approve'
+                )->name('approve');
+
+                Route::post(
+                    '/{stockTransferReturn}/post',
+                    'post'
+                )->name('post');
+
+                Route::post(
+                    '/{stockTransferReturn}/reject',
+                    'reject'
+                )->name('reject');
+
+                Route::post(
+                    '/{stockTransferReturn}/cancel',
+                    'cancel'
+                )->name('cancel');
+            });
             /*
         |--------------------------------------------------------------------------
         | Stock Transfer

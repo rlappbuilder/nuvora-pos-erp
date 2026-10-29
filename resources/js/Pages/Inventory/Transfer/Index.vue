@@ -5,10 +5,12 @@ import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
+import DateRangePicker from '@/Components/Form/DateRangePicker.vue'
 import StockTransferIndex from './StockTransferIndex.vue'
 import ViewStockTransferModal from './ViewStockTransferModal.vue'
-//import StockTransferReturnIndex from './StockTransferReturnIndex.vue'
-//import StockTransferInIndex from './StockTransferInIndex.vue'
+import ReturnIndex from './Returns/ReturnIndex.vue'
+import ReturnHistory from './Returns/ReturnHistory.vue'
+import FormModalReturn from './Returns/FormModalReturn.vue'
 //import StockTransferOutIndex from './StockTransferOutIndex.vue'
 //import StockTransferHistoryIndex from './StockTransferHistoryIndex.vue'
 import StockTransferFormModal from './StockTransferFormModal.vue'
@@ -75,8 +77,57 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    availableTransfers: {
+    type: Object,
+    default: () => ({
+        data: [],
+        links: [],
+        current_page: 1,
+        last_page: 1,
+        total: 0,
+    }),
+},
+returns: {
+    type: Object,
+    default: () => ({
+        data: [],
+        links: [],
+        current_page: 1,
+        last_page: 1,
+        total: 0,
+    }),
+},
+transferStatistics: {
+    type: Object,
+    default: () => ({
+        total: 0,
+        available: 0,
+        partiallyReturned: 0,
+    }),
+},
+returnStatistics: {
+    type: Object,
+    default: () => ({
+        total: 0,
+        draft: 0,
+        rejected: 0,
+        posted: 0,
+    }),
+},
+transferFilters: {
+    type: Object,
+    default: () => ({}),
+},
+returnFilters: {
+    type: Object,
+    default: () => ({}),
+},
+previewReturnNumber: {
+    type: String,
+    default: '',
+},
 })
-
+const returnSubmitSuccess = ref(0)
 /*
 |--------------------------------------------------------------------------
 | Dashboard Tabs
@@ -95,6 +146,11 @@ const tabs = [
         description: 'Manage returns against original stock transfers.',
     },
     {
+        key: 'return-history',
+        label: 'Return History',
+        description: 'Review stock transfer return transaction history.',
+    },
+    {
         key: 'transfer-in',
         label: 'Transfer In',
         description: 'Review stock received from other branches.',
@@ -103,11 +159,6 @@ const tabs = [
         key: 'transfer-out',
         label: 'Transfer Out',
         description: 'Review stock sent to other branches.',
-    },
-    {
-        key: 'history',
-        label: 'History',
-        description: 'Review stock transfer transaction history.',
     },
 ]
 
@@ -909,6 +960,600 @@ async function approveFromView(transfer) {
         },
     )
 }
+
+const showReturnModal = ref(false)
+const selectedReturnTransfer = ref(null)
+function openCreateReturn(transfer = null) {
+    selectedReturnTransfer.value = transfer
+    showReturnModal.value = true
+}
+
+function closeCreateReturn() {
+    showReturnModal.value = false
+    selectedReturnTransfer.value = null
+}
+
+function handleReturnSuccess() {
+    showReturnModal.value = false
+    selectedReturnTransfer.value = null
+}
+function loadReturnFilteredData({ dateFrom, dateTo } = {}) {
+    const isReturnHistory = activeTab.value === 'return-history'
+
+    if (isReturnHistory) {
+        router.get(
+            route('stock-transfers.index'),
+            {
+                ...props.filters,
+
+                return_search:
+                    props.returnFilters?.search ?? '',
+
+                return_status:
+                    props.returnFilters?.status ?? '',
+
+                return_date_from: dateFrom ?? '',
+                return_date_to: dateTo ?? '',
+
+                return_per_page:
+                    props.returnFilters?.per_page ?? 10,
+
+                return_sort_by:
+                    props.returnFilters?.sort_by ?? 'transaction_date',
+
+                return_sort_direction:
+                    props.returnFilters?.sort_direction ?? 'desc',
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: [
+                    'returns',
+                    'returnStatistics',
+                    'returnFilters',
+                    'returnDateFrom',
+                    'returnDateTo',
+                ],
+            },
+        )
+
+        return
+    }
+
+    router.get(
+        route('stock-transfers.index'),
+        {
+            ...props.filters,
+
+            return_transfer_search:
+                props.transferFilters?.search ?? '',
+
+            return_date_from: dateFrom ?? '',
+            return_date_to: dateTo ?? '',
+
+            return_per_page:
+                props.transferFilters?.per_page ?? 10,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: [
+                'availableTransfers',
+                'transferStatistics',
+                'transferFilters',
+                'returnDateFrom',
+                'returnDateTo',
+            ],
+        },
+    )
+}
+function loadReturnHistoryFilteredData(filters = {}) {
+    const dateFrom =
+        filters.dateFrom ??
+        filters.date_from ??
+        props.returnDateFrom ??
+        ''
+
+    const dateTo =
+        filters.dateTo ??
+        filters.date_to ??
+        props.returnDateTo ??
+        ''
+
+    router.get(
+        route('stock-transfers.index'),
+        {
+            ...props.filters,
+            return_search:
+                filters.search ??
+                props.returnFilters?.search ??
+                '',
+            return_status:
+                filters.status ??
+                props.returnFilters?.status ??
+                '',
+            return_date_from: dateFrom,
+            return_date_to: dateTo,
+            return_per_page:
+                filters.per_page ??
+                props.returnFilters?.per_page ??
+                10,
+            return_sort_by:
+                filters.sort_by ??
+                props.returnFilters?.sort_by ??
+                'transaction_date',
+            return_sort_direction:
+                filters.sort_direction ??
+                props.returnFilters?.sort_direction ??
+                'desc',
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: [
+                'returns',
+                'returnStatistics',
+                'returnFilters',
+                'returnDateFrom',
+                'returnDateTo',
+            ],
+        }
+    )
+}
+
+function clearReturnHistoryDateFilter() {
+    loadReturnHistoryFilteredData({
+        dateFrom: '',
+        dateTo: '',
+    })
+}
+function clearReturnDateFilter() {
+    loadReturnFilteredData({
+        dateFrom: '',
+        dateTo: '',
+    })
+}
+/*
+|--------------------------------------------------------------------------
+| Submit Stock Transfer Return
+|--------------------------------------------------------------------------
+*/
+
+const returnProcessing = ref(false)
+
+async function submitReturn(returnItem) {
+    if (!returnItem?.id || returnProcessing.value) {
+        return
+    }
+
+    const result = await Swal.fire({
+        title: 'Submit Transfer Return?',
+        text: `Transfer return ${returnItem.number} will be submitted for approval.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Submit',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) {
+        return
+    }
+
+    returnProcessing.value = true
+
+    router.post(
+        route('stock-transfer-returns.submit', returnItem.id),
+        {},
+        {
+            preserveScroll: true,
+
+           onSuccess: () => {
+    console.log('SUBMIT SUCCESS - BEFORE:', returnSubmitSuccess.value)
+
+    returnSubmitSuccess.value++
+
+    console.log('SUBMIT SUCCESS - AFTER:', returnSubmitSuccess.value)
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Transfer return submitted successfully.',
+        showConfirmButton: false,
+        timer: 3000,
+    })
+
+    router.reload({
+        only: [
+            'returns',
+            'returnStatistics',
+            'returnFilters',
+            'returnDateFrom',
+            'returnDateTo',
+        ],
+        preserveScroll: true,
+    })
+},
+
+            onError: (errors) => {
+                console.error('Submit Transfer Return Error:', errors)
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Submit Failed',
+                    text: 'Unable to submit transfer return. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                returnProcessing.value = false
+            },
+        },
+    )
+}
+function refreshReturnHistory() {
+    router.reload({
+        only: [
+            'returns',
+            'returnStatistics',
+            'returnFilters',
+            'returnDateFrom',
+            'returnDateTo',
+        ],
+        preserveScroll: true,
+    })
+}
+/*
+|--------------------------------------------------------------------------
+| Approve Stock Transfer Return
+|--------------------------------------------------------------------------
+*/
+
+async function approveReturn(returnItem) {
+    if (!returnItem?.id || returnProcessing.value) {
+        return
+    }
+
+    const result = await Swal.fire({
+        title: 'Approve Transfer Return?',
+        text: `Transfer return ${returnItem.number} will be approved.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Approve',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) {
+        return
+    }
+
+    returnProcessing.value = true
+
+    router.post(
+        route('stock-transfer-returns.approve', returnItem.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                returnSubmitSuccess.value++
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Transfer return approved successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'returns',
+                        'returnStatistics',
+                        'returnFilters',
+                        'returnDateFrom',
+                        'returnDateTo',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Approve Transfer Return Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Approval Failed',
+                    text: 'Unable to approve transfer return. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                returnProcessing.value = false
+            },
+        },
+    )
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Post Stock Transfer Return
+|--------------------------------------------------------------------------
+*/
+
+async function postReturn(returnItem) {
+    if (!returnItem?.id || returnProcessing.value) {
+        return
+    }
+
+    const result = await Swal.fire({
+        title: 'Post Transfer Return?',
+        text: `Transfer return ${returnItem.number} will be posted. This action may update inventory.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Post',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) {
+        return
+    }
+
+    returnProcessing.value = true
+
+    router.post(
+        route('stock-transfer-returns.post', returnItem.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                returnSubmitSuccess.value++
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Transfer return posted successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'returns',
+                        'returnStatistics',
+                        'returnFilters',
+                        'returnDateFrom',
+                        'returnDateTo',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Post Transfer Return Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Post Failed',
+                    text: 'Unable to post transfer return. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                returnProcessing.value = false
+            },
+        },
+    )
+}
+/*
+|--------------------------------------------------------------------------
+| Cancel Stock Transfer Return
+|--------------------------------------------------------------------------
+*/
+
+async function cancelReturn(returnItem) {
+    if (!returnItem?.id || returnProcessing.value) {
+        return
+    }
+
+    const result = await Swal.fire({
+        title: 'Cancel Transfer Return?',
+        text: `Transfer return ${returnItem.number} will be cancelled.`,
+        icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'Cancellation Reason',
+        inputPlaceholder: 'Enter the reason for cancellation...',
+        inputAttributes: {
+            'aria-label': 'Cancellation reason',
+        },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Cancellation reason is required.'
+            }
+
+            return undefined
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Cancel',
+        cancelButtonText: 'Back',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) {
+        return
+    }
+
+    returnProcessing.value = true
+
+    router.post(
+        route('stock-transfer-returns.cancel', returnItem.id),
+        {
+            reason: result.value.trim(),
+        },
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                returnSubmitSuccess.value++
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Transfer return cancelled successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'returns',
+                        'returnStatistics',
+                        'returnFilters',
+                        'returnDateFrom',
+                        'returnDateTo',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Cancel Transfer Return Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Cancellation Failed',
+                    text: 'Unable to cancel transfer return. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                returnProcessing.value = false
+            },
+        },
+    )
+}
+/*
+|--------------------------------------------------------------------------
+| Reject Stock Transfer Return
+|--------------------------------------------------------------------------
+*/
+
+async function rejectReturn(returnItem) {
+    if (!returnItem?.id || returnProcessing.value) {
+        return
+    }
+
+    const result = await Swal.fire({
+        title: 'Reject Transfer Return?',
+        text: `Transfer return ${returnItem.number} will be rejected.`,
+        icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'Rejection Reason',
+        inputPlaceholder: 'Enter the reason for rejection...',
+        inputAttributes: {
+            'aria-label': 'Rejection reason',
+        },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Rejection reason is required.'
+            }
+
+            return undefined
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Reject',
+        cancelButtonText: 'Back',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+        focusCancel: true,
+    })
+
+    if (!result.isConfirmed) {
+        return
+    }
+
+    returnProcessing.value = true
+
+    router.post(
+        route('stock-transfer-returns.reject', returnItem.id),
+        {
+            reason: result.value.trim(),
+        },
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                returnSubmitSuccess.value++
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Transfer return rejected successfully.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                })
+
+                router.reload({
+                    only: [
+                        'returns',
+                        'returnStatistics',
+                        'returnFilters',
+                        'returnDateFrom',
+                        'returnDateTo',
+                    ],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: (errors) => {
+                console.error(
+                    'Reject Transfer Return Error:',
+                    errors,
+                )
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Rejection Failed',
+                    text: 'Unable to reject transfer return. Please check the validation errors.',
+                })
+            },
+
+            onFinish: () => {
+                returnProcessing.value = false
+            },
+        },
+    )
+}
 </script>
 
 <template>
@@ -954,18 +1599,50 @@ async function approveFromView(transfer) {
                         </div>
 
                         <div class="min-w-0">
-                            <h1
-                                class="text-xl font-semibold tracking-tight text-slate-900"
-                            >
-                                Stock Transfer
+                            <h1 class="text-xl font-semibold tracking-tight text-slate-900">
+                                {{ activeTabDetails.label === 'Transfer Return'
+                                    ? 'TRANSFER RETURN'
+                                    : 'Stock Transfer'
+                                }}
                             </h1>
 
                             <p class="mt-1 text-sm text-slate-500">
-                                Manage stock transfers, returns, incoming and outgoing stock.
+                                {{ activeTabDetails.label === 'Transfer Return'
+                                    ? 'Manage returns against original stock transfers.'
+                                    : 'Manage stock transfers, returns, incoming and outgoing stock.'
+                                }}
                             </p>
                         </div>
+
+                    </div>
+                        <!-- TRANSFER RETURN HEADER ACTIONS -->
+                    <!-- TRANSFER RETURN HEADER ACTIONS -->
+                    <div
+                        v-if="activeTab === 'transfer-return'"
+                        class="flex w-full items-center justify-end sm:w-auto sm:min-w-[270px]"
+                    >
+                        <DateRangePicker
+                            :date-from="props.returnDateFrom"
+                            :date-to="props.returnDateTo"
+                            placeholder="Filter date range"
+                            @apply="loadReturnFilteredData"
+                            @clear="clearReturnDateFilter"
+                        />
                     </div>
 
+                    <!-- RETURN HISTORY HEADER ACTIONS -->
+                    <div
+                        v-else-if="activeTab === 'return-history'"
+                        class="flex w-full items-center justify-end sm:w-auto sm:min-w-[270px]"
+                    >
+                        <DateRangePicker
+                            :date-from="props.returnDateFrom"
+                            :date-to="props.returnDateTo"
+                            placeholder="Filter date range"
+                            @apply="loadReturnHistoryFilteredData"
+                            @clear="clearReturnHistoryDateFilter"
+                        />
+                    </div>
                     <div
                         v-if="activeTab === 'stock-transfer'"
                         class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto"
@@ -1146,26 +1823,55 @@ async function approveFromView(transfer) {
                         </p>
                     </div>
 
-               <StockTransferIndex
-                    v-if="activeTab === 'stock-transfer'"
-                    :transfers="transfers"
-                    :statistics="statistics"
-                    :branches="branches"
-                    :warehouses="warehouses"
-                    :variants="variants"
-                    :units="units"
-                    :filters="filters"
-                    :preview-number="previewNumber"
-                    :date-from="dateFrom"
-                    :date-to="dateTo"
-                    @create="openCreate"
-                    @view="openView"
-                />
-
-                    <StockTransferReturnIndex
-                        v-else-if="activeTab === 'transfer-return'"
+                   <StockTransferIndex
+                        v-if="activeTab === 'stock-transfer'"
+                        :transfers="transfers"
+                        :statistics="statistics"
+                        :branches="branches"
+                        :warehouses="warehouses"
+                        :variants="variants"
+                        :units="units"
+                        :filters="filters"
+                        :preview-number="previewNumber"
+                        :date-from="dateFrom"
+                        :date-to="dateTo"
+                        @create="openCreate"
+                        @view="openView"
                     />
 
+                   <ReturnIndex
+                        v-else-if="activeTab === 'transfer-return'"
+                        :key="activeTab"
+                        :available-transfers="availableTransfers"
+                        :returns="returns"
+                        :transfer-statistics="transferStatistics"
+                        :return-statistics="returnStatistics"
+                        :transfer-filters="transferFilters"
+                        :return-filters="returnFilters"
+                        :date-from="dateFrom"
+                        :date-to="dateTo"
+                        @create="openCreateReturn"
+                        @return="openCreateReturn"
+                        @view="openReturnView"
+                        @date-filter="loadReturnFilteredData"
+                    />
+                     <ReturnHistory
+                        v-else-if="activeTab === 'return-history'"
+                        :key="activeTab"
+                        :returns="returns"
+                        :return-statistics="returnStatistics"
+                        :return-filters="returnFilters"
+                        :date-from="returnDateFrom"
+                        :date-to="returnDateTo"
+                        :submit-success-signal="returnSubmitSuccess"
+                        @date-filter="loadReturnHistoryFilteredData"
+                        @submit="submitReturn"
+                        @approve="approveReturn"
+                        @post="postReturn"
+                        @reject="rejectReturn"
+                        @cancel="cancelReturn"
+                        @close-detail="closeReturnDetail"
+                    />
                     <StockTransferInIndex
                         v-else-if="activeTab === 'transfer-in'"
                     />
@@ -1174,9 +1880,7 @@ async function approveFromView(transfer) {
                         v-else-if="activeTab === 'transfer-out'"
                     />
 
-                    <StockTransferHistoryIndex
-                        v-else-if="activeTab === 'history'"
-                    />
+                  
                 </section>
             </main>
         </div>
@@ -1212,5 +1916,13 @@ async function approveFromView(transfer) {
             @cancel="cancelFromView"
             @print="printFromView"
             @refresh="refreshViewModal"
+        />
+        <FormModalReturn
+            :show="showReturnModal"
+            :transfer="selectedReturnTransfer"
+            :available-transfers="availableTransfers"
+            :preview-number="previewReturnNumber"
+            @close="closeCreateReturn"
+            @success="handleReturnSuccess"
         />
 </template>

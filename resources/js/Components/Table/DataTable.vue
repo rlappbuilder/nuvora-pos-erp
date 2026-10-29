@@ -1,133 +1,73 @@
 <script setup>
-
 import { computed } from 'vue'
 
 const props = defineProps({
-
     bordered: {
-
         type: Boolean,
-
         default: true,
-
     },
 
     hover: {
-
         type: Boolean,
-
         default: true,
-
     },
 
     striped: {
-
         type: Boolean,
-
         default: false,
-
     },
 
     stickyHeader: {
-
         type: Boolean,
-
         default: false,
-
     },
+
     maxHeight: {
+        type: String,
+        default: '650px',
+    },
 
-    type: String,
-
-    default: '650px',
-
-},
-
+    minWidth: {
+        type: String,
+        default: '100%',
+    },
 })
 
 const wrapperClass = computed(() => [
-
     'overflow-hidden',
-
     'rounded-2xl',
-
     'bg-white',
-
-    props.bordered
-
-        ? 'border border-gray-200'
-
-        : '',
-
+    props.bordered ? 'border border-gray-200' : '',
     'shadow-sm',
-
 ])
 
 const tableClass = computed(() => [
-
-    'min-w-full',
-    
+    'w-full',
     'table-fixed',
-
     'border-collapse',
-
     'text-sm',
-
-
 ])
-
 </script>
 
 <template>
-
-<div
-
-    :class="wrapperClass"
-
->
-
-  <div
-
-    :class="[
-
-        'overflow-x-auto',
-
-        stickyHeader
-
-            ? 'overflow-y-auto'
-
-            : '',
-
-    ]"
-
-    :style="
-
-        stickyHeader
-
-            ? {
-
-                maxHeight,
-
-            }
-
-            : {}
-
-    "
-
->
-
-        <table
-
-            :class="tableClass"
-
+    <div :class="wrapperClass">
+        <div
+            :class="[
+                'overflow-x-auto',
+                stickyHeader ? 'overflow-y-auto' : '',
+            ]"
+            :style="
+                stickyHeader
+                    ? { maxHeight }
+                    : {}
+            "
         >
-
-            <slot />
-
-        </table>
-
+            <table
+                :class="tableClass"
+                :style="{ minWidth }"
+            >
+                <slot />
+            </table>
+        </div>
     </div>
-
-</div>
-
 </template>

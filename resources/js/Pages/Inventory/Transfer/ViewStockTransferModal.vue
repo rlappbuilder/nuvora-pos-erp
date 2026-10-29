@@ -167,7 +167,9 @@ const details = computed(() => {
 })
 
 const activities = computed(() => {
-    return props.transfer?.activities ?? []
+    const data = props.transfer?.activities
+
+    return Array.isArray(data) ? data : []
 })
 
 const totalQuantity = computed(() => {
