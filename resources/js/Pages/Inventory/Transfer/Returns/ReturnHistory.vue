@@ -121,24 +121,32 @@ const statCards = computed(() => [
         key: 'total',
         label: 'Total Returns',
         value: props.returnStatistics?.total ?? 0,
+        amount: props.returnStatistics?.totalAmount ?? 0,
         color: 'blue',
     },
     {
         key: 'draft',
         label: 'Draft',
         value: props.returnStatistics?.draft ?? 0,
+        amount: props.returnStatistics?.draftAmount ?? 0,
         color: 'slate',
     },
     {
         key: 'pending',
         label: 'Pending Approval',
-        value: props.returnStatistics?.submitted ?? 0,
+        value:
+            Number(props.returnStatistics?.submitted ?? 0) +
+            Number(props.returnStatistics?.approved ?? 0),
+        amount:
+            Number(props.returnStatistics?.submittedAmount ?? 0) +
+            Number(props.returnStatistics?.approvedAmount ?? 0),
         color: 'amber',
     },
     {
         key: 'posted',
         label: 'Posted',
         value: props.returnStatistics?.posted ?? 0,
+        amount: props.returnStatistics?.postedAmount ?? 0,
         color: 'emerald',
     },
 ])
@@ -484,43 +492,44 @@ function handleSubmit(item) {
        
 
         <!-- STATISTICS -->
-        <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div
-                v-for="stat in statCards"
-                :key="stat.key"
-                class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-                <p class="text-xs font-medium text-slate-500">
-                    {{ stat.label }}
-                </p>
+<section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+        v-for="stat in statCards"
+        :key="stat.key"
+        class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+        <!-- Status Label -->
+        <p class="text-xs font-medium text-slate-500">
+            {{ stat.label }}
+        </p>
 
-                <p class="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                    {{ formatNumber(stat.value) }}
-                </p>
+        <!-- Total Amount -->
+        <p class="mt-3 text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatAmount(stat.amount ?? 0) }}
+        </p>
 
-                <div
-                    class="mt-3 h-1 w-12 rounded-full"
-                    :class="{
-                        'bg-blue-500': stat.color === 'blue',
-                        'bg-slate-400': stat.color === 'slate',
-                        'bg-amber-500': stat.color === 'amber',
-                        'bg-emerald-500': stat.color === 'emerald',
-                    }"
-                />
-            </div>
-        </section>
+        <!-- Document Count -->
+        <p class="mt-1 text-sm text-slate-500">
+            {{ formatNumber(stat.value) }} {{ stat.label }}{{ Number(stat.value) === 1 ? '' : 's' }}
+        </p>
+
+        <!-- Accent Line -->
+        <div
+            class="mt-3 h-1 w-12 rounded-full"
+            :class="{
+                'bg-blue-500': stat.color === 'blue',
+                'bg-slate-400': stat.color === 'slate',
+                'bg-amber-500': stat.color === 'amber',
+                'bg-emerald-500': stat.color === 'emerald',
+                'bg-red-500': stat.color === 'red',
+            }"
+        />
+    </div>
+</section>
 
         <!-- FILTERS -->
         <section>
-            <div class="mb-4">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-700">
-                    Return Documents
-                </h3>
-
-                <p class="mt-1 text-xs text-slate-500">
-                    Search and filter return records by number or status.
-                </p>
-            </div>
+            
 
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end">

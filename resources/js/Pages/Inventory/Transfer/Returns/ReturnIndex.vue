@@ -178,7 +178,7 @@ const statCards = computed(() => {
                 label: 'Transfer Amount',
                 value: props.transferStatistics?.totalAmount ?? 0,
                 color: 'blue',
-                icon: 'amount',
+                
                 isAmount: true,
             },
         ]
@@ -211,7 +211,8 @@ const statCards = computed(() => {
             label: 'Transfer Amount',
             value: props.returnStatistics?.totalAmount ?? 0,
             color: 'blue',
-            icon: 'amount',
+           
+           
             isAmount: true,
         },
     ]
@@ -521,119 +522,121 @@ onBeforeUnmount(() => {
  
 
         <!-- STATISTICS -->
-        <section>
-            
+<section>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+            v-for="stat in statCards"
+            :key="stat.key"
+            class="group min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:p-6"
+        >
+            <div class="flex items-start justify-between gap-3">
+                <!-- STATISTIC INFORMATION -->
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-medium text-slate-500">
+                        {{ stat.label }}
+                    </p>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <p
+                        class="mt-3 break-words text-xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-2xl"
+                    >
+                        {{ stat.isAmount
+                            ? formatAmount(stat.value)
+                            : formatNumber(stat.value)
+                        }}
+                    </p>
+                </div>
+
+                <!-- STATISTIC ICON -->
                 <div
-                    v-for="stat in statCards"
-                    :key="stat.key"
-                    class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                    :class="{
+                        'bg-blue-50 text-blue-600': stat.color === 'blue',
+                        'bg-slate-100 text-slate-600': stat.color === 'slate',
+                        'bg-red-50 text-red-600': stat.color === 'red',
+                        'bg-emerald-50 text-emerald-600': stat.color === 'emerald',
+                        'bg-amber-50 text-amber-600': stat.color === 'amber',
+                    }"
                 >
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="min-w-0">
-                            <p class="text-xs font-medium text-slate-500">
-                                {{ stat.label }}
-                            </p>
+                    <!-- TRANSFER ICON -->
+                    <svg
+                        v-if="stat.icon === 'transfer'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M7 7h14m0 0-4-4m4 4-4 4M17 17H3m0 0 4 4m-4-4 4-4"
+                        />
+                    </svg>
 
-                            <p class="mt-2 text-2xl font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ stat.isAmount
-                                    ? formatAmount(stat.value)
-                                    : formatNumber(stat.value)
-                                }}
-                            </p>
-                        </div>
+                    <!-- DOCUMENT ICON -->
+                    <svg
+                        v-else-if="stat.icon === 'document'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M8 7h8M8 11h8M8 15h5m-8 6h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7L3 7v12a2 2 0 0 0 2 2Z"
+                        />
+                    </svg>
 
-                        <div
-                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                            :class="{
-                                'bg-blue-50 text-blue-600': stat.color === 'blue',
-                                'bg-slate-100 text-slate-600': stat.color === 'slate',
-                                'bg-red-50 text-red-600': stat.color === 'red',
-                                'bg-emerald-50 text-emerald-600': stat.color === 'emerald',
-                                'bg-amber-50 text-amber-600': stat.color === 'amber',
-                            }"
-                        >
-                            <!-- TRANSFER ICON -->
-                            <svg
-                                v-if="stat.icon === 'transfer'"
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M7 7h14m0 0-4-4m4 4-4 4M17 17H3m0 0 4 4m-4-4 4-4"
-                                />
-                            </svg>
+                    <!-- AMOUNT ICON -->
+                    <svg
+                        v-else-if="stat.icon === 'amount'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <rect
+                            x="2"
+                            y="5"
+                            width="20"
+                            height="14"
+                            rx="2"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            stroke-linecap="round"
+                            d="M6 9h.01M18 15h.01"
+                        />
+                    </svg>
 
-                            <!-- DOCUMENT ICON -->
-                            <svg
-                                v-else-if="stat.icon === 'document'"
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M8 7h8M8 11h8M8 15h5m-8 6h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7L3 7v12a2 2 0 0 0 2 2Z"
-                                />
-                            </svg>
-
-                            <!-- AMOUNT ICON -->
-                            <svg
-                                v-else-if="stat.icon === 'amount'"
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <rect
-                                    x="2"
-                                    y="5"
-                                    width="20"
-                                    height="14"
-                                    rx="2"
-                                />
-                                <circle cx="12" cy="12" r="3" />
-                                <path
-                                    stroke-linecap="round"
-                                    d="M6 9h.01M18 15h.01"
-                                />
-                            </svg>
-
-                            <!-- DEFAULT CHECK ICON -->
-                            <svg
-                                v-else
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                            >
-                                <circle cx="12" cy="12" r="9" />
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="m8 12 3 3 5-6"
-                                />
-                            </svg>
-                        </div>
-                    </div>
+                    <!-- DEFAULT CHECK ICON -->
+                    <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <circle cx="12" cy="12" r="9" />
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="m8 12 3 3 5-6"
+                        />
+                    </svg>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
         <!-- FILTERS -->
         <section>

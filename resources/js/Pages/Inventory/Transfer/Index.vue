@@ -11,9 +11,10 @@ import ViewStockTransferModal from './ViewStockTransferModal.vue'
 import ReturnIndex from './Returns/ReturnIndex.vue'
 import ReturnHistory from './Returns/ReturnHistory.vue'
 import FormModalReturn from './Returns/FormModalReturn.vue'
-//import StockTransferOutIndex from './StockTransferOutIndex.vue'
-//import StockTransferHistoryIndex from './StockTransferHistoryIndex.vue'
+import StockTransferInIndex from './TransferHistory/StockTransferInIndex.vue'
+import StockTransferOutIndex from './TransferHistory/StockTransferOutIndex.vue'
 import StockTransferFormModal from './StockTransferFormModal.vue'
+
 /*
 |--------------------------------------------------------------------------
 | Props
@@ -126,6 +127,71 @@ previewReturnNumber: {
     type: String,
     default: '',
 },
+
+transferIn: {
+        type: Object,
+        default: () => ({
+            data: [],
+            links: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+            total: 0,
+        }),
+    },
+
+    transferOut: {
+        type: Object,
+        default: () => ({
+            data: [],
+            links: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+            total: 0,
+        }),
+    },
+
+    transferInStatistics: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            draft: 0,
+            submitted: 0,
+            approved: 0,
+            posted: 0,
+            rejected: 0,
+            cancelled: 0,
+            totalAmount: 0,
+            totalQty: 0,
+        }),
+    },
+
+    transferOutStatistics: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            draft: 0,
+            submitted: 0,
+            approved: 0,
+            posted: 0,
+            rejected: 0,
+            cancelled: 0,
+            totalAmount: 0,
+            totalQty: 0,
+        }),
+    },
+
+    historyFilters: {
+        type: Object,
+        default: () => ({
+            search: '',
+            status: 'all',
+            date_from: '',
+            date_to: '',
+            per_page: 10,
+        }),
+    },
 })
 const returnSubmitSuccess = ref(0)
 /*
@@ -1872,12 +1938,20 @@ async function rejectReturn(returnItem) {
                         @cancel="cancelReturn"
                         @close-detail="closeReturnDetail"
                     />
-                    <StockTransferInIndex
+                  <StockTransferInIndex
                         v-else-if="activeTab === 'transfer-in'"
+                        :transfers="transferIn"
+                        :statistics="transferInStatistics"
+                        :filters="historyFilters"
+                        @view="openView"
                     />
 
                     <StockTransferOutIndex
                         v-else-if="activeTab === 'transfer-out'"
+                        :transfers="transferOut"
+                        :statistics="transferOutStatistics"
+                        :filters="historyFilters"
+                        @view="openView"
                     />
 
                   

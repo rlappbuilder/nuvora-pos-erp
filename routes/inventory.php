@@ -345,6 +345,26 @@ Route::middleware('auth')
 
         Route::get('/transfers/warehouse/{warehouse}',[StockTransferController::class,'getWarehouseStocks'])
         ->name('stock-transfers.warehouse-stocks' );
+
+         /*
+        |--------------------------------------------------------------------------
+        | Stock Transfer History Reports
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('transfers/history')
+            ->name('stock-transfers.history.')
+            ->controller(StockTransferController::class)
+            ->group(function () {
+                // Transfer In
+                Route::get('/in/print', 'printHistoryIn')->name('in.print');
+                Route::get('/in/pdf', 'exportHistoryInPdf')->name('in.pdf');
+                Route::get('/in/excel', 'exportHistoryInExcel')->name('in.excel');
+
+                // Transfer Out
+                Route::get('/out/print', 'printHistoryOut')->name('out.print');
+                Route::get('/out/pdf', 'exportHistoryOutPdf')->name('out.pdf');
+                Route::get('/out/excel', 'exportHistoryOutExcel')->name('out.excel');
+            });
             /*
         |--------------------------------------------------------------------------
         | Stock Issue
