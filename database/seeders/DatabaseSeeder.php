@@ -12,8 +12,8 @@ use Database\Seeders\MasterData\TaxSeeder;
 use Database\Seeders\MasterData\CurrencySeeder;
 use Database\Seeders\MasterData\PriceTypeSeeder;
 use Database\Seeders\MasterData\PaymentTermSeeder;
-use Database\Seeders\User\PermissionSeeder;
 use Database\Seeders\User\RoleSeeder;
+use Database\Seeders\ReportSeeder;
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
@@ -40,6 +40,8 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
 
             RoleSeeder::class,
+
+            ReportSeeder::class,
 
 
         ]);

@@ -1,5 +1,11 @@
 <script setup>
-import { ref,computed } from 'vue'
+import {
+    ref,
+    computed,
+    onMounted,
+    onBeforeUnmount,
+} from 'vue'
+
 import { Link, router, usePage } from '@inertiajs/vue3'
 
 import {
@@ -15,16 +21,63 @@ import {
 
 const page = usePage()
 
+const menuRef = ref(null)
+
 const open = ref(false)
 const branchOpen = ref(false)
 
+const closeMenu = () => {
+    open.value = false
+    branchOpen.value = false
+}
+
 const toggle = () => {
-    open.value = !open.value
+    if (open.value) {
+        closeMenu()
+    } else {
+        open.value = true
+    }
 }
 
 const toggleBranch = () => {
     branchOpen.value = !branchOpen.value
 }
+
+// Close menu when clicking outside
+const handleClickOutside = (event) => {
+    if (
+        open.value &&
+        menuRef.value &&
+        !menuRef.value.contains(event.target)
+    ) {
+        closeMenu()
+    }
+}
+
+// Close menu when pressing Escape
+const handleEscape = (event) => {
+    if (event.key === 'Escape') {
+        closeMenu()
+    }
+}
+
+onMounted(() => {
+    document.addEventListener('pointerdown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', handleClickOutside)
+    document.removeEventListener('keydown', handleEscape)
+})
+
+const currentBranch = computed(
+    () => page.props.auth.current_branch
+)
+
+const branches = computed(
+    () => page.props.auth.branches ?? []
+)
 
 const switchBranch = (branchId) => {
     if (
@@ -43,24 +96,19 @@ const switchBranch = (branchId) => {
             preserveScroll: true,
 
             onSuccess: () => {
-                branchOpen.value = false
-                open.value = false
+                closeMenu()
             },
         }
     )
 }
-const currentBranch = computed(
-    () => page.props.auth.current_branch
-)
-
-const branches = computed(
-    () => page.props.auth.branches ?? []
-)
 </script>
 
 <template>
 
-<div class="relative">
+<div
+    ref="menuRef"
+    class="relative"
+>
 
     <button
         @click="toggle"

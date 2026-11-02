@@ -165,6 +165,7 @@ class PermissionSeeder extends Seeder
             */
 
             'reports.view',
+            'reports.view-all-branches',
             'reports.export',
         ];
 

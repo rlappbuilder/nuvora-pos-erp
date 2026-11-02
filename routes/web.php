@@ -10,6 +10,8 @@ use App\Http\Controllers\POS\CashierSessionController;
 use App\Http\Controllers\POS\CashierController;
 use App\Http\Controllers\POS\PosTransactionController;
 use App\Http\Controllers\POS\BackdateSaleController;
+use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Report\SalesSummaryController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
@@ -263,7 +265,56 @@ Route::middleware(
 
         });
 
+  /*
+    |--------------------------------------------------------------------------
+    | report Dashboard
+    |--------------------------------------------------------------------------
+    */
+        Route::middleware(['auth'])->group(function () {
+            Route::get('/reports', [ReportController::class, 'index'])
+                ->name('reports.index');
+        });
+        /*
+        |--------------------------------------------------------------------------
+        | Sales Reports
+        |--------------------------------------------------------------------------
+        */
 
+      Route::prefix('reports/sales')
+        ->name('reports.sales.')
+        ->group(function () {
+
+            Route::get(
+                'summary',
+                [SalesSummaryController::class, 'parameters']
+            )->name('summary.parameters');
+
+            Route::post(
+                'summary/generate',
+                [SalesSummaryController::class, 'generate']
+            )->name('summary.generate');
+
+            Route::get(
+                'summary/results',
+                [SalesSummaryController::class, 'results']
+            )->name('summary.results');
+
+           Route::get(
+                'summary/print',
+                [SalesSummaryController::class, 'print']
+            )->name('summary.print');
+
+            Route::get(
+                'summary/pdf',
+                [SalesSummaryController::class, 'exportPdf']
+            )->name('summary.pdf');
+
+            Route::get(
+                'summary/excel',
+                [SalesSummaryController::class, 'exportExcel']
+            )->name('summary.excel');
+
+        });
     /*
     |--------------------------------------------------------------------------
     | Backdate Sales
