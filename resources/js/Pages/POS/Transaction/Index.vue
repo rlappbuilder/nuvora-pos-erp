@@ -6,7 +6,7 @@ import VariantModal from './VariantModal.vue'
 import CustomerModal from './CustomerModal.vue'
 import DiscountModal from './DiscountModal.vue'
 import PaymentModal from './PaymentModal.vue'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 const page = usePage()
 
 const props = defineProps({
@@ -1410,6 +1410,7 @@ window.removeEventListener(
 })
 </script>
 <template>
+<AppLayout>
     <div class="min-h-screen bg-slate-50">
 
         <!-- HEADER -->
@@ -1611,123 +1612,123 @@ window.removeEventListener(
 
 
                        <!-- PRODUCT CARDS -->
-<div
-    v-if="filteredProducts.length"
-    class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
->
-    <button
-        v-for="product in filteredProducts"
-        :key="
-            product.variant_id ??
-            product.product_variant_id ??
-            product.id
-        "
-        type="button"
-        class="group overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-        @click="addProduct(product)"
-    >
+                        <div
+                            v-if="filteredProducts.length"
+                            class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+                        >
+                            <button
+                                v-for="product in filteredProducts"
+                                :key="
+                                    product.variant_id ??
+                                    product.product_variant_id ??
+                                    product.id
+                                "
+                                type="button"
+                                class="group overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                                @click="addProduct(product)"
+                            >
 
-        <!-- IMAGE -->
-        <div
-            class="flex aspect-[4/3] items-center justify-center overflow-hidden bg-slate-100"
-        >
+                                <!-- IMAGE -->
+                                <div
+                                    class="flex aspect-[4/3] items-center justify-center overflow-hidden bg-slate-100"
+                                >
 
-            <img
-                v-if="getProductImage(product)"
-                :src="getProductImage(product)"
-                :alt="product.product_name ?? product.name"
-                class="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
-            />
+                                    <img
+                                        v-if="getProductImage(product)"
+                                        :src="getProductImage(product)"
+                                        :alt="product.product_name ?? product.name"
+                                        class="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+                                    />
 
-            <div
-                v-else
-                class="flex h-full w-full items-center justify-center bg-blue-50"
-            >
-                <span
-                    class="text-2xl font-bold tracking-tight text-blue-600"
-                >
-                    {{
-                        getInitials(
-                            product.product_name ??
-                            product.name
-                        )
-                    }}
-                </span>
-            </div>
+                                    <div
+                                        v-else
+                                        class="flex h-full w-full items-center justify-center bg-blue-50"
+                                    >
+                                        <span
+                                            class="text-2xl font-bold tracking-tight text-blue-600"
+                                        >
+                                            {{
+                                                getInitials(
+                                                    product.product_name ??
+                                                    product.name
+                                                )
+                                            }}
+                                        </span>
+                                    </div>
 
-        </div>
+                                </div>
 
 
-        <!-- INFO -->
-        <div class="p-3">
+                                <!-- INFO -->
+                                <div class="p-3">
 
-            <!-- PRODUCT NAME -->
-            <div
-                class="truncate text-sm font-semibold text-slate-900"
-            >
-                {{
-                    product.product_name ??
-                    product.name
-                }}
-            </div>
+                                    <!-- PRODUCT NAME -->
+                                    <div
+                                        class="truncate text-sm font-semibold text-slate-900"
+                                    >
+                                        {{
+                                            product.product_name ??
+                                            product.name
+                                        }}
+                                    </div>
 
-            <!-- VARIANT -->
-            <div
-                v-if="
-                    product.variant_name &&
-                    product.variant_name !== 'Default' &&
-                    product.variant_name !== product.product_name
-                "
-                class="mt-0.5 truncate text-xs text-slate-500"
-            >
-                {{ product.variant_name }}
-            </div>
+                                    <!-- VARIANT -->
+                                    <div
+                                        v-if="
+                                            product.variant_name &&
+                                            product.variant_name !== 'Default' &&
+                                            product.variant_name !== product.product_name
+                                        "
+                                        class="mt-0.5 truncate text-xs text-slate-500"
+                                    >
+                                        {{ product.variant_name }}
+                                    </div>
 
-            <!-- SKU -->
-            <div
-                class="mt-1 truncate text-xs text-slate-500"
-            >
-                {{
-                    product.variant_sku ??
-                    product.sku ??
-                    '-'
-                }}
-            </div>
+                                    <!-- SKU -->
+                                    <div
+                                        class="mt-1 truncate text-xs text-slate-500"
+                                    >
+                                        {{
+                                            product.variant_sku ??
+                                            product.sku ??
+                                            '-'
+                                        }}
+                                    </div>
 
-            <!-- PRICE + STOCK -->
-            <div
-                class="mt-3 flex items-end justify-between gap-2"
-            >
+                                    <!-- PRICE + STOCK -->
+                                    <div
+                                        class="mt-3 flex items-end justify-between gap-2"
+                                    >
 
-                <div
-                    class="text-sm font-bold text-blue-600"
-                >
-                    {{
-                        formatCurrency(
-                            product.selling_price ??
-                            product.price ??
-                            0
-                        )
-                    }}
-                </div>
+                                        <div
+                                            class="text-sm font-bold text-blue-600"
+                                        >
+                                            {{
+                                                formatCurrency(
+                                                    product.selling_price ??
+                                                    product.price ??
+                                                    0
+                                                )
+                                            }}
+                                        </div>
 
-                <div
-                    class="text-[11px] font-medium text-slate-400"
-                >
-                    Stock
-                    {{
-                        product.available_stock ??
-                        product.available_qty ??
-                        0
-                    }}
-                </div>
+                                        <div
+                                            class="text-[11px] font-medium text-slate-400"
+                                        >
+                                            Stock
+                                            {{
+                                                product.available_stock ??
+                                                product.available_qty ??
+                                                0
+                                            }}
+                                        </div>
 
-            </div>
+                                    </div>
 
-        </div>
+                                </div>
 
-    </button>
-</div>
+                            </button>
+                        </div>
 
 
                         <!-- EMPTY -->
@@ -2144,48 +2145,36 @@ window.removeEventListener(
             </div>
 
         </main>
-
-
-        <!--
-        |--------------------------------------------------------------------------
-        | MODALS
-        |--------------------------------------------------------------------------
-        |
-        | Components akan kita pasang setelah file component-nya dibuat:
-        |
-        | Transaction/Components/PaymentModal.vue
-        | Transaction/Components/CustomerModal.vue
-        | Transaction/Components/DiscountModal.vue
-        |
-        -->
-
     </div>
-    <VariantModal
-    :show="showVariantModal"
-    :product="selectedProductForVariant"
-    @close="closeVariantModal"
-    @select="selectVariant"
-    />
+ </AppLayout>
+   
+            <VariantModal
+            :show="showVariantModal"
+            :product="selectedProductForVariant"
+            @close="closeVariantModal"
+            @select="selectVariant"
+            />
 
-    <CustomerModal
-    :show="showCustomerModal"
-    :customers="customers"
-    @close="closeCustomer"
-    @select="selectCustomer"
-    @clear="clearCustomer"
-    />
+            <CustomerModal
+            :show="showCustomerModal"
+            :customers="customers"
+            @close="closeCustomer"
+            @select="selectCustomer"
+            @clear="clearCustomer"
+            />
 
-    <DiscountModal
-    :show="!!discountModalItem"
-    :item="discountModalItem"
-    @close="closeDiscount"
-    @apply="applyDiscount"
-    />
-    <PaymentModal
-    :show="showPaymentModal"
-    :total="grandTotal"
-    :processing="processing"
-    @close="closePayment"
-    @submit="submitPayment"
-    />
+            <DiscountModal
+            :show="!!discountModalItem"
+            :item="discountModalItem"
+            @close="closeDiscount"
+            @apply="applyDiscount"
+            />
+            <PaymentModal
+            :show="showPaymentModal"
+            :total="grandTotal"
+            :processing="processing"
+            @close="closePayment"
+            @submit="submitPayment"
+            />
+   
 </template>

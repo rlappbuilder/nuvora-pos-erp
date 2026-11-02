@@ -11,7 +11,7 @@ import {
 
 import { router, usePage } from '@inertiajs/vue3'
 import Swal from 'sweetalert2'
-
+import AppLayout from '@/Layouts/AppLayout.vue'
 import ProductSearchModal from './ProductSearchModal.vue'
 import CustomerModal from '../Transaction/CustomerModal.vue'
 import DiscountModal from '../Transaction/DiscountModal.vue'
@@ -1973,6 +1973,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
+<AppLayout>
     <div class="min-h-screen bg-slate-50">
 
         <!-- HEADER -->
@@ -2744,7 +2745,10 @@ onBeforeUnmount(() => {
         </main>
 
 
-        <!-- PRODUCT SEARCH MODAL -->
+        
+    </div>
+
+<!-- PRODUCT SEARCH MODAL -->
         <ProductSearchModal
             :show="showProductSearchModal"
             :products="filteredProducts"
@@ -2790,6 +2794,5 @@ onBeforeUnmount(() => {
             @close="closePayment"
             @submit="submitPayment"
         />
-
-    </div>
+</AppLayout>
 </template>

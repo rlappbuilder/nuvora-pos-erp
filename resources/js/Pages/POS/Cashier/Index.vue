@@ -10,6 +10,7 @@ import SessionReport from './SessionReport.vue'
 import CashDepositModal from './CashDepositModal.vue'
 import CashierDeposit from './Deposit/Index.vue'
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
+
 const page = usePage()
 
 const props = defineProps({

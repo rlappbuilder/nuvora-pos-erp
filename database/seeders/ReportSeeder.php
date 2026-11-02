@@ -72,6 +72,17 @@ class ReportSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 20,
                 ],
+
+                [
+                    'code' => 'SALES_BY_CATEGORY',
+                    'name' => 'Sales by Category',
+                    'category' => 'Sales',
+                    'description' => 'Analyze sales performance by product category, including gross sales, discounts, net sales, COGS, and gross profit.',
+                    'route_name' => 'reports.sales.by-category.parameters',
+                    'available_formats' => ['print', 'pdf', 'excel'],
+                    'is_active' => true,
+                    'sort_order' => 30,
+                ],
             /*
             |--------------------------------------------------------------------------
             | FINANCE

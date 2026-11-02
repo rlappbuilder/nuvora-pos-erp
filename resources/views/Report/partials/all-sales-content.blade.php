@@ -329,7 +329,7 @@
 
         <td style="width: 39%;">
             <div class="company-name">
-                {{ $company->name ?? config('app.name', 'Nuvora ERP') }}
+                {{ $company->company_name ?? config('app.name', 'Nuvora ERP') }}
             </div>
 
             <div>Sales Management</div>
