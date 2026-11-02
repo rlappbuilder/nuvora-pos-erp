@@ -12,6 +12,7 @@ use App\Http\Controllers\POS\PosTransactionController;
 use App\Http\Controllers\POS\BackdateSaleController;
 use App\Http\Controllers\Report\ReportController;
 use App\Http\Controllers\Report\SalesSummaryController;
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
@@ -341,6 +342,8 @@ Route::middleware(
 
 require __DIR__.'/master-data.php';
 
+require __DIR__.'/report.php';
+
 require __DIR__.'/inventory.php';
 
 require __DIR__.'/purchasing.php';
@@ -352,3 +355,4 @@ require __DIR__.'/auth.php';
 require __DIR__ . '/reseller.php';
 
 require __DIR__ . '/user.php';
+

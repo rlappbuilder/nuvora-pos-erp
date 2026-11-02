@@ -47,9 +47,9 @@ class ReportSeeder extends Seeder
                 'sort_order' => 30,
             ],
             /*
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------------
             | SALES
-            |--------------------------------------------------------------------------
+            |-----------------------------------------------------------------
             */
 
             [
@@ -62,7 +62,16 @@ class ReportSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 10,
             ],
-
+            [
+                'code' => 'ALL_SALES',
+                'name' => 'All Sales',
+                'category' => 'Sales',
+                'description' => 'View all posted POS sales and consignment settlement transactions.',
+                'route_name' => 'reports.sales.all.parameters',
+                'available_formats' => ['print', 'pdf', 'excel'],
+                'is_active' => true,
+                'sort_order' => 20,
+                ],
             /*
             |--------------------------------------------------------------------------
             | FINANCE
