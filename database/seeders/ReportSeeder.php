@@ -83,6 +83,17 @@ class ReportSeeder extends Seeder
                     'is_active' => true,
                     'sort_order' => 30,
                 ],
+
+                [
+                'code' => 'CONSIGNMENT_SALES',
+                'name' => 'Consignment Sales',
+                'category' => 'Sales',
+                'description' => 'Analyze consignment sales performance by reseller, including gross sales, COGS, gross profit, margin, and sales contribution.',
+                'route_name' => 'reports.sales.consignment-sales.parameters',
+                'available_formats' => ['print', 'pdf', 'excel'],
+                'is_active' => true,
+                'sort_order' => 40,
+            ],
             /*
             |--------------------------------------------------------------------------
             | FINANCE

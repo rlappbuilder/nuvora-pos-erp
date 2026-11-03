@@ -7,330 +7,391 @@ use Illuminate\Support\Facades\DB;
 
 class SalesByCategoryService
 {
-    /**
-     * Generate Sales by Category Report.
-     */
-    public function generate(
-        array $filters,
-        bool $paginate = true
-    ): array {
+  
+   /**
+ * Generate Sales by Category Report.
+ */
+public function generate(
+    array $filters,
+    bool $paginate = true,
+    bool $includeComparison = true
+): array {
 
-        $companyId = (int) $filters['company_id'];
+    $companyId = (int) $filters['company_id'];
 
-        $branchIds = $filters['branch_ids'] ?? [];
+    $branchIds = $filters['branch_ids'] ?? [];
 
-        $dateFrom = $filters['date_from'] ?? null;
+    $dateFrom = $filters['date_from'] ?? null;
 
-        $dateTo = $filters['date_to'] ?? null;
+    $dateTo = $filters['date_to'] ?? null;
 
-        $source = $filters['source'] ?? 'all';
+    $source = $filters['source'] ?? 'all';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Category Filters
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Category Filters
+    |--------------------------------------------------------------------------
+    */
 
-        $categoryIds = collect(
-            $filters['category_ids']
-                ?? (
-                    isset($filters['category_id'])
-                        ? [$filters['category_id']]
-                        : []
-                )
-        )
-            ->filter(fn ($id) => $id !== null && $id !== '')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+    $categoryIds = collect(
+        $filters['category_ids']
+            ?? (
+                isset($filters['category_id'])
+                    ? [$filters['category_id']]
+                    : []
+            )
+    )
+        ->filter(fn ($id) => $id !== null && $id !== '')
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values()
+        ->all();
 
-        $categoryTotals = [];
+    $categoryTotals = [];
 
-        $transactionIds = [];
+    $transactionIds = [];
 
-        /*
-        |--------------------------------------------------------------------------
-        | POS SALES
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | POS SALES
+    |--------------------------------------------------------------------------
+    */
 
-        if (in_array($source, ['all', 'pos'], true)) {
+    if (in_array($source, ['all', 'pos'], true)) {
 
-            $posRows = $this->getPosRows(
-                $companyId,
-                $branchIds,
-                $dateFrom,
-                $dateTo,
-                $categoryIds
+        $posRows = $this->getPosRows(
+            $companyId,
+            $branchIds,
+            $dateFrom,
+            $dateTo,
+            $categoryIds
+        );
+
+        foreach ($posRows as $row) {
+
+            $id = $row->category_id ?? 0;
+
+            $lineGross = (float) $row->line_gross;
+
+            $itemDiscount = (float) $row->item_discount;
+
+            $lineNet = (float) $row->line_net;
+
+            $saleNetBeforeHeaderDiscount =
+                (float) $row->sale_net_before_header_discount;
+
+            $headerDiscount =
+                (float) $row->header_discount;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Allocate Header Discount Proportionally
+            |--------------------------------------------------------------------------
+            */
+
+            $allocatedHeaderDiscount = 0;
+
+            if ($saleNetBeforeHeaderDiscount > 0) {
+
+                $allocatedHeaderDiscount =
+                    $headerDiscount *
+                    (
+                        $lineNet /
+                        $saleNetBeforeHeaderDiscount
+                    );
+            }
+
+            $totalDiscount =
+                $itemDiscount +
+                $allocatedHeaderDiscount;
+
+            $netSales =
+                $lineGross -
+                $totalDiscount;
+
+            $this->addCategoryTotal(
+                $categoryTotals,
+                $id,
+                $row->category_name,
+                (float) $row->qty,
+                $lineGross,
+                $totalDiscount,
+                $netSales,
+                (float) $row->total_cost
             );
 
-            foreach ($posRows as $row) {
-
-                $id = $row->category_id ?? 0;
-
-                $lineGross = (float) $row->line_gross;
-
-                $itemDiscount = (float) $row->item_discount;
-
-                $lineNet = (float) $row->line_net;
-
-                $saleNetBeforeHeaderDiscount =
-                    (float) $row->sale_net_before_header_discount;
-
-                $headerDiscount =
-                    (float) $row->header_discount;
-
-                /*
-                |--------------------------------------------------------------------------
-                | Allocate Header Discount Proportionally
-                |--------------------------------------------------------------------------
-                */
-
-                $allocatedHeaderDiscount = 0;
-
-                if ($saleNetBeforeHeaderDiscount > 0) {
-
-                    $allocatedHeaderDiscount =
-                        $headerDiscount *
-                        (
-                            $lineNet /
-                            $saleNetBeforeHeaderDiscount
-                        );
-                }
-
-                $totalDiscount =
-                    $itemDiscount +
-                    $allocatedHeaderDiscount;
-
-                $netSales =
-                    $lineGross -
-                    $totalDiscount;
-
-                $this->addCategoryTotal(
-                    $categoryTotals,
-                    $id,
-                    $row->category_name,
-                    (float) $row->qty,
-                    $lineGross,
-                    $totalDiscount,
-                    $netSales,
-                    (float) $row->total_cost
-                );
-
-                $transactionIds[
-                    'POS-' . $row->pos_sale_id
-                ] = true;
-            }
+            $transactionIds[
+                'POS-' . $row->pos_sale_id
+            ] = true;
         }
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | CONSIGNMENT SALES
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | CONSIGNMENT SALES
+    |--------------------------------------------------------------------------
+    */
 
-        if (in_array($source, ['all', 'consignment'], true)) {
+    if (in_array($source, ['all', 'consignment'], true)) {
 
-            $consignmentRows = $this->getConsignmentRows(
-                $companyId,
-                $branchIds,
-                $dateFrom,
-                $dateTo,
-                $categoryIds
+        $consignmentRows = $this->getConsignmentRows(
+            $companyId,
+            $branchIds,
+            $dateFrom,
+            $dateTo,
+            $categoryIds
+        );
+
+        foreach ($consignmentRows as $row) {
+
+            $id = $row->category_id ?? 0;
+
+            $grossSales = (float) $row->total_amount;
+
+            $qty = (float) $row->qty_sold;
+
+            $cogs = (float) $row->total_cost;
+
+            $this->addCategoryTotal(
+                $categoryTotals,
+                $id,
+                $row->category_name,
+                $qty,
+                $grossSales,
+                0,
+                $grossSales,
+                $cogs
             );
 
-            foreach ($consignmentRows as $row) {
-
-                $id = $row->category_id ?? 0;
-
-                $grossSales = (float) $row->total_amount;
-
-                $qty = (float) $row->qty_sold;
-
-                $cogs = (float) $row->total_cost;
-
-                $this->addCategoryTotal(
-                    $categoryTotals,
-                    $id,
-                    $row->category_name,
-                    $qty,
-                    $grossSales,
-                    0,
-                    $grossSales,
-                    $cogs
-                );
-
-                $transactionIds[
-                    'CONSIGNMENT-' . $row->settlement_header_id
-                ] = true;
-            }
+            $transactionIds[
+                'CONSIGNMENT-' . $row->settlement_header_id
+            ] = true;
         }
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Build Category Collection
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Build Category Collection
+    |--------------------------------------------------------------------------
+    */
 
-        $categories = collect($categoryTotals)
-            ->map(function ($row) {
+    $categories = collect($categoryTotals)
+        ->map(function ($row) {
 
-                $row['gross_profit'] =
-                    $row['net_sales'] -
-                    $row['cogs'];
+            $row['gross_profit'] =
+                $row['net_sales'] -
+                $row['cogs'];
 
-                $row['margin'] =
-                    $row['net_sales'] > 0
-                        ? (
-                            $row['gross_profit'] /
-                            $row['net_sales']
-                        ) * 100
-                        : 0;
+            $row['margin'] =
+                $row['net_sales'] > 0
+                    ? (
+                        $row['gross_profit'] /
+                        $row['net_sales']
+                    ) * 100
+                    : 0;
 
-                return $row;
-            })
-            ->sortBy('category_name')
-            ->values();
+            return $row;
+        })
+        ->sortBy('category_name')
+        ->values();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Overall Totals
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Overall Totals
+    |--------------------------------------------------------------------------
+    */
 
-        $totals = [
+    $totals = [
 
-            'total_categories' =>
-                $categories->count(),
+        'total_categories' =>
+            $categories->count(),
 
-            'total_transactions' =>
-                count($transactionIds),
+        'total_transactions' =>
+            count($transactionIds),
 
-            'total_qty' =>
-                $categories->sum('total_qty'),
+        'total_qty' =>
+            $categories->sum('total_qty'),
+
+        'gross_sales' =>
+            round(
+                $categories->sum('gross_sales'),
+                2
+            ),
+
+        'discount' =>
+            round(
+                $categories->sum('discount'),
+                2
+            ),
+
+        'net_sales' =>
+            round(
+                $categories->sum('net_sales'),
+                2
+            ),
+
+        'cogs' =>
+            round(
+                $categories->sum('cogs'),
+                2
+            ),
+
+        'gross_profit' =>
+            round(
+                $categories->sum('gross_profit'),
+                2
+            ),
+    ];
+
+    $totals['margin'] =
+        $totals['net_sales'] > 0
+            ? (
+                $totals['gross_profit'] /
+                $totals['net_sales']
+            ) * 100
+            : 0;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chart Data
+    |--------------------------------------------------------------------------
+    |
+    | Keep all categories before pagination.
+    |
+    */
+
+    $chart = $categories
+        ->map(fn ($row) => [
+
+            'category_id' =>
+                $row['category_id'],
+
+            'category_name' =>
+                $row['category_name'],
 
             'gross_sales' =>
-                round(
-                    $categories->sum('gross_sales'),
-                    2
-                ),
-
-            'discount' =>
-                round(
-                    $categories->sum('discount'),
-                    2
-                ),
-
-            'net_sales' =>
-                round(
-                    $categories->sum('net_sales'),
-                    2
-                ),
-
-            'cogs' =>
-                round(
-                    $categories->sum('cogs'),
-                    2
-                ),
+                (float) $row['gross_sales'],
 
             'gross_profit' =>
-                round(
-                    $categories->sum('gross_profit'),
-                    2
-                ),
-        ];
+                (float) $row['gross_profit'],
 
-        $totals['margin'] =
-            $totals['net_sales'] > 0
-                ? (
-                    $totals['gross_profit'] /
-                    $totals['net_sales']
-                ) * 100
-                : 0;
+        ])
+        ->values();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Pagination
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
 
-        $resultCategories = $categories;
+    $resultCategories = $categories;
 
-        if ($paginate) {
+    if ($paginate) {
 
-            $perPage = 25;
+        $perPage = 25;
 
-            $currentPage =
-                LengthAwarePaginator::resolveCurrentPage();
+        $currentPage =
+            LengthAwarePaginator::resolveCurrentPage();
 
-            $resultCategories = new LengthAwarePaginator(
+        $resultCategories = new LengthAwarePaginator(
 
-                $categories
-                    ->forPage($currentPage, $perPage)
-                    ->values(),
+            $categories
+                ->forPage($currentPage, $perPage)
+                ->values(),
 
-                $categories->count(),
+            $categories->count(),
 
-                $perPage,
+            $perPage,
 
-                $currentPage,
+            $currentPage,
 
-                [
-                    'path' => LengthAwarePaginator::resolveCurrentPath(),
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
 
-                    'query' => request()->query(),
-                ]
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Return Report
-        |--------------------------------------------------------------------------
-        */
-
-        return [
-
-            'filters' => $filters,
-
-            'summary' => [
-
-                'total_categories' =>
-                    $totals['total_categories'],
-
-                'total_transactions' =>
-                    $totals['total_transactions'],
-
-                'total_items' =>
-                    $totals['total_qty'],
-
-                'gross_sales' =>
-                    $totals['gross_sales'],
-
-                'discount' =>
-                    $totals['discount'],
-
-                'net_sales' =>
-                    $totals['net_sales'],
-
-                'cogs' =>
-                    $totals['cogs'],
-
-                'gross_profit' =>
-                    $totals['gross_profit'],
-
-                'margin' =>
-                    $totals['margin'],
-            ],
-
-            'categories' =>
-                $resultCategories,
-
-            'totals' =>
-                $totals,
-        ];
+                'query' => request()->query(),
+            ]
+        );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Summary
+    |--------------------------------------------------------------------------
+    */
+
+    $summary = [
+
+        'total_categories' =>
+            $totals['total_categories'],
+
+        'total_transactions' =>
+            $totals['total_transactions'],
+
+        'total_items' =>
+            $totals['total_qty'],
+
+        'gross_sales' =>
+            $totals['gross_sales'],
+
+        'discount' =>
+            $totals['discount'],
+
+        'net_sales' =>
+            $totals['net_sales'],
+
+        'cogs' =>
+            $totals['cogs'],
+
+        'gross_profit' =>
+            $totals['gross_profit'],
+
+        'margin' =>
+            $totals['margin'],
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Period Comparison
+    |--------------------------------------------------------------------------
+    */
+
+    $comparison = null;
+
+    if ($includeComparison) {
+
+        $comparison = $this->generateComparison(
+            $filters,
+            $summary
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return Report
+    |--------------------------------------------------------------------------
+    */
+
+    return [
+
+        'filters' =>
+            $filters,
+
+        'summary' =>
+            $summary,
+
+        'comparison' =>
+            $comparison,
+
+        'chart' =>
+            $chart,
+
+        'categories' =>
+            $resultCategories,
+
+        'totals' =>
+            $totals,
+    ];
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -686,7 +747,285 @@ class SalesByCategoryService
 
             ->get();
     }
+/*
+|--------------------------------------------------------------------------
+| Generate Previous Period Comparison
+|--------------------------------------------------------------------------
+*/
 
+protected function generateComparison(
+    array $filters,
+    array $currentSummary
+): array {
+
+    $dateFrom = \Illuminate\Support\Carbon::parse(
+        $filters['date_from']
+    )->startOfDay();
+
+    $dateTo = \Illuminate\Support\Carbon::parse(
+        $filters['date_to']
+    )->startOfDay();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Period Duration
+    |--------------------------------------------------------------------------
+    */
+
+    $periodDays = $dateFrom->diffInDays($dateTo) + 1;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Period
+    |--------------------------------------------------------------------------
+    |
+    | Example:
+    | Current : 01 - 07 October
+    | Previous: 24 - 30 September
+    |
+    */
+
+    $previousDateTo = $dateFrom->copy()
+        ->subDay();
+
+    $previousDateFrom = $previousDateTo->copy()
+        ->subDays($periodDays - 1);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Period Filters
+    |--------------------------------------------------------------------------
+    */
+
+    $previousFilters = $filters;
+
+    $previousFilters['date_from'] =
+        $previousDateFrom->toDateString();
+
+    $previousFilters['date_to'] =
+        $previousDateTo->toDateString();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate Previous Report
+    |--------------------------------------------------------------------------
+    |
+    | Third parameter false prevents recursive comparison.
+    |
+    */
+
+    $previousReport = $this->generate(
+        $previousFilters,
+        false,
+        false
+    );
+
+    $previousSummary = $previousReport['summary'];
+
+    /*
+    |--------------------------------------------------------------------------
+    | KPI Comparison
+    |--------------------------------------------------------------------------
+    */
+
+    $kpiKeys = [
+
+        'total_categories',
+
+        'total_transactions',
+
+        'total_items',
+
+        'gross_sales',
+
+        'discount',
+
+        'net_sales',
+
+        'cogs',
+
+        'gross_profit',
+
+    ];
+
+    $comparison = [];
+
+    foreach ($kpiKeys as $key) {
+
+        $current = (float) (
+            $currentSummary[$key] ?? 0
+        );
+
+        $previous = (float) (
+            $previousSummary[$key] ?? 0
+        );
+
+        $comparison[$key] = $this->calculatePercentageChange(
+            $current,
+            $previous
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Period Label
+    |--------------------------------------------------------------------------
+    */
+
+    if ($periodDays === 1) {
+
+        $periodLabel = 'Previous Day';
+
+    } elseif ($periodDays === 7) {
+
+        $periodLabel = 'Previous Week';
+
+    } else {
+
+        $periodLabel = 'Previous Period';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return Comparison
+    |--------------------------------------------------------------------------
+    */
+
+    return [
+
+        'period_days' =>
+            $periodDays,
+
+        'period_label' =>
+            $periodLabel,
+
+        'current_date_from' =>
+            $dateFrom->toDateString(),
+
+        'current_date_to' =>
+            $dateTo->toDateString(),
+
+        'previous_date_from' =>
+            $previousDateFrom->toDateString(),
+
+        'previous_date_to' =>
+            $previousDateTo->toDateString(),
+
+        'metrics' =>
+            $comparison,
+    ];
+}
+/*
+|--------------------------------------------------------------------------
+| Calculate Percentage Change
+|--------------------------------------------------------------------------
+*/
+
+protected function calculatePercentageChange(
+    float $current,
+    float $previous
+): array {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Both Periods Are Zero
+    |--------------------------------------------------------------------------
+    */
+
+    if ($current == 0 && $previous == 0) {
+
+        return [
+
+            'current' => 0,
+
+            'previous' => 0,
+
+            'percentage' => null,
+
+            'direction' => 'unchanged',
+
+            'status' => 'no_data',
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Period Is Zero
+    |--------------------------------------------------------------------------
+    */
+
+    if ($previous == 0 && $current > 0) {
+
+        return [
+
+            'current' => $current,
+
+            'previous' => 0,
+
+            'percentage' => null,
+
+            'direction' => 'up',
+
+            'status' => 'new',
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Percentage
+    |--------------------------------------------------------------------------
+    */
+
+    $percentage = (
+        ($current - $previous) /
+        abs($previous)
+    ) * 100;
+
+    $percentage = round($percentage, 2);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Determine Direction
+    |--------------------------------------------------------------------------
+    */
+
+    if ($current > $previous) {
+
+        $direction = 'up';
+
+        $status = 'changed';
+
+    } elseif ($current < $previous) {
+
+        $direction = 'down';
+
+        $status = 'changed';
+
+    } else {
+
+        $direction = 'unchanged';
+
+        $status = 'unchanged';
+    }
+
+    return [
+
+        'current' =>
+            $current,
+
+        'previous' =>
+            $previous,
+
+        'percentage' =>
+            $percentage,
+
+        'direction' =>
+            $direction,
+
+        'status' =>
+            $status,
+    ];
+}
     /*
     |--------------------------------------------------------------------------
     | Add Category Aggregate

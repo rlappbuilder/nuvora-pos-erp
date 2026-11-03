@@ -53,11 +53,40 @@ const pagination = computed(
 
 /*
 |--------------------------------------------------------------------------
+| Comparison Data
+|--------------------------------------------------------------------------
+*/
+
+const comparison = computed(
+    () => props.report.comparison ?? {}
+)
+
+const comparisonMetrics = computed(
+    () => comparison.value.metrics ?? {}
+)
+
+const comparisonLabel = computed(
+    () => comparison.value.period_label ?? 'Previous Period'
+)
+
+const getComparison = (key) => {
+    return comparisonMetrics.value[key] ?? {
+        current: 0,
+        previous: 0,
+        percentage: null,
+        direction: 'unchanged',
+        status: 'no_data',
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Format Currency
 |--------------------------------------------------------------------------
 */
 
 const formatCurrency = (value) => {
+
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -73,6 +102,7 @@ const formatCurrency = (value) => {
 */
 
 const formatNumber = (value) => {
+
     return new Intl.NumberFormat('id-ID', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
@@ -86,8 +116,298 @@ const formatNumber = (value) => {
 */
 
 const formatPercentage = (value) => {
+
     return `${formatNumber(value)}%`
 }
+
+/*
+|--------------------------------------------------------------------------
+| Comparison Display
+|--------------------------------------------------------------------------
+*/
+
+const comparisonText = (key) => {
+
+    const metric = getComparison(key)
+
+    if (metric.status === 'new') {
+        return 'New'
+    }
+
+    if (metric.status === 'no_data') {
+        return '—'
+    }
+
+    return `${formatNumber(Math.abs(metric.percentage ?? 0))}%`
+}
+
+const comparisonArrow = (key) => {
+
+    const direction = getComparison(key).direction
+
+    if (direction === 'up') return '↑'
+
+    if (direction === 'down') return '↓'
+
+    return '→'
+}
+
+const comparisonClass = (key) => {
+
+    const metric = getComparison(key)
+
+    if (metric.status === 'new') {
+        return 'text-emerald-600'
+    }
+
+    if (metric.status === 'no_data') {
+        return 'text-gray-400'
+    }
+
+    if (metric.direction === 'up') {
+        return 'text-emerald-600'
+    }
+
+    if (metric.direction === 'down') {
+        return 'text-red-600'
+    }
+
+    return 'text-gray-500'
+}
+
+/*
+|--------------------------------------------------------------------------
+| ApexCharts Data
+|--------------------------------------------------------------------------
+|
+| Data comes from the complete category collection before pagination.
+|
+*/
+
+const chartData = computed(() => {
+
+    const rows = props.report.chart ?? []
+
+    return Array.isArray(rows) ? rows : []
+})
+
+const chartSeries = computed(() => [
+    {
+        name: 'Gross Sales',
+        data: chartData.value.map(
+            item => Number(item.gross_sales ?? 0)
+        ),
+    },
+    {
+        name: 'Gross Profit',
+        data: chartData.value.map(
+            item => Number(item.gross_profit ?? 0)
+        ),
+    },
+])
+
+/*
+|--------------------------------------------------------------------------
+| ApexCharts Configuration
+|--------------------------------------------------------------------------
+*/
+
+const chartOptions = computed(() => ({
+
+    chart: {
+        type: 'line',
+        height: 350,
+
+        toolbar: {
+            show: false,
+        },
+
+        zoom: {
+            enabled: false,
+        },
+
+        fontFamily: 'inherit',
+
+        animations: {
+            enabled: true,
+            speed: 500,
+        },
+    },
+
+    colors: ['#2563EB', '#10B981'],
+
+    stroke: {
+        curve: 'smooth',
+        width: 3,
+    },
+
+    markers: {
+        size: 4,
+        strokeWidth: 2,
+
+        hover: {
+            size: 6,
+        },
+    },
+
+    dataLabels: {
+        enabled: false,
+    },
+
+    grid: {
+        borderColor: '#E5E7EB',
+        strokeDashArray: 4,
+
+        padding: {
+            left: 10,
+            right: 10,
+        },
+    },
+
+    xaxis: {
+        categories: chartData.value.map(
+            item => item.category_name ?? 'Uncategorized'
+        ),
+
+        labels: {
+            rotate: -35,
+            trim: false,
+            hideOverlappingLabels: false,
+
+            style: {
+                colors: '#6B7280',
+                fontSize: '11px',
+            },
+        },
+
+        axisBorder: {
+            show: false,
+        },
+
+        axisTicks: {
+            show: false,
+        },
+    },
+
+    yaxis: {
+        labels: {
+            formatter: (value) => {
+
+                return new Intl.NumberFormat('id-ID', {
+                    notation: 'compact',
+                    maximumFractionDigits: 1,
+                }).format(value)
+            },
+
+            style: {
+                colors: '#6B7280',
+                fontSize: '11px',
+            },
+        },
+    },
+
+    legend: {
+        position: 'top',
+        horizontalAlign: 'right',
+        fontSize: '12px',
+
+        markers: {
+            radius: 12,
+        },
+    },
+
+    tooltip: {
+        shared: true,
+        intersect: false,
+
+        custom: ({ dataPointIndex }) => {
+
+            const item = chartData.value[dataPointIndex]
+
+            if (!item) return ''
+
+            return `
+                <div style="
+                    padding: 12px 14px;
+                    min-width: 210px;
+                    font-family: inherit;
+                ">
+                    <div style="
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: #111827;
+                        margin-bottom: 10px;
+                    ">
+                        ${item.category_name ?? 'Uncategorized'}
+                    </div>
+
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 18px;
+                        font-size: 12px;
+                        margin-bottom: 6px;
+                    ">
+                        <span style="color: #2563EB;">
+                            Gross Sales
+                        </span>
+
+                        <strong style="color: #111827;">
+                            ${formatCurrency(item.gross_sales)}
+                        </strong>
+                    </div>
+
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 18px;
+                        font-size: 12px;
+                    ">
+                        <span style="color: #10B981;">
+                            Gross Profit
+                        </span>
+
+                        <strong style="color: #111827;">
+                            ${formatCurrency(item.gross_profit)}
+                        </strong>
+                    </div>
+                </div>
+            `
+        },
+    },
+
+    noData: {
+        text: 'No category data available.',
+        align: 'center',
+        verticalAlign: 'middle',
+
+        style: {
+            color: '#6B7280',
+            fontSize: '13px',
+        },
+    },
+
+    responsive: [
+        {
+            breakpoint: 640,
+
+            options: {
+                chart: {
+                    height: 300,
+                },
+
+                legend: {
+                    position: 'bottom',
+                    horizontalAlign: 'center',
+                },
+
+                markers: {
+                    size: 3,
+                },
+            },
+        },
+    ],
+}))
 
 /*
 |--------------------------------------------------------------------------
@@ -96,6 +416,7 @@ const formatPercentage = (value) => {
 */
 
 const formatDate = (value) => {
+
     if (!value) return '-'
 
     const date = String(value).substring(0, 10)
@@ -114,6 +435,7 @@ const formatDate = (value) => {
 */
 
 const displayBranchLabel = computed(() => {
+
     return props.branchLabel || 'All Branches'
 })
 
@@ -124,6 +446,7 @@ const displayBranchLabel = computed(() => {
 */
 
 const sourceLabel = computed(() => {
+
     const source = props.report.filters?.source ?? 'all'
 
     const labels = {
@@ -142,6 +465,7 @@ const sourceLabel = computed(() => {
 */
 
 const categoryLabel = computed(() => {
+
     return props.report.filters?.category_label
         ?? 'All Categories'
 })
@@ -153,6 +477,7 @@ const categoryLabel = computed(() => {
 */
 
 const navigatePage = (url) => {
+
     if (!url) return
 
     router.visit(url, {
@@ -162,6 +487,7 @@ const navigatePage = (url) => {
 }
 
 const paginationLabel = (label) => {
+
     return String(label)
         .replace('&laquo;', '«')
         .replace('&raquo;', '»')
@@ -174,6 +500,7 @@ const paginationLabel = (label) => {
 */
 
 const printReport = () => {
+
     window.open(
         route('reports.sales.by-category.print'),
         '_blank'
@@ -187,6 +514,7 @@ const printReport = () => {
 */
 
 const exportPdf = () => {
+
     window.location.href = route(
         'reports.sales.by-category.pdf'
     )
@@ -199,6 +527,7 @@ const exportPdf = () => {
 */
 
 const exportExcel = () => {
+
     window.location.href = route(
         'reports.sales.by-category.excel'
     )
@@ -211,6 +540,7 @@ const exportExcel = () => {
 */
 
 const profitClass = (value) => {
+
     return Number(value ?? 0) >= 0
         ? 'text-emerald-700'
         : 'text-red-600'
@@ -219,6 +549,7 @@ const profitClass = (value) => {
 
 <template>
     <AppLayout>
+
         <div class="space-y-6 p-6">
 
             <!-- ===================================================== -->
@@ -385,9 +716,21 @@ const profitClass = (value) => {
                         {{ formatNumber(summary.total_categories) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Categories with sales
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('total_categories')"
+                        >
+                            {{ comparisonArrow('total_categories') }}
+                            {{ comparisonText('total_categories') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -404,9 +747,21 @@ const profitClass = (value) => {
                         {{ formatNumber(summary.total_transactions) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Posted transactions
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('total_transactions')"
+                        >
+                            {{ comparisonArrow('total_transactions') }}
+                            {{ comparisonText('total_transactions') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -423,9 +778,21 @@ const profitClass = (value) => {
                         {{ formatNumber(summary.total_items) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Total quantity sold
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('total_items')"
+                        >
+                            {{ comparisonArrow('total_items') }}
+                            {{ comparisonText('total_items') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -442,9 +809,21 @@ const profitClass = (value) => {
                         {{ formatCurrency(summary.gross_sales) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Before discounts
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('gross_sales')"
+                        >
+                            {{ comparisonArrow('gross_sales') }}
+                            {{ comparisonText('gross_sales') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -461,9 +840,21 @@ const profitClass = (value) => {
                         {{ formatCurrency(summary.discount) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Item and transaction discounts
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('discount')"
+                        >
+                            {{ comparisonArrow('discount') }}
+                            {{ comparisonText('discount') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -480,9 +871,21 @@ const profitClass = (value) => {
                         {{ formatCurrency(summary.net_sales) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        After discounts
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('net_sales')"
+                        >
+                            {{ comparisonArrow('net_sales') }}
+                            {{ comparisonText('net_sales') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -499,9 +902,21 @@ const profitClass = (value) => {
                         {{ formatCurrency(summary.cogs) }}
                     </p>
 
-                    <p class="mt-2 text-xs text-gray-500">
-                        Inventory cost
-                    </p>
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('cogs')"
+                        >
+                            {{ comparisonArrow('cogs') }}
+                            {{ comparisonText('cogs') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -521,6 +936,22 @@ const profitClass = (value) => {
                         {{ formatCurrency(summary.gross_profit) }}
                     </p>
 
+                    <div class="mt-2 flex items-center gap-1.5 text-xs">
+
+                        <span
+                            class="font-semibold"
+                            :class="comparisonClass('gross_profit')"
+                        >
+                            {{ comparisonArrow('gross_profit') }}
+                            {{ comparisonText('gross_profit') }}
+                        </span>
+
+                        <span class="text-gray-400">
+                            vs {{ comparisonLabel }}
+                        </span>
+
+                    </div>
+
                     <p class="mt-2 text-xs text-gray-500">
                         {{ formatPercentage(summary.margin) }} gross margin
                     </p>
@@ -531,7 +962,45 @@ const profitClass = (value) => {
 
 
             <!-- ===================================================== -->
-            <!-- SALES BY CATEGORY -->
+<!-- CATEGORY PERFORMANCE CHART -->
+<!-- ===================================================== -->
+
+<div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+
+    <div class="border-b border-gray-200 px-5 py-4">
+
+        <h2 class="font-semibold text-gray-900">
+            Category Performance
+        </h2>
+
+        <p class="mt-1 text-xs text-gray-500">
+            Gross sales and gross profit comparison across all product categories.
+        </p>
+
+    </div>
+
+    <div class="p-5">
+
+        <apexchart
+            type="line"
+            height="350"
+            :options="chartOptions"
+            :series="chartSeries"
+        />
+
+        <div
+            v-if="!chartData.length"
+            class="py-4 text-center text-sm text-gray-500"
+        >
+            No sales data available for this period.
+        </div>
+
+    </div>
+
+</div>
+
+            <!-- ===================================================== -->
+            <!-- CATEGORY PERFORMANCE TABLE -->
             <!-- ===================================================== -->
 
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -539,6 +1008,7 @@ const profitClass = (value) => {
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-5 py-4">
 
                     <div>
+
                         <h2 class="font-semibold text-gray-900">
                             Category Performance
                         </h2>
@@ -546,6 +1016,7 @@ const profitClass = (value) => {
                         <p class="mt-1 text-xs text-gray-500">
                             Sales, discounts, cost of goods sold, and gross profit by category.
                         </p>
+
                     </div>
 
                     <div class="text-sm text-gray-500">
@@ -615,14 +1086,9 @@ const profitClass = (value) => {
                                 class="transition hover:bg-gray-50"
                             >
 
-                                <!-- No. -->
-
                                 <td class="whitespace-nowrap px-4 py-4 text-center text-sm text-gray-500">
                                     {{ (pagination.from ?? 1) + index }}
                                 </td>
-
-
-                                <!-- Category -->
 
                                 <td class="whitespace-nowrap px-4 py-4">
 
@@ -632,43 +1098,25 @@ const profitClass = (value) => {
 
                                 </td>
 
-
-                                <!-- Total Qty -->
-
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm text-gray-700">
                                     {{ formatNumber(category.total_qty) }}
                                 </td>
-
-
-                                <!-- Gross Sales -->
 
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm text-gray-700">
                                     {{ formatCurrency(category.gross_sales) }}
                                 </td>
 
-
-                                <!-- Discount -->
-
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm text-red-600">
                                     {{ formatCurrency(category.discount) }}
                                 </td>
-
-
-                                <!-- Net Sales -->
 
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm font-medium text-gray-900">
                                     {{ formatCurrency(category.net_sales) }}
                                 </td>
 
-
-                                <!-- COGS -->
-
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm text-gray-700">
                                     {{ formatCurrency(category.cogs) }}
                                 </td>
-
-
-                                <!-- Gross Profit -->
 
                                 <td
                                     class="whitespace-nowrap px-4 py-4 text-right text-sm font-semibold"
@@ -676,9 +1124,6 @@ const profitClass = (value) => {
                                 >
                                     {{ formatCurrency(category.gross_profit) }}
                                 </td>
-
-
-                                <!-- Margin -->
 
                                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm font-medium text-gray-700">
                                     {{ formatPercentage(category.margin) }}
@@ -695,6 +1140,7 @@ const profitClass = (value) => {
                                     colspan="9"
                                     class="px-4 py-12 text-center"
                                 >
+
                                     <p class="text-sm font-medium text-gray-700">
                                         No category sales found.
                                     </p>
@@ -712,7 +1158,10 @@ const profitClass = (value) => {
 
                         <!-- TOTAL ROW -->
 
-                        <tfoot v-if="categories.length" class="border-t-2 border-gray-300 bg-gray-50">
+                        <tfoot
+                            v-if="categories.length"
+                            class="border-t-2 border-gray-300 bg-gray-50"
+                        >
 
                             <tr>
 
@@ -771,6 +1220,7 @@ const profitClass = (value) => {
                 >
 
                     <p class="text-xs text-gray-500">
+
                         Showing
                         {{ pagination.from ?? 0 }}
                         to
@@ -778,6 +1228,7 @@ const profitClass = (value) => {
                         of
                         {{ pagination.total ?? 0 }}
                         categories
+
                     </p>
 
                     <div class="flex flex-wrap items-center gap-1">
@@ -812,11 +1263,13 @@ const profitClass = (value) => {
             </div>
 
         </div>
+
     </AppLayout>
 </template>
 
 <style>
 @media print {
+
     body {
         background: white !important;
     }

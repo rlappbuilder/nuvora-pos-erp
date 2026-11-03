@@ -3,6 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Report\AllSalesController;
 use App\Http\Controllers\Report\SalesByCategoryController;
+use App\Http\Controllers\Report\ConsignmentSalesController;
+
+
+
 /*
 |--------------------------------------------------------------------------
 | Report Center Routes
@@ -94,6 +98,42 @@ Route::middleware(['auth'])->group(function () {
                     'by-category/excel',
                     [SalesByCategoryController::class, 'exportExcel']
                 )->name('by-category.excel');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Consignment Sales
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                'consignment-sales',
+                [ConsignmentSalesController::class, 'parameters']
+            )->name('consignment-sales.parameters');
+
+            Route::post(
+                'consignment-sales/generate',
+                [ConsignmentSalesController::class, 'generate']
+            )->name('consignment-sales.generate');
+
+            Route::get(
+                'consignment-sales/results',
+                [ConsignmentSalesController::class, 'results']
+            )->name('consignment-sales.results');
+
+            Route::get(
+                'consignment-sales/print',
+                [ConsignmentSalesController::class, 'print']
+            )->name('consignment-sales.print');
+
+            Route::get(
+                'consignment-sales/pdf',
+                [ConsignmentSalesController::class, 'exportPdf']
+            )->name('consignment-sales.pdf');
+
+            Route::get(
+                'consignment-sales/excel',
+                [ConsignmentSalesController::class, 'exportExcel']
+            )->name('consignment-sales.excel');
 
         });
 
