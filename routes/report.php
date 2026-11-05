@@ -6,6 +6,7 @@ use App\Http\Controllers\Report\SalesByCategoryController;
 use App\Http\Controllers\Report\ConsignmentSalesController;
 use App\Http\Controllers\Report\SalesByProductController;
 use App\Http\Controllers\Report\SalesByBranchController;
+use App\Http\Controllers\Report\SalesByCashierController;
 
 
 /*
@@ -63,42 +64,42 @@ Route::middleware(['auth'])->group(function () {
             )->name('all.excel');
 
 
+            /*
+            |--------------------------------------------------------------------------
+            | Sales by Category
+            |--------------------------------------------------------------------------
+            */
 
-                 /*
-                |--------------------------------------------------------------------------
-                | Sales by Category
-                |--------------------------------------------------------------------------
-                */
+            Route::get(
+                'by-category',
+                [SalesByCategoryController::class, 'parameters']
+            )->name('by-category.parameters');
 
-                Route::get(
-                    'by-category',
-                    [SalesByCategoryController::class, 'parameters']
-                )->name('by-category.parameters');
+            Route::post(
+                'by-category/generate',
+                [SalesByCategoryController::class, 'generate']
+            )->name('by-category.generate');
 
-                Route::post(
-                    'by-category/generate',
-                    [SalesByCategoryController::class, 'generate']
-                )->name('by-category.generate');
+            Route::get(
+                'by-category/results',
+                [SalesByCategoryController::class, 'results']
+            )->name('by-category.results');
 
-                Route::get(
-                    'by-category/results',
-                    [SalesByCategoryController::class, 'results']
-                )->name('by-category.results');
+            Route::get(
+                'by-category/print',
+                [SalesByCategoryController::class, 'print']
+            )->name('by-category.print');
 
-                Route::get(
-                    'by-category/print',
-                    [SalesByCategoryController::class, 'print']
-                )->name('by-category.print');
+            Route::get(
+                'by-category/pdf',
+                [SalesByCategoryController::class, 'exportPdf']
+            )->name('by-category.pdf');
 
-                Route::get(
-                    'by-category/pdf',
-                    [SalesByCategoryController::class, 'exportPdf']
-                )->name('by-category.pdf');
+            Route::get(
+                'by-category/excel',
+                [SalesByCategoryController::class, 'exportExcel']
+            )->name('by-category.excel');
 
-                Route::get(
-                    'by-category/excel',
-                    [SalesByCategoryController::class, 'exportExcel']
-                )->name('by-category.excel');
 
             /*
             |--------------------------------------------------------------------------
@@ -135,6 +136,7 @@ Route::middleware(['auth'])->group(function () {
                 'consignment-sales/excel',
                 [ConsignmentSalesController::class, 'exportExcel']
             )->name('consignment-sales.excel');
+
 
             /*
             |--------------------------------------------------------------------------
@@ -173,37 +175,78 @@ Route::middleware(['auth'])->group(function () {
             )->name('by-product.excel');
 
 
-            
+            /*
+            |--------------------------------------------------------------------------
+            | Sales by Branch
+            |--------------------------------------------------------------------------
+            */
 
-            Route::get('by-branch', [
-                SalesByBranchController::class,
-                'parameters'
-            ])->name('by-branch.parameters');
+            Route::get(
+                'by-branch',
+                [SalesByBranchController::class, 'parameters']
+            )->name('by-branch.parameters');
 
-            Route::post('by-branch/generate', [
-                SalesByBranchController::class,
-                'generate'
-            ])->name('by-branch.generate');
+            Route::post(
+                'by-branch/generate',
+                [SalesByBranchController::class, 'generate']
+            )->name('by-branch.generate');
 
-            Route::get('by-branch/results', [
-                SalesByBranchController::class,
-                'results'
-            ])->name('by-branch.results');
+            Route::get(
+                'by-branch/results',
+                [SalesByBranchController::class, 'results']
+            )->name('by-branch.results');
 
-            Route::get('by-branch/print', [
-                SalesByBranchController::class,
-                'print'
-            ])->name('by-branch.print');
+            Route::get(
+                'by-branch/print',
+                [SalesByBranchController::class, 'print']
+            )->name('by-branch.print');
 
-            Route::get('by-branch/pdf', [
-                SalesByBranchController::class,
-                'exportPdf'
-            ])->name('by-branch.pdf');
+            Route::get(
+                'by-branch/pdf',
+                [SalesByBranchController::class, 'exportPdf']
+            )->name('by-branch.pdf');
 
-            Route::get('by-branch/excel', [
-                SalesByBranchController::class,
-                'exportExcel'
-            ])->name('by-branch.excel');
+            Route::get(
+                'by-branch/excel',
+                [SalesByBranchController::class, 'exportExcel']
+            )->name('by-branch.excel');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Sales by Cashier
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                'by-cashier',
+                [SalesByCashierController::class, 'parameters']
+            )->name('by-cashier.parameters');
+
+            Route::post(
+                'by-cashier/generate',
+                [SalesByCashierController::class, 'generate']
+            )->name('by-cashier.generate');
+
+            Route::get(
+                'by-cashier/results',
+                [SalesByCashierController::class, 'results']
+            )->name('by-cashier.results');
+
+            Route::get(
+                'by-cashier/print',
+                [SalesByCashierController::class, 'print']
+            )->name('by-cashier.print');
+
+            Route::get(
+                'by-cashier/pdf',
+                [SalesByCashierController::class, 'exportPdf']
+            )->name('by-cashier.pdf');
+
+            Route::get(
+                'by-cashier/excel',
+                [SalesByCashierController::class, 'exportExcel']
+            )->name('by-cashier.excel');
 
         });
 

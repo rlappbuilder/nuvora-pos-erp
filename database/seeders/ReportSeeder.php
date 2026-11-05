@@ -115,6 +115,16 @@ class ReportSeeder extends Seeder
                     'is_active' => true,
                     'sort_order' => 60,
                 ],
+                [
+                    'code' => 'SALES_BY_CASHIER',
+                    'name' => 'Sales by Cashier',
+                    'category' => 'Sales',
+                    'description' => 'Analyze cashier sales performance by branch, including transactions, quantity sold, gross sales, discounts, net sales, COGS, gross profit, and margin. Consignment sales are displayed separately.',
+                    'route_name' => 'reports.sales.by-cashier.parameters',
+                    'available_formats' => ['print', 'pdf', 'excel'],
+                    'is_active' => true,
+                    'sort_order' => 70,
+                ],
             /*
             |--------------------------------------------------------------------------
             | FINANCE
