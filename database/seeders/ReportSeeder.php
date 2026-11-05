@@ -125,6 +125,16 @@ class ReportSeeder extends Seeder
                     'is_active' => true,
                     'sort_order' => 70,
                 ],
+                [
+                    'code' => 'SALES_BY_PAYMENT_METHOD',
+                    'name' => 'Sales by Payment Method',
+                    'category' => 'Sales',
+                    'description' => 'Analyze payment collection by payment method and source, including POS payments, consignment receivable payments, payment transactions, sales transactions, payment amounts, and outstanding receivables.',
+                    'route_name' => 'reports.sales.by-payment-method.parameters',
+                    'available_formats' => ['print', 'pdf', 'excel'],
+                    'is_active' => true,
+                    'sort_order' => 80,
+                ],
             /*
             |--------------------------------------------------------------------------
             | FINANCE

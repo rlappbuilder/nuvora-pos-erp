@@ -7,7 +7,7 @@ use App\Http\Controllers\Report\ConsignmentSalesController;
 use App\Http\Controllers\Report\SalesByProductController;
 use App\Http\Controllers\Report\SalesByBranchController;
 use App\Http\Controllers\Report\SalesByCashierController;
-
+use App\Http\Controllers\Report\SalesByPaymentMethodController;
 
 /*
 |--------------------------------------------------------------------------
@@ -247,6 +247,42 @@ Route::middleware(['auth'])->group(function () {
                 'by-cashier/excel',
                 [SalesByCashierController::class, 'exportExcel']
             )->name('by-cashier.excel');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Sales by Payment Method
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                'by-payment-method',
+                [SalesByPaymentMethodController::class, 'parameters']
+            )->name('by-payment-method.parameters');
+
+            Route::post(
+                'by-payment-method/generate',
+                [SalesByPaymentMethodController::class, 'generate']
+            )->name('by-payment-method.generate');
+
+            Route::get(
+                'by-payment-method/results',
+                [SalesByPaymentMethodController::class, 'results']
+            )->name('by-payment-method.results');
+
+            Route::get(
+                'by-payment-method/print',
+                [SalesByPaymentMethodController::class, 'print']
+            )->name('by-payment-method.print');
+
+            Route::get(
+                'by-payment-method/pdf',
+                [SalesByPaymentMethodController::class, 'exportPdf']
+            )->name('by-payment-method.pdf');
+
+            Route::get(
+                'by-payment-method/excel',
+                [SalesByPaymentMethodController::class, 'exportExcel']
+            )->name('by-payment-method.excel');
 
         });
 
