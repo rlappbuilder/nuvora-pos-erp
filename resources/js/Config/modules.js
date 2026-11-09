@@ -318,7 +318,26 @@ const modules = {
         route: 'stock-card.index',
         permission: 'stock-card.view',
     },
+    
+         // =====================================================
+        // PRODUCTION
+        // =====================================================
 
+        productionDashboard: {
+            key: 'productionDashboard',
+            title: 'Dashboard',
+            icon: BuildingOffice2Icon,
+            route: 'production-operations.index',
+            permission: 'production.dashboard.view',
+        },
+
+        productionOperations: {
+            key: 'productionOperations',
+            title: 'Production Operations',
+            icon: WrenchScrewdriverIcon,
+            route: 'production-operations.index',
+            permission: 'production-operations.view',
+        },
 
     // =====================================================
     // ACCOUNTING

@@ -11,6 +11,7 @@ import {
     CalculatorIcon,
     UserGroupIcon,
     Cog6ToothIcon,
+    WrenchScrewdriverIcon,
 } from '@heroicons/vue/24/outline'
 
 const navigation = [
@@ -52,7 +53,17 @@ const navigation = [
             modules.currency,
         ].filter(Boolean),
     },
+    // =====================================================
+    // PRODUCTION
+    // =====================================================
 
+    {
+        title: 'Production',
+        icon: WrenchScrewdriverIcon,
+        children: [
+            modules.productionOperations,
+        ].filter(Boolean),
+    },
 
     // =====================================================
     // INVENTORY

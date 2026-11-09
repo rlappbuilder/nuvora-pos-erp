@@ -3417,7 +3417,7 @@ public function createStockTransfer(
   
   });
   }
-/** create Stock Issue */
+
 /** post stock issue */
 public function postStockIssue(
     StockIssueHeader $stockIssue

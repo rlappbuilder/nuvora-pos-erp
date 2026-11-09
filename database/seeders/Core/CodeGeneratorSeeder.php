@@ -40,6 +40,10 @@ $modules = [
     ['module' => 'product_variant',   'prefix' => 'PVR', 'format' => '{PREFIX}{SEQ}',              'digit' => 5],
     ['module' => 'product_price',     'prefix' => 'PPR', 'format' => '{PREFIX}{SEQ}',              'digit' => 5],
 
+     // ==========================
+    // Production
+    // ==========================
+    ['module' => 'production_operation', 'prefix' => 'OPR', 'format' => '{PREFIX}{SEQ}', 'digit' => 4],
     // ==========================
     // Inventory
     // ==========================
