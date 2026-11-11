@@ -23,6 +23,9 @@ use App\Models\Product\ProductAttribute;
 use App\Models\Product\ProductAttributeAssignment;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Product\ProductImage;
+use App\Models\Production\EmployeeProductionOperationRate;
+
+
 class Product extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity,HasSlug;
@@ -237,5 +240,12 @@ public function primaryImage()
     return $this->hasOne(
         ProductImage::class
     )->where('is_primary', true);
+}
+public function employeeProductionOperationRates(): HasMany
+{
+    return $this->hasMany(
+        EmployeeProductionOperationRate::class,
+        'product_id'
+    );
 }
 }

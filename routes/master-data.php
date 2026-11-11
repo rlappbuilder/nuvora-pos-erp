@@ -23,7 +23,7 @@ use App\Http\Controllers\MasterData\ProductVariantPriceController;
 use App\Http\Controllers\Product\BarcodeController;
 use App\Http\Controllers\Product\ProductImageController;
 use App\Http\Controllers\MasterData\EmployeeController;
-
+use App\Http\Controllers\MasterData\EmployeeProductionOperationController;
 Route::middleware(
 
     'auth'
@@ -182,11 +182,8 @@ Route::middleware(
 
                   
         /* Route Bulk Actin 
-
-   
-        /*
         
-                /*
+        /*
         |--------------------------------------------------------------------------
         | Products
         |--------------------------------------------------------------------------
@@ -330,7 +327,48 @@ Route::middleware(
 
         /*
 
-        /** end product Variant */
+        /** employees.production-operations */
+        Route::prefix('employees/{employee}/production-operations')
+            ->name('employees.production-operations.')
+            ->controller(EmployeeProductionOperationController::class)
+            ->group(function () {
+
+                Route::get('/', 'index')
+                    ->name('index');
+
+                Route::post('/', 'store')
+                    ->name('store');
+
+                Route::put('/{assignment}', 'update')
+                    ->name('update');
+
+                Route::delete('/{assignment}', 'destroy')
+                    ->name('destroy');
+            });
+
+        Route::prefix('employees/{employee}/production-operations')
+            ->name('employees.production-operations.')
+            ->controller(EmployeeProductionOperationController::class)
+            ->group(function () {
+
+                Route::get('/', 'index')->name('index');
+
+                Route::post('/', 'store')->name('store');
+
+                Route::put('/{assignment}', 'update')->name('update');
+
+                Route::delete('/{assignment}', 'destroy')->name('destroy');
+
+                // Product Wage Rates
+                Route::post('/{assignment}/rates', 'storeRate')
+                    ->name('rates.store');
+
+                Route::put('/{assignment}/rates/{rate}', 'updateRate')
+                    ->name('rates.update');
+
+                Route::delete('/{assignment}/rates/{rate}', 'destroyRate')
+                    ->name('rates.destroy');
+            });
           /*
         
         |--------------------------------------------------------------------------

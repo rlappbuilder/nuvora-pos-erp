@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use App\Models\Production\EmployeeProductionOperation;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductionOperation extends Model
 {
     use SoftDeletes;
@@ -75,7 +76,13 @@ class ProductionOperation extends Model
     ): Builder {
         return $query->where('company_id', $companyId);
     }
-
+        public function employeeAssignments(): HasMany
+        {
+            return $this->hasMany(
+                EmployeeProductionOperation::class,
+                'production_operation_id'
+            );
+        }
     /*
     |--------------------------------------------------------------------------
     | Relationships - Future Production BOM

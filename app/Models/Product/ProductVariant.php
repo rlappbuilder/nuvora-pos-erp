@@ -5,6 +5,7 @@ namespace App\Models\Product;
 use App\Models\User;
 use App\Models\Core\DocumentActivity;
 use App\Models\MasterData\Company;
+use App\Models\Production\EmployeeProductionOperationRate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,25 +25,18 @@ class ProductVariant extends Model
     */
 
     protected $fillable = [
-
         'product_id',
-
         'sku',
         'barcode',
-
         'name',
         'slug',
-
         'is_default',
         'is_active',
         'sort_order',
-
         'created_by',
         'updated_by',
         'deleted_by',
-
     ];
-
 
     /*
     |--------------------------------------------------------------------------
@@ -51,15 +45,10 @@ class ProductVariant extends Model
     */
 
     protected $casts = [
-
         'is_default' => 'boolean',
-
         'is_active' => 'boolean',
-
         'sort_order' => 'integer',
-
     ];
-
 
     /*
     |--------------------------------------------------------------------------
@@ -74,14 +63,12 @@ class ProductVariant extends Model
         );
     }
 
-
     public function product(): BelongsTo
     {
         return $this->belongsTo(
             Product::class
         );
     }
-
 
     public function values(): HasMany
     {
@@ -90,7 +77,6 @@ class ProductVariant extends Model
         );
     }
 
-
     public function units(): HasMany
     {
         return $this->hasMany(
@@ -98,6 +84,13 @@ class ProductVariant extends Model
         );
     }
 
+    public function employeeProductionOperationRates(): HasMany
+    {
+        return $this->hasMany(
+            EmployeeProductionOperationRate::class,
+            'product_variant_id'
+        );
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -113,7 +106,6 @@ class ProductVariant extends Model
         );
     }
 
-
     public function updater(): BelongsTo
     {
         return $this->belongsTo(
@@ -122,7 +114,6 @@ class ProductVariant extends Model
         );
     }
 
-
     public function deleter(): BelongsTo
     {
         return $this->belongsTo(
@@ -130,7 +121,6 @@ class ProductVariant extends Model
             'deleted_by'
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -154,7 +144,6 @@ class ProductVariant extends Model
         );
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -163,29 +152,23 @@ class ProductVariant extends Model
 
     public function scopeActive(
         Builder $query
-    ): Builder
-    {
+    ): Builder {
         return $query->where(
             'is_active',
             true
         );
     }
 
-
     public function scopeSearch(
         Builder $query,
         ?string $search
-    ): Builder
-    {
+    ): Builder {
         if (blank($search)) {
-
             return $query;
-
         }
 
         return $query->where(
             function (Builder $query) use ($search) {
-
                 $query
                     ->where(
                         'sku',
@@ -202,11 +185,9 @@ class ProductVariant extends Model
                         'like',
                         "%{$search}%"
                     );
-
             }
         );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -219,24 +200,20 @@ class ProductVariant extends Model
         return false;
     }
 
-
     public function canDelete(): bool
     {
         return ! $this->isUsed();
     }
-
 
     public function canActivate(): bool
     {
         return ! $this->is_active;
     }
 
-
     public function canDeactivate(): bool
     {
         return $this->is_active;
     }
-
 
     public function activate(): bool
     {
@@ -245,12 +222,10 @@ class ProductVariant extends Model
         ]);
     }
 
-
     public function deactivate(): bool
     {
         return $this->update([
             'is_active' => false,
         ]);
     }
-
 }

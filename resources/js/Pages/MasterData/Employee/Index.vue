@@ -5,6 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 
 import EmployeeFormModal from './EmployeeFormModal.vue'
 import EmployeeViewModal from './EmployeeViewModal.vue'
+import EmployeeProductionOperationModal from './EmployeeProductionOperationModal.vue'
 
 const props = defineProps({
     employees: {
@@ -59,6 +60,9 @@ const editingEmployee = ref(null)
 
 const showViewModal = ref(false)
 const viewingEmployee = ref(null)
+
+const showProductionOperationModal = ref(false)
+const selectedProductionEmployee = ref(null)
 
 /*
 |--------------------------------------------------------------------------
@@ -206,6 +210,22 @@ const openViewModal = (employee) => {
 const closeViewModal = () => {
     showViewModal.value = false
     viewingEmployee.value = null
+}
+
+/*
+|--------------------------------------------------------------------------
+| Production Operations
+|--------------------------------------------------------------------------
+*/
+
+const openProductionOperationModal = (employee) => {
+    selectedProductionEmployee.value = employee
+    showProductionOperationModal.value = true
+}
+
+const closeProductionOperationModal = () => {
+    showProductionOperationModal.value = false
+    selectedProductionEmployee.value = null
 }
 </script>
 
@@ -880,75 +900,113 @@ const closeViewModal = () => {
                     </div>
 
                     <!-- Actions -->
-                    <div
-                        class="
-                            mt-4
-                            flex
-                            items-center
-                            justify-between
-                            border-t
-                            border-gray-100
-                            pt-3
-                        "
-                    >
-                        <Link
-                            :href="
-                                route(
-                                    'employees.show',
-                                    employee.id
-                                )
-                            "
-                            class="
-                                text-xs
-                                font-medium
-                                text-blue-600
-                                hover:text-blue-700
-                            "
-                            @click.prevent="
-                                openViewModal(employee)
-                            "
-                        >
-                            View Details
-                        </Link>
+<div
+    class="
+        mt-4
+        flex
+        flex-wrap
+        items-center
+        justify-between
+        gap-2
+        border-t
+        border-gray-100
+        pt-3
+    "
+>
+    <div class="flex flex-wrap items-center gap-2">
 
-                        <div class="flex items-center gap-2">
-                            <button
-                                type="button"
-                                class="
-                                    rounded-md
-                                    px-2.5
-                                    py-1.5
-                                    text-xs
-                                    font-medium
-                                    text-gray-600
-                                    hover:bg-gray-100
-                                "
-                                @click="
-                                    openEditModal(employee)
-                                "
-                            >
-                                Edit
-                            </button>
+        <!-- View Details -->
+        <Link
+            :href="route('employees.show', employee.id)"
+            class="
+                text-xs
+                font-medium
+                text-blue-600
+                hover:text-blue-700
+            "
+            @click.prevent="openViewModal(employee)"
+        >
+            View Details
+        </Link>
 
-                            <button
-                                type="button"
-                                class="
-                                    rounded-md
-                                    px-2.5
-                                    py-1.5
-                                    text-xs
-                                    font-medium
-                                    text-red-600
-                                    hover:bg-red-50
-                                "
-                                @click="
-                                    deleteEmployee(employee)
-                                "
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
+        <!-- Production Operations -->
+        <button
+            type="button"
+            class="
+                inline-flex
+                items-center
+                gap-1.5
+                rounded-md
+                bg-emerald-50
+                px-2.5
+                py-1.5
+                text-xs
+                font-medium
+                text-emerald-700
+                transition
+                hover:bg-emerald-100
+            "
+            @click="openProductionOperationModal(employee)"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 6V4m0 16v-2m8-6h-2M6 12H4m13.657-5.657l-1.414 1.414M7.757 16.243l-1.414 1.414m11.314 0l-1.414-1.414M7.757 7.757L6.343 6.343"
+                />
+                <circle cx="12" cy="12" r="3" stroke-width="2" />
+            </svg>
+
+            Production Operations
+        </button>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+        <!-- Edit -->
+        <button
+            type="button"
+            class="
+                rounded-md
+                px-2.5
+                py-1.5
+                text-xs
+                font-medium
+                text-gray-600
+                hover:bg-gray-100
+            "
+            @click="openEditModal(employee)"
+        >
+            Edit
+        </button>
+
+        <!-- Delete -->
+        <button
+            type="button"
+            class="
+                rounded-md
+                px-2.5
+                py-1.5
+                text-xs
+                font-medium
+                text-red-600
+                hover:bg-red-50
+            "
+            @click="deleteEmployee(employee)"
+        >
+            Delete
+        </button>
+
+    </div>
+</div>
                 </div>
             </div>
 
@@ -1041,5 +1099,12 @@ const closeViewModal = () => {
         :show="showViewModal"
         :employee="viewingEmployee"
         @close="closeViewModal"
+    />
+
+    <!-- Employee Production Operation Modal -->
+    <EmployeeProductionOperationModal
+        :show="showProductionOperationModal"
+        :employee="selectedProductionEmployee"
+        @close="closeProductionOperationModal"
     />
 </template>
