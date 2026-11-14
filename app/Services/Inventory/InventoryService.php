@@ -1624,7 +1624,7 @@ public function transfer(array $data): void
     |--------------------------------------------------------------------------
     */
 
-    private function updateCurrentStock(
+private function updateCurrentStock(
     array $data
 ): ProductStock {
 
@@ -1634,44 +1634,24 @@ public function transfer(array $data): void
     |--------------------------------------------------------------------------
     */
 
+    $resellerId = $data['reseller_id'] ?? null;
+
     $query = ProductStock::query()
-        ->where(
-            'company_id',
-        $data['company_id'] ?? null
-        )
-        ->where(
-            'branch_id',
-            $data['branch_id']
-        )
-        ->where(
-            'warehouse_id',
-            $data['warehouse_id']
-        )
-        ->where(
-            'product_variant_id',
-            $data['product_variant_id']
-        )
-        ->where(
-            'unit_id',
-            $data['unit_id']
-        )
-        ->where(
-            'reseller_id',
-            $data['reseller_id'] ?? null
-        );
+        ->where('company_id', $data['company_id'] ?? null)
+        ->where('branch_id', $data['branch_id'])
+        ->where('warehouse_id', $data['warehouse_id'])
+        ->where('product_variant_id', $data['product_variant_id'])
+        ->where('unit_id', $data['unit_id']);
 
-    if (
-        ($data['lock'] ?? false)
-        === true
-    ) {
-
-        $query->lockForUpdate();
-
+    if ($resellerId === null) {
+        $query->whereNull('reseller_id');
+    } else {
+        $query->where('reseller_id', $resellerId);
     }
 
-
-    $stock = $query->first();
-
+    $stock = $query
+        ->lockForUpdate()
+        ->first();
 
     /*
     |--------------------------------------------------------------------------
@@ -1684,7 +1664,7 @@ public function transfer(array $data): void
         $stock = new ProductStock();
 
         $stock->company_id =
-        $data['company_id'] ?? null;
+            $data['company_id'] ?? null;
 
         $stock->branch_id =
             $data['branch_id'];
@@ -1695,26 +1675,17 @@ public function transfer(array $data): void
         $stock->product_variant_id =
             $data['product_variant_id'];
 
-        $stock->reseller_id =
-        $data['reseller_id'] ?? null;
-
         $stock->unit_id =
             $data['unit_id'];
 
-        $stock->on_hand_qty =
-            0;
+        $stock->reseller_id =
+            $resellerId;
 
-        $stock->reserved_qty =
-            0;
-
-        $stock->available_qty =
-            0;
-
-        $stock->average_cost =
-            0;
-
+        $stock->on_hand_qty = 0;
+        $stock->reserved_qty = 0;
+        $stock->available_qty = 0;
+        $stock->average_cost = 0;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1722,15 +1693,11 @@ public function transfer(array $data): void
     |--------------------------------------------------------------------------
     */
 
-    $oldQty =
-        (float) $stock->on_hand_qty;
+    $oldQty = (float) $stock->on_hand_qty;
 
-    $oldAverageCost =
-        (float) $stock->average_cost;
+    $oldAverageCost = (float) $stock->average_cost;
 
-    $movementQty =
-        (float) $data['qty'];
-
+    $movementQty = (float) $data['qty'];
 
     /*
     |--------------------------------------------------------------------------
@@ -1739,9 +1706,7 @@ public function transfer(array $data): void
     */
 
     $stock->on_hand_qty =
-        $oldQty +
-        $movementQty;
-
+        $oldQty + $movementQty;
 
     /*
     |--------------------------------------------------------------------------
@@ -1749,16 +1714,12 @@ public function transfer(array $data): void
     |--------------------------------------------------------------------------
     */
 
-    if (
-        $stock->on_hand_qty < 0
-    ) {
+    if ($stock->on_hand_qty < 0) {
 
         throw new \RuntimeException(
             'Stock quantity cannot be negative.'
         );
-
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1767,47 +1728,29 @@ public function transfer(array $data): void
     */
 
     if (
-        ($data['update_average_cost'] ?? false)
-        === true
-        &&
-        $movementQty > 0
+        ($data['update_average_cost'] ?? false) === true
+        && $movementQty > 0
     ) {
 
-        $incomingCost =
-            (float) (
-                $data['average_cost']
-                ?? 0
-            );
+        $incomingCost = (float) (
+            $data['average_cost'] ?? 0
+        );
 
+        if ($oldQty <= 0) {
 
-        if (
-            $oldQty <= 0
-        ) {
-
-            $stock->average_cost =
-                $incomingCost;
+            $stock->average_cost = $incomingCost;
 
         } else {
 
             $stock->average_cost =
                 (
-                    (
-                        $oldQty *
-                        $oldAverageCost
-                    )
+                    ($oldQty * $oldAverageCost)
                     +
-                    (
-                        $movementQty *
-                        $incomingCost
-                    )
+                    ($movementQty * $incomingCost)
                 )
-                /
-                $stock->on_hand_qty;
-
+                / $stock->on_hand_qty;
         }
-
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1816,9 +1759,7 @@ public function transfer(array $data): void
     */
 
     $stock->available_qty =
-        $stock->on_hand_qty -
-        $stock->reserved_qty;
-
+        $stock->on_hand_qty - $stock->reserved_qty;
 
     /*
     |--------------------------------------------------------------------------
@@ -1829,28 +1770,26 @@ public function transfer(array $data): void
     $stock->last_transaction_at =
         $data['transaction_date'];
 
-
     /*
     |--------------------------------------------------------------------------
     | Audit
     |--------------------------------------------------------------------------
     */
 
-    $stock->updated_by =
-        auth()->id();
+    $stock->updated_by = auth()->id();
 
-    $stock->created_by ??=
-        auth()->id();
-
+    $stock->created_by ??= auth()->id();
 
     $stock->save();
-
 
     return $stock;
 }
 
-    private function createMovement(ProductStock $stock,array $data): InventoryMovement
-{
+    private function createMovement(
+    ProductStock $stock,
+    array $data
+): InventoryMovement {
+
     return InventoryMovement::create([
 
         /*
@@ -1859,13 +1798,13 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'company_id'         => $stock->company_id,
+        'company_id' => $stock->company_id,
 
-        'branch_id'          => $stock->branch_id,
+        'branch_id' => $stock->branch_id,
 
-        'warehouse_id'       => $stock->warehouse_id,
+        'warehouse_id' => $stock->warehouse_id,
 
-        'reseller_id' => $data['reseller_id'] ?? null,
+        'reseller_id' => $stock->reseller_id,
 
         /*
         |--------------------------------------------------------------------------
@@ -1875,7 +1814,7 @@ public function transfer(array $data): void
 
         'product_variant_id' => $stock->product_variant_id,
 
-        'unit_id'            => $stock->unit_id,
+        'unit_id' => $stock->unit_id,
 
         /*
         |--------------------------------------------------------------------------
@@ -1883,11 +1822,11 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'reference_type'     => $data['reference_type'],
+        'reference_type' => $data['reference_type'],
 
-        'reference_id'       => $data['reference_id'],
+        'reference_id' => $data['reference_id'],
 
-        'reference_number'   => $data['reference_number'],
+        'reference_number' => $data['reference_number'],
 
         /*
         |--------------------------------------------------------------------------
@@ -1895,11 +1834,11 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'qty_in'             => $data['qty_in'] ?? 0,
+        'qty_in' => $data['qty_in'] ?? 0,
 
-        'qty_out'            => $data['qty_out'] ?? 0,
+        'qty_out' => $data['qty_out'] ?? 0,
 
-        'balance_qty'        => $stock->on_hand_qty,
+        'balance_qty' => $stock->on_hand_qty,
 
         /*
         |--------------------------------------------------------------------------
@@ -1907,9 +1846,9 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'unit_cost'          => $data['unit_cost'] ?? 0,
+        'unit_cost' => $data['unit_cost'] ?? 0,
 
-        'total_cost'         => $data['total_cost'] ?? 0,
+        'total_cost' => $data['total_cost'] ?? 0,
 
         /*
         |--------------------------------------------------------------------------
@@ -1917,9 +1856,9 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'transaction_date'   => $data['transaction_date'],
+        'transaction_date' => $data['transaction_date'],
 
-        'description'        => $data['description'] ?? null,
+        'description' => $data['description'] ?? null,
 
         /*
         |--------------------------------------------------------------------------
@@ -1927,7 +1866,7 @@ public function transfer(array $data): void
         |--------------------------------------------------------------------------
         */
 
-        'created_by'         => auth()->id(),
+        'created_by' => auth()->id(),
 
     ]);
 }
