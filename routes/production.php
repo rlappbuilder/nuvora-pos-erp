@@ -2,8 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Production\ProductionOperationController;
+use App\Http\Controllers\Production\ProductionBomController;
 
 Route::middleware(['auth'])->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Operations
+    |--------------------------------------------------------------------------
+    */
 
     Route::prefix('production-operations')
         ->name('production-operations.')
@@ -41,5 +48,65 @@ Route::middleware(['auth'])->group(function () {
 
             Route::delete('/{production_operation}', 'destroy')
                 ->name('destroy');
+
         });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Bill of Materials (BOM)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('production-boms')
+        ->name('production-boms.')
+        ->controller(ProductionBomController::class)
+        ->group(function () {
+
+            // Preview Code
+            Route::get('/preview-code', 'previewCode')
+                ->name('preview-code');
+
+            // CRUD
+            Route::get('/', 'index')
+                ->name('index');
+
+            Route::get('/create', 'create')
+                ->name('create');
+
+            Route::post('/', 'store')
+                ->name('store');
+
+            Route::get('/{bom}', 'show')
+                ->name('show');
+
+            Route::get('/{bom}/edit', 'edit')
+                ->name('edit');
+
+            Route::put('/{bom}', 'update')
+                ->name('update');
+
+            // Revision
+            Route::post('/{bom}/revision', 'createRevision')
+                ->name('revision');
+
+            // Version Activation
+            Route::post('/versions/{version}/activate', 'activateVersion')
+                ->name('activate-version');
+
+            // Deactivate BOM
+            Route::post('/{bom}/deactivate', 'deactivate')
+                ->name('deactivate');
+
+            // Delete Draft
+            Route::delete('/{bom}', 'destroy')
+                ->name('destroy');
+
+            Route::get(
+                '/{bom}/versions/{version}/print',
+                [ProductionBomController::class, 'print']
+            )->name('print');
+
+        });
+
 });

@@ -62,6 +62,7 @@ const navigation = [
         icon: WrenchScrewdriverIcon,
         children: [
             modules.productionOperations,
+            modules.billOfMaterials,
         ].filter(Boolean),
     },
 

@@ -24,142 +24,151 @@ const emit = defineEmits([
     'cancel',
 ])
 </script>
+
 <template>
-<form @submit.prevent="emit('submit')">
-    <!-- ========================================================= -->
-<!-- Category Information -->
-<!-- ========================================================= -->
+    <form @submit.prevent="emit('submit')">
 
-<FormSection
-    icon="📂"
-    title="Category Information"
-    description="Basic information for this category."
-    :columns="2"
->
+        <!-- ========================================================= -->
+        <!-- Category Information -->
+        <!-- ========================================================= -->
 
-    <!-- Code -->
+        <FormSection
+            icon="📂"
+            title="Category Information"
+            description="Basic information for this category."
+            :columns="2"
+        >
 
-    <FormField
-        label="Code"
-        :error="form.errors.code"
-    >
+            <!-- Code -->
 
-        <FormInput
-            v-model="form.code"
-            readonly
-        />
+            <FormField
+                label="Code"
+                :error="form.errors.code"
+            >
+                <FormInput
+                    v-model="form.code"
+                    readonly
+                />
+            </FormField>
 
-    </FormField>
+            <!-- Category Name -->
 
-    <!-- Category Name -->
+            <FormField
+                label="Category Name"
+                required
+                :error="form.errors.name"
+            >
+                <FormInput
+                    v-model="form.name"
+                    placeholder="Example: Cotton Fabric"
+                />
+            </FormField>
 
-    <FormField
-        label="Category Name"
-        required
-        :error="form.errors.name"
-    >
+            <!-- Category Type -->
 
-        <FormInput
-            v-model="form.name"
-            placeholder="Example: Beverage"
-        />
+            <FormField
+                label="Category Type"
+                required
+                :error="form.errors.category_type"
+            >
+                <select
+                    v-model="form.category_type"
+                    required
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                >
+                    <option value="" disabled>
+                        Select Category Type
+                    </option>
 
-    </FormField>
-   
-</FormSection>
-<!-- ========================================================= -->
-<!-- Settings -->
-<!-- ========================================================= -->
+                    <option value="raw_material">
+                        Raw Material
+                    </option>
 
-<FormSection
-    icon="📝"
-    title="Description"
-    description="Additional information about this account."
-    :columns="1"
->
+                    <option value="finished_goods">
+                        Finished Goods
+                    </option>
+                </select>
+            </FormField>
 
-<FormField
+        </FormSection>
 
-        label="Description"
+        <!-- ========================================================= -->
+        <!-- Description -->
+        <!-- ========================================================= -->
 
-        :error="form.errors.description"
+        <FormSection
+            icon="📝"
+            title="Description"
+            description="Additional information about this category."
+            :columns="1"
+        >
+            <FormField
+                label="Description"
+                :error="form.errors.description"
+            >
+                <FormTextarea
+                    v-model="form.description"
+                    :rows="4"
+                    placeholder="Write additional notes..."
+                />
+            </FormField>
+        </FormSection>
 
-    >
+        <!-- ========================================================= -->
+        <!-- Settings -->
+        <!-- ========================================================= -->
 
-        <FormTextarea
+        <FormSection
+            icon="⚙️"
+            title="Settings"
+            description="Configure category settings."
+            :columns="1"
+        >
+            <FormCheckbox
+                v-model="form.is_active"
+                label="Active"
+                description="Enable or disable this category."
+                variant="switch"
+            />
+        </FormSection>
 
-            v-model="form.description"
+        <!-- ========================================================= -->
+        <!-- Action -->
+        <!-- ========================================================= -->
 
-            :rows="4"
+        <div
+            class="
+                flex
+                justify-end
+                gap-3
+                mt-8
+            "
+        >
+            <BaseButton
+                type="button"
+                variant="secondary"
+                @click="emit('cancel')"
+            >
+                Cancel
+            </BaseButton>
 
-            placeholder="Write additional notes..."
+            <BaseButton
+                type="submit"
+                :loading="form.processing"
+            >
+                {{ mode === 'create' ? 'Save' : 'Update' }}
+            </BaseButton>
 
-        />
+            <BaseButton
+                v-if="mode === 'create'"
+                type="button"
+                variant="success"
+                :loading="form.processing"
+                @click="emit('submitAndNew')"
+            >
+                Save &amp; New
+            </BaseButton>
+        </div>
 
-    </FormField>
-
-</FormSection>
-
-
-<FormSection
-    icon="⚙️"
-    title="Settings"
-    description="Configure category settings."
-    :columns="1"
->
-
-    <FormCheckbox
-        v-model="form.is_active"
-        label="Active"
-        description="Enable or disable this category."
-        variant="switch"
-    />
-
-</FormSection>
-<!-- ========================================================= -->
-<!-- Action -->
-<!-- ========================================================= -->
-
-<div
-    class="
-        flex
-        justify-end
-        gap-3
-        mt-8
-    "
->
-
-    <BaseButton
-        type="button"
-        variant="secondary"
-        @click="emit('cancel')"
-    >
-
-        Cancel
-
-    </BaseButton>
-
-    <BaseButton
-        type="submit"
-        :loading="form.processing"
-    >
-
-        {{ mode === 'create' ? 'Save' : 'Update' }}
-
-    </BaseButton>
-
-    <BaseButton
-        v-if="mode === 'create'"
-        type="button"
-        variant="success"
-        :loading="form.processing"
-        @click="emit('submitAndNew')"
-    >
-
-        Save &amp; New
-
-    </BaseButton>
-
-</div>
-</form>
+    </form>
 </template>

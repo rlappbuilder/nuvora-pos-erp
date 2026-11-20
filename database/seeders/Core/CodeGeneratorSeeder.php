@@ -52,10 +52,11 @@ $modules = [
     ['module' => 'stock_opname',      'prefix' => 'OPN', 'format' => '{PREFIX}-{YYYY}-{SEQ}',      'digit' => 6],
     ['module' => 'opening_stock',     'prefix' => 'OS','format' => '{PREFIX}-{YYYY}-{SEQ}',       'digit'  => 6, ],
     ['module' => 'stock_issue',       'prefix' => 'SI','format' => '{PREFIX}-{YYYY}-{SEQ}',       'digit'  => 6, ],
- [  'module' => 'stock_transfer_return','prefix' => 'STR',
-    'format' => '{PREFIX}-{YYYY}-{SEQ}',
-    'digit' => 6,
-],
+         [  'module' => 'stock_transfer_return','prefix' => 'STR',
+            'format' => '{PREFIX}-{YYYY}-{SEQ}',
+            'digit' => 6,
+        ],
+        ['module' => 'production_bom', 'prefix' => 'BOM', 'format' => '{PREFIX}-{YYYY}-{SEQ}', 'digit' => 6],
 
     // ==========================
     // Purchasing

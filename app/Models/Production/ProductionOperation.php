@@ -83,6 +83,14 @@ class ProductionOperation extends Model
                 'production_operation_id'
             );
         }
+
+    public function bomOperations(): HasMany
+    {
+        return $this->hasMany(
+            ProductionBomOperation::class,
+            'production_operation_id'
+        );
+    }
     /*
     |--------------------------------------------------------------------------
     | Relationships - Future Production BOM

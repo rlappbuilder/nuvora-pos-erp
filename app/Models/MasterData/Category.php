@@ -14,46 +14,35 @@ class Category extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
-
         'code',
-
         'name',
-
+        'category_type',
         'description',
-
         'is_active',
-
         'created_by',
-
         'updated_by',
-
     ];
 
     protected $casts = [
-
         'is_active' => 'boolean',
-
     ];
+
     public function getRouteKeyName(): string
-{
-    return 'id';
-}
+    {
+        return 'id';
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-
             ->useLogName('category')
-
             ->logFillable()
-
             ->logOnlyDirty()
-
             ->dontSubmitEmptyLogs();
     }
 
     public function scopeActive($query)
-{
-    return $query->where('is_active', true);
-}
+    {
+        return $query->where('is_active', true);
+    }
 }

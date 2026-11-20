@@ -5388,7 +5388,7 @@ public function postStockTransfer(
             as $detail
         ) {
 
-            /*
+           /*
             |--------------------------------------------------------------------------
             | Lock Source Stock
             |--------------------------------------------------------------------------
@@ -5417,8 +5417,8 @@ public function postStockTransfer(
                         'unit_id',
                         $detail->unit_id
                     )
+                    ->whereNull('reseller_id')
                     ->first();
-
 
             /*
             |--------------------------------------------------------------------------
@@ -6226,6 +6226,7 @@ public function deleteStockTransfers(
 
     });
 }
+
 private function getSourceStock(
     int $branchId,
     int $warehouseId,
@@ -6234,34 +6235,18 @@ private function getSourceStock(
 ): ?ProductStock {
 
     $companyId =
-        Branch::findOrFail(
-            $branchId
-        )->company_id;
+        Branch::findOrFail($branchId)->company_id;
 
     return ProductStock::query()
-        ->where(
-            'company_id',
-            $companyId
-        )
-        ->where(
-            'branch_id',
-            $branchId
-        )
-        ->where(
-            'warehouse_id',
-            $warehouseId
-        )
-        ->where(
-            'product_variant_id',
-            $productVariantId
-        )
-        ->where(
-            'unit_id',
-            $unitId
-        )
+        ->where('company_id', $companyId)
+        ->where('branch_id', $branchId)
+        ->where('warehouse_id', $warehouseId)
+        ->where('product_variant_id', $productVariantId)
+        ->where('unit_id', $unitId)
+        ->whereNull('reseller_id')
         ->first();
-
 }
+
 /** Stock opname */
 public function createStockOpname(
     array $data

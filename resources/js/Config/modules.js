@@ -338,6 +338,13 @@ const modules = {
             route: 'production-operations.index',
             permission: 'production-operations.view',
         },
+        billOfMaterials: {
+            key: 'billOfMaterials',
+            title: 'Bill Of Materials',
+            icon: DocumentTextIcon,
+            route: 'production-boms.index',
+            permission: 'production-boms.view',
+        },
 
     // =====================================================
     // ACCOUNTING

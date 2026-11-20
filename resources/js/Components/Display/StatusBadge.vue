@@ -280,6 +280,12 @@ const type = computed(() => {
             case 'closed':
                 return 'closed'
 
+            case 'active':
+                return 'success'
+
+            case 'inactive':
+                return 'danger'
+
             default:
                 break
 
