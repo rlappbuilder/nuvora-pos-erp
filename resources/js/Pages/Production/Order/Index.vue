@@ -223,11 +223,25 @@ const formatQuantity = value => {
         maximumFractionDigits: 4,
     }).format(Number(value))
 }
+const formatDate = value => {
+    if (!value) return '-'
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return '-'
+
+    return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(date)
+}
 
 const formatOrderDate = value => {
     if (!value) return '-'
     return formatDate(value)
 }
+
 
 const getProgress = order => {
     const planned = Number(order?.details?.planned_quantity ?? 0)
@@ -530,39 +544,39 @@ onUnmounted(() => {
                         </div>
 
                         <!-- Branch -->
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">
-        Branch
-    </label>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Branch
+                            </label>
 
-    <SearchableSelect
-        v-model="filterState.branch_id"
-        :options="branches"
-        label="label"
-        value-key="id"
-        placeholder="All Branches"
-    />
-</div>
+                            <SearchableSelect
+                                v-model="filterState.branch_id"
+                                :options="branches"
+                                label="label"
+                                value-key="id"
+                                placeholder="All Branches"
+                            />
+                        </div>
 
-<!-- Status -->
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">
-        Status
-    </label>
+                        <!-- Status -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Status
+                            </label>
 
-    <select
-        v-model="filterState.status"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-    >
-        <option
-            v-for="option in statusOptions"
-            :key="option.value"
-            :value="option.value"
-        >
-            {{ option.label }}
-        </option>
-    </select>
-</div>
+                            <select
+                                v-model="filterState.status"
+                                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                            >
+                                <option
+                                    v-for="option in statusOptions"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                        </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -636,195 +650,222 @@ onUnmounted(() => {
                     <div class="relative overflow-x-auto">
                         <LoadingOverlay v-if="loading" />
 
-                        <DataTable>
-                            <DataTableHead>
-                                <DataTableRow>
-                                    <DataTableHeaderCell class="w-12">
-                                        #
-                                    </DataTableHeaderCell>
+                        <DataTable
+                                sticky-header
+                                max-height="570px"
+                            >
+                                <DataTableHead sticky>
+                                <DataTableHeaderCell
+                                    width="42px"
+                                    align="center"
+                                >
+                                    #
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center gap-1 font-semibold"
-                                            @click="changeSort('number')"
-                                        >
-                                            Order Number
-                                            <span>{{ sortIcon('number') }}</span>
-                                        </button>
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="155px">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 font-semibold"
+                                        @click="changeSort('number')"
+                                    >
+                                        Order Number
+                                        <span>{{ sortIcon('number') }}</span>
+                                    </button>
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center gap-1 font-semibold"
-                                            @click="changeSort('order_date')"
-                                        >
-                                            Order Date
-                                            <span>{{ sortIcon('order_date') }}</span>
-                                        </button>
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="125px">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 font-semibold"
+                                        @click="changeSort('order_date')"
+                                    >
+                                        Order Date
+                                        <span>{{ sortIcon('order_date') }}</span>
+                                    </button>
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        Branch
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="145px">
+                                    Branch
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        BOM
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="160px">
+                                    BOM
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        Output Product
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="180px">
+                                    Output Product
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell class="text-right">
-                                        Planned Qty
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    width="110px"
+                                    align="right"
+                                >
+                                    Planned Qty
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center gap-1 font-semibold"
-                                            @click="changeSort('planned_start_date')"
-                                        >
-                                            Planned Start
-                                            <span>{{ sortIcon('planned_start_date') }}</span>
-                                        </button>
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="140px">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 font-semibold"
+                                        @click="changeSort('planned_start_date')"
+                                    >
+                                        Planned Start
+                                        <span>{{ sortIcon('planned_start_date') }}</span>
+                                    </button>
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell>
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center gap-1 font-semibold"
-                                            @click="changeSort('status')"
-                                        >
-                                            Status
-                                            <span>{{ sortIcon('status') }}</span>
-                                        </button>
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell width="125px">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 font-semibold"
+                                        @click="changeSort('status')"
+                                    >
+                                        Status
+                                        <span>{{ sortIcon('status') }}</span>
+                                    </button>
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell class="text-center">
-                                        Progress
-                                    </DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    width="130px"
+                                    align="center"
+                                >
+                                    Progress
+                                </DataTableHeaderCell>
 
-                                    <DataTableHeaderCell class="text-right">
-                                        Actions
-                                    </DataTableHeaderCell>
-                                </DataTableRow>
+                                <DataTableHeaderCell
+                                    width="150px"
+                                    align="right"
+                                >
+                                    Actions
+                                </DataTableHeaderCell>
                             </DataTableHead>
 
-                            <DataTableBody>
-                                <template v-if="visibleOrders.length">
-                                    <DataTableRow
-                                        v-for="(order, index) in visibleOrders"
-                                        :key="order.id"
-                                        class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                        @click="viewOrder(order)"
-                                    >
-                                        <DataTableCell>
-                                            {{ (orders.current_page - 1) * orders.per_page + index + 1 }}
-                                        </DataTableCell>
+                                <DataTableBody>
+                                    <template v-if="visibleOrders.length">
+                                        <DataTableRow
+                                            v-for="(order, index) in visibleOrders"
+                                            :key="order.id"
+                                            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                            @click="viewOrder(order)"
+                                        >
+                                            <!-- Number -->
+                                            <DataTableCell align="center">
+                                                {{ (orders.current_page - 1) * orders.per_page + index + 1 }}
+                                            </DataTableCell>
 
-                                        <DataTableCell>
-                                            <div class="font-medium text-primary-600 dark:text-primary-400">
-                                                {{ order.number }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                {{ getBomVersion(order) }}
-                                            </div>
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            {{ formatOrderDate(order.order_date) }}
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            {{ order.branch?.name ?? '-' }}
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            <div class="font-medium text-gray-800 dark:text-gray-200">
-                                                {{ getBomName(order) }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                {{ order.production_bom?.code ?? '-' }}
-                                            </div>
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            <div class="font-medium text-gray-800 dark:text-gray-200">
-                                                {{ getOutputVariant(order) }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                SKU: {{ getOutputSku(order) }}
-                                            </div>
-                                        </DataTableCell>
-
-                                        <DataTableCell class="text-right">
-                                            {{ formatQuantity(order.details?.planned_quantity) }}
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            {{ formatOrderDate(order.planned_start_date) }}
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            <StatusBadge :status="order.status" />
-                                        </DataTableCell>
-
-                                        <DataTableCell>
-                                            <div class="min-w-[100px]">
-                                                <div class="text-xs text-gray-500 mb-1">
-                                                    {{ getProgressLabel(order) }}
+                                            <!-- Order Number -->
+                                            <DataTableCell>
+                                                <div class="font-medium text-primary-600 dark:text-primary-400">
+                                                    {{ order.number }}
                                                 </div>
 
-                                                <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                                    <div
-                                                        class="h-full rounded-full bg-primary-600 transition-all"
-                                                        :style="{ width: `${getProgress(order)}%` }"
-                                                    />
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    {{ getBomVersion(order) }}
                                                 </div>
-                                            </div>
-                                        </DataTableCell>
+                                            </DataTableCell>
 
-                                        <DataTableCell class="text-right">
-                                            <div
-                                                class="flex items-center justify-end gap-2"
-                                                @click.stop
-                                            >
-                                                <BaseButton
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    @click="viewOrder(order)"
+                                            <!-- Order Date -->
+                                            <DataTableCell>
+                                                {{ formatOrderDate(order.order_date) }}
+                                            </DataTableCell>
+
+                                            <!-- Branch -->
+                                            <DataTableCell>
+                                                {{ order.branch?.name ?? '-' }}
+                                            </DataTableCell>
+
+                                            <!-- BOM -->
+                                            <DataTableCell>
+                                                <div class="font-medium text-gray-800 dark:text-gray-200">
+                                                    {{ getBomName(order) }}
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    {{ order.production_bom?.code ?? '-' }}
+                                                </div>
+                                            </DataTableCell>
+
+                                            <!-- Output Product -->
+                                            <DataTableCell>
+                                                <div class="font-medium text-gray-800 dark:text-gray-200">
+                                                    {{ getOutputVariant(order) }}
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    SKU: {{ getOutputSku(order) }}
+                                                </div>
+                                            </DataTableCell>
+
+                                            <!-- Planned Quantity -->
+                                            <DataTableCell align="right">
+                                                {{ formatQuantity(order.details?.planned_quantity) }}
+                                            </DataTableCell>
+
+                                            <!-- Planned Start -->
+                                            <DataTableCell>
+                                                {{ formatOrderDate(order.planned_start_date) }}
+                                            </DataTableCell>
+
+                                            <!-- Status -->
+                                            <DataTableCell>
+                                                <StatusBadge :status="order.status" />
+                                            </DataTableCell>
+
+                                            <!-- Progress -->
+                                            <DataTableCell align="center">
+                                                <div class="min-w-[100px]">
+                                                    <div class="mb-1 text-xs text-gray-500">
+                                                        {{ getProgressLabel(order) }}
+                                                    </div>
+
+                                                    <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                        <div
+                                                            class="h-full rounded-full bg-primary-600 transition-all"
+                                                            :style="{ width: `${getProgress(order)}%` }"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </DataTableCell>
+
+                                            <!-- Actions -->
+                                            <DataTableCell align="right">
+                                                <div
+                                                    class="flex items-center justify-end gap-2"
+                                                    @click.stop
                                                 >
-                                                    View
-                                                </BaseButton>
+                                                    <BaseButton
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        @click="viewOrder(order)"
+                                                    >
+                                                        View
+                                                    </BaseButton>
 
-                                                <BaseButton
-                                                    v-if="order.status === 'Draft'"
-                                                    size="sm"
-                                                    variant="primary"
-                                                    @click="editOrder(order)"
-                                                >
-                                                    Edit
-                                                </BaseButton>
-                                            </div>
-                                        </DataTableCell>
-                                    </DataTableRow>
-                                </template>
+                                                    <BaseButton
+                                                        v-if="order.status === 'Draft'"
+                                                        size="sm"
+                                                        variant="primary"
+                                                        @click="editOrder(order)"
+                                                    >
+                                                        Edit
+                                                    </BaseButton>
+                                                </div>
+                                            </DataTableCell>
+                                        </DataTableRow>
+                                    </template>
 
-                                <template v-else>
-                                    <DataTableRow>
-                                        <DataTableCell colspan="11">
-                                            <TableEmpty
-                                                title="No Production Orders Found"
-                                                description="There are no production orders matching your filters."
-                                            />
-                                        </DataTableCell>
-                                    </DataTableRow>
-                                </template>
-                            </DataTableBody>
-                        </DataTable>
+                                    <template v-else>
+                                        <DataTableRow>
+                                            <DataTableCell colspan="11">
+                                                <TableEmpty
+                                                    title="No Production Orders Found"
+                                                    description="There are no production orders matching your filters."
+                                                />
+                                            </DataTableCell>
+                                        </DataTableRow>
+                                    </template>
+                                </DataTableBody>
+                            </DataTable>
                     </div>
 
                     <!-- Pagination -->
