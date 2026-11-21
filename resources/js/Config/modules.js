@@ -346,6 +346,14 @@ const modules = {
             permission: 'production-boms.view',
         },
 
+         productionOrders: {
+            key: 'productionOrders',
+            title: 'Production Orders',
+            icon: ReceiptPercentIcon,
+            route: 'production-orders.index',
+            permission: 'production-orders.view',
+        },
+
     // =====================================================
     // ACCOUNTING
     // =====================================================

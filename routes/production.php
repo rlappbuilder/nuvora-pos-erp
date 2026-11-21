@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Production\ProductionOperationController;
 use App\Http\Controllers\Production\ProductionBomController;
-
+use App\Http\Controllers\Production\ProductionOrderController;
 Route::middleware(['auth'])->group(function () {
 
     /*
@@ -51,7 +51,57 @@ Route::middleware(['auth'])->group(function () {
 
         });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Production Orders
+    |--------------------------------------------------------------------------
+    */
 
+    Route::prefix('production-orders')
+        ->name('production-orders.')
+        ->controller(ProductionOrderController::class)
+        ->group(function () {
+
+            // Preview Code
+            Route::get('/preview-code', 'previewCode')
+                ->name('preview-code');
+
+            // CRUD
+            Route::get('/', 'index')
+                ->name('index');
+
+            Route::get('/create', 'create')
+                ->name('create');
+
+            Route::post('/', 'store')
+                ->name('store');
+
+            Route::get('/{order}', 'show')
+                ->name('show');
+
+            Route::get('/{order}/edit', 'edit')
+                ->name('edit');
+
+            Route::put('/{order}', 'update')
+                ->name('update');
+
+                // Workflow
+            Route::post('/{order}/submit', 'submit')
+                ->name('submit');
+
+            Route::post('/{order}/approve', 'approve')
+                ->name('approve');
+
+            Route::post('/{order}/reject', 'reject')
+                ->name('reject');
+
+            Route::post('/{order}/start-production', 'startProduction')
+                ->name('start-production');
+
+            Route::post('/{order}/cancel', 'cancel')
+                ->name('cancel');
+
+        });
     /*
     |--------------------------------------------------------------------------
     | Production Bill of Materials (BOM)

@@ -63,6 +63,7 @@ const navigation = [
         children: [
             modules.productionOperations,
             modules.billOfMaterials,
+            modules.productionOrders,
         ].filter(Boolean),
     },
 
