@@ -4,10 +4,15 @@ namespace App\Services\Inventory;
 
 use App\Models\Inventory\InventoryMovement;
 use App\Models\Product\ProductVariantUnit;
-use Illuminate\Support\Collection;
+use RuntimeException;
 
 class InventoryCostingService
 {
+    private const QTY_SCALE = 6;
+    private const COST_SCALE = 6;
+    private const VALUE_SCALE = 12;
+    private const MONEY_SCALE = 2;
+
     /*
     |--------------------------------------------------------------------------
     | FIFO
@@ -30,9 +35,7 @@ class InventoryCostingService
             dateTo: $dateTo,
             method: 'FIFO'
         );
-
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -56,278 +59,257 @@ class InventoryCostingService
             dateTo: $dateTo,
             method: 'LIFO'
         );
-
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Weighted Average
+    |--------------------------------------------------------------------------
+    */
+
+    public function calculateWeightedAverage(
+        int $productVariantId,
+        int $branchId,
+        int $warehouseId,
+        int $unitId,
+        ?string $dateTo = null
+    ): array {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Movements
+        |--------------------------------------------------------------------------
+        */
+
+        $movements = InventoryMovement::query()
+            ->where('product_variant_id', $productVariantId)
+            ->where('branch_id', $branchId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('unit_id', $unitId)
+            ->when($dateTo, function ($query) use ($dateTo) {
+                $query->whereDate(
+                    'transaction_date',
+                    '<=',
+                    $dateTo
+                );
+            })
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Running Balance
+        |--------------------------------------------------------------------------
+        */
+
+        $onHand = '0.000000';
+        $stockValue = '0';
+        $totalCogs = '0';
+
+        /*
+        |--------------------------------------------------------------------------
+        | Process Movements
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($movements as $movement) {
+
             /*
             |--------------------------------------------------------------------------
-            | Weighted Average
+            | Conversion
             |--------------------------------------------------------------------------
             */
 
-            public function calculateWeightedAverage(
-                int $productVariantId,
-                int $branchId,
-                int $warehouseId,
-                int $unitId,
-                ?string $dateTo = null
-            ): array {
+            $conversionFactor = $this->getConversionFactor(
+                (int) $movement->product_variant_id,
+                (int) $movement->unit_id
+            );
 
-                /*
-                |--------------------------------------------------------------------------
-                | Movements
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | Quantities
+            |--------------------------------------------------------------------------
+            */
 
-                $movements =
-                    InventoryMovement::query()
-                        ->where(
-                            'product_variant_id',
-                            $productVariantId
-                        )
-                        ->where(
-                            'branch_id',
-                            $branchId
-                        )
-                        ->where(
-                            'warehouse_id',
-                            $warehouseId
-                        )
-                        ->where(
-                            'unit_id',
-                            $unitId
-                        )
-                        ->when(
-                            $dateTo,
-                            function ($query) use ($dateTo) {
+            $qtyIn = bcmul(
+                $this->decimal($movement->qty_in, self::QTY_SCALE),
+                $conversionFactor,
+                self::QTY_SCALE
+            );
 
-                                $query->whereDate(
-                                    'transaction_date',
-                                    '<=',
-                                    $dateTo
-                                );
+            $qtyOut = bcmul(
+                $this->decimal($movement->qty_out, self::QTY_SCALE),
+                $conversionFactor,
+                self::QTY_SCALE
+            );
 
-                            }
-                        )
-                        ->orderBy(
-                            'transaction_date'
-                        )
-                        ->orderBy(
-                            'id'
-                        )
-                        ->get();
+            /*
+            |--------------------------------------------------------------------------
+            | Cost
+            |--------------------------------------------------------------------------
+            */
 
+            $unitCost = $this->decimal(
+                $movement->unit_cost,
+                self::COST_SCALE
+            );
 
-                /*
-                |--------------------------------------------------------------------------
-                | Running Balance
-                |--------------------------------------------------------------------------
-                */
+            $unitCostBase = bcdiv(
+                $unitCost,
+                $conversionFactor,
+                self::COST_SCALE
+            );
 
-                $onHand =
-                    0;
+            /*
+            |--------------------------------------------------------------------------
+            | Average Cost Before Movement
+            |--------------------------------------------------------------------------
+            */
 
-                $stockValue =
-                    0;
+            $averageCostBefore = bccomp(
+                $onHand,
+                '0',
+                self::QTY_SCALE
+            ) > 0
+                ? bcdiv(
+                    $stockValue,
+                    $onHand,
+                    self::COST_SCALE
+                )
+                : '0.000000';
 
-                $totalCogs =
-                    0;
+            /*
+            |--------------------------------------------------------------------------
+            | IN
+            |--------------------------------------------------------------------------
+            */
 
+            if (bccomp($qtyIn, '0', self::QTY_SCALE) > 0) {
 
-                /*
-                |--------------------------------------------------------------------------
-                | Process Movements
-                |--------------------------------------------------------------------------
-                */
+                $incomingValue = bcmul(
+                    $qtyIn,
+                    $unitCostBase,
+                    self::VALUE_SCALE
+                );
 
-                foreach (
-                    $movements
-                    as $movement
+                $stockValue = bcadd(
+                    $stockValue,
+                    $incomingValue,
+                    self::VALUE_SCALE
+                );
+
+                $onHand = bcadd(
+                    $onHand,
+                    $qtyIn,
+                    self::QTY_SCALE
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | OUT
+            |--------------------------------------------------------------------------
+            */
+
+            if (bccomp($qtyOut, '0', self::QTY_SCALE) > 0) {
+
+                if (
+                    bccomp(
+                        $onHand,
+                        $qtyOut,
+                        self::QTY_SCALE
+                    ) < 0
                 ) {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Conversion
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $conversionFactor =
-                        $this->getConversionFactor(
-                            $movement->product_variant_id,
-                            $movement->unit_id
-                        );
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Quantity
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $qtyIn =
-                        (
-                            (float)
-                            $movement->qty_in
-                        )
-                        *
-                        $conversionFactor;
-
-
-                    $qtyOut =
-                        (
-                            (float)
-                            $movement->qty_out
-                        )
-                        *
-                        $conversionFactor;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Cost
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $unitCost =
-                        (float)
-                        $movement->unit_cost;
-
-
-                    $unitCostBase =
-                        $conversionFactor > 0
-                            ? $unitCost / $conversionFactor
-                            : $unitCost;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Average Cost Before Movement
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $averageCostBefore =
-                        $onHand > 0
-                            ? $stockValue / $onHand
-                            : 0;
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | IN
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $qtyIn > 0
-                    ) {
-
-                        $stockValue +=
-                            $qtyIn
-                            *
-                            $unitCostBase;
-
-
-                        $onHand +=
-                            $qtyIn;
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | OUT
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $qtyOut > 0
-                    ) {
-
-                        $outCost =
-                            $qtyOut
-                            *
-                            $averageCostBefore;
-
-
-                        $totalCogs +=
-                            $outCost;
-
-
-                        $stockValue -=
-                            $outCost;
-
-
-                        $onHand -=
-                            $qtyOut;
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Protection
-                        |--------------------------------------------------------------------------
-                        */
-
-                        if (
-                            $onHand < 0
-                        ) {
-
-                            $onHand =
-                                0;
-
-                        }
-
-
-                        if (
-                            $stockValue < 0
-                        ) {
-
-                            $stockValue =
-                                0;
-
-                        }
-
-                    }
-
+                    throw new RuntimeException(
+                        "Insufficient inventory quantity for Weighted Average. "
+                        . "Movement ID: {$movement->id}."
+                    );
                 }
 
+                $outCost = bcmul(
+                    $qtyOut,
+                    $averageCostBefore,
+                    self::VALUE_SCALE
+                );
 
-                /*
-                |--------------------------------------------------------------------------
-                | Closing Average Cost
-                |--------------------------------------------------------------------------
-                */
+                $totalCogs = bcadd(
+                    $totalCogs,
+                    $outCost,
+                    self::VALUE_SCALE
+                );
 
-                $averageCost =
-                    $onHand > 0
-                        ? $stockValue / $onHand
-                        : 0;
+                $stockValue = bcsub(
+                    $stockValue,
+                    $outCost,
+                    self::VALUE_SCALE
+                );
 
+                $onHand = bcsub(
+                    $onHand,
+                    $qtyOut,
+                    self::QTY_SCALE
+                );
 
-                /*
-                |--------------------------------------------------------------------------
-                | Return
-                |--------------------------------------------------------------------------
-                */
-
-                return [
-
-                    'method' =>
-                        'WEIGHTED_AVERAGE',
-
-                    'on_hand_qty' =>
-                        $onHand,
-
-                    'average_cost' =>
-                        $averageCost,
-
-                    'stock_value' =>
+                if (
+                    bccomp(
                         $stockValue,
-
-                    'cogs' =>
-                        $totalCogs,
-
-                ];
-
+                        '0',
+                        self::VALUE_SCALE
+                    ) < 0
+                ) {
+                    throw new RuntimeException(
+                        "Negative stock value detected in Weighted Average. "
+                        . "Movement ID: {$movement->id}."
+                    );
+                }
             }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Closing Average Cost
+        |--------------------------------------------------------------------------
+        */
+
+        $averageCost = bccomp(
+            $onHand,
+            '0',
+            self::QTY_SCALE
+        ) > 0
+            ? bcdiv(
+                $stockValue,
+                $onHand,
+                self::COST_SCALE
+            )
+            : '0.000000';
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return
+        |--------------------------------------------------------------------------
+        */
+
+        return [
+
+            'method' => 'WEIGHTED_AVERAGE',
+
+            'on_hand_qty' => $onHand,
+
+            'average_cost' => $averageCost,
+
+            'stock_value' => $this->roundBc(
+                $stockValue,
+                self::MONEY_SCALE
+            ),
+
+            'cogs' => $this->roundBc(
+                $totalCogs,
+                self::MONEY_SCALE
+            ),
+
+        ];
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -350,44 +332,21 @@ class InventoryCostingService
         |--------------------------------------------------------------------------
         */
 
-        $movements =
-            InventoryMovement::query()
-                ->where(
-                    'product_variant_id',
-                    $productVariantId
-                )
-                ->where(
-                    'branch_id',
-                    $branchId
-                )
-                ->where(
-                    'warehouse_id',
-                    $warehouseId
-                )
-                ->where(
-                    'unit_id',
-                    $unitId
-                )
-                ->when(
-                    $dateTo,
-                    function ($query) use ($dateTo) {
-
-                        $query->whereDate(
-                            'transaction_date',
-                            '<=',
-                            $dateTo
-                        );
-
-                    }
-                )
-                ->orderBy(
-                    'transaction_date'
-                )
-                ->orderBy(
-                    'id'
-                )
-                ->get();
-
+        $movements = InventoryMovement::query()
+            ->where('product_variant_id', $productVariantId)
+            ->where('branch_id', $branchId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('unit_id', $unitId)
+            ->when($dateTo, function ($query) use ($dateTo) {
+                $query->whereDate(
+                    'transaction_date',
+                    '<=',
+                    $dateTo
+                );
+            })
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -395,13 +354,9 @@ class InventoryCostingService
         |--------------------------------------------------------------------------
         */
 
-        $layers =
-            collect();
+        $layers = collect();
 
-
-        $totalCogs =
-            0;
-
+        $totalCogs = '0';
 
         /*
         |--------------------------------------------------------------------------
@@ -409,10 +364,7 @@ class InventoryCostingService
         |--------------------------------------------------------------------------
         */
 
-        foreach (
-            $movements
-            as $movement
-        ) {
+        foreach ($movements as $movement) {
 
             /*
             |--------------------------------------------------------------------------
@@ -420,12 +372,10 @@ class InventoryCostingService
             |--------------------------------------------------------------------------
             */
 
-            $conversionFactor =
-                $this->getConversionFactor(
-                    $movement->product_variant_id,
-                    $movement->unit_id
-                );
-
+            $conversionFactor = $this->getConversionFactor(
+                (int) $movement->product_variant_id,
+                (int) $movement->unit_id
+            );
 
             /*
             |--------------------------------------------------------------------------
@@ -433,26 +383,27 @@ class InventoryCostingService
             |--------------------------------------------------------------------------
             */
 
-            $qtyIn =
-                (float)
-                $movement->qty_in;
+            $qtyIn = $this->decimal(
+                $movement->qty_in,
+                self::QTY_SCALE
+            );
 
-            $qtyOut =
-                (float)
-                $movement->qty_out;
+            $qtyOut = $this->decimal(
+                $movement->qty_out,
+                self::QTY_SCALE
+            );
 
+            $qtyInBase = bcmul(
+                $qtyIn,
+                $conversionFactor,
+                self::QTY_SCALE
+            );
 
-            $qtyInBase =
-                $qtyIn
-                *
-                $conversionFactor;
-
-
-            $qtyOutBase =
-                $qtyOut
-                *
-                $conversionFactor;
-
+            $qtyOutBase = bcmul(
+                $qtyOut,
+                $conversionFactor,
+                self::QTY_SCALE
+            );
 
             /*
             |--------------------------------------------------------------------------
@@ -460,16 +411,16 @@ class InventoryCostingService
             |--------------------------------------------------------------------------
             */
 
-            $unitCost =
-                (float)
-                $movement->unit_cost;
+            $unitCost = $this->decimal(
+                $movement->unit_cost,
+                self::COST_SCALE
+            );
 
-
-            $unitCostBase =
-                $conversionFactor > 0
-                    ? $unitCost / $conversionFactor
-                    : $unitCost;
-
+            $unitCostBase = bcdiv(
+                $unitCost,
+                $conversionFactor,
+                self::COST_SCALE
+            );
 
             /*
             |--------------------------------------------------------------------------
@@ -477,34 +428,24 @@ class InventoryCostingService
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $qtyInBase > 0
-            ) {
+            if (bccomp($qtyInBase, '0', self::QTY_SCALE) > 0) {
 
                 $layers->push([
 
-                    'movement_id' =>
-                        $movement->id,
+                    'movement_id' => $movement->id,
 
-                    'date' =>
-                        $movement->transaction_date,
+                    'date' => $movement->transaction_date,
 
-                    'unit_id' =>
-                        $movement->unit_id,
+                    'unit_id' => $movement->unit_id,
 
-                    'conversion_factor' =>
-                        $conversionFactor,
+                    'conversion_factor' => $conversionFactor,
 
-                    'qty' =>
-                        $qtyInBase,
+                    'qty' => $qtyInBase,
 
-                    'unit_cost' =>
-                        $unitCostBase,
+                    'unit_cost' => $unitCostBase,
 
                 ]);
-
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -512,19 +453,25 @@ class InventoryCostingService
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $qtyOutBase > 0
-            ) {
+            if (bccomp($qtyOutBase, '0', self::QTY_SCALE) > 0) {
 
-                $remaining =
-                    $qtyOutBase;
-
+                $remaining = $qtyOutBase;
 
                 while (
-                    $remaining > 0
-                    &&
-                    $layers->isNotEmpty()
+                    bccomp(
+                        $remaining,
+                        '0',
+                        self::QTY_SCALE
+                    ) > 0
                 ) {
+
+                    if ($layers->isEmpty()) {
+
+                        throw new RuntimeException(
+                            "Insufficient costing layers for {$method}. "
+                            . "Movement ID: {$movement->id}."
+                        );
+                    }
 
                     /*
                     |--------------------------------------------------------------------------
@@ -532,55 +479,70 @@ class InventoryCostingService
                     |--------------------------------------------------------------------------
                     */
 
-                    $layerIndex =
-                        $method === 'FIFO'
-                            ? 0
-                            : $layers->count() - 1;
+                  $layerIndex = $method === 'FIFO'
+                    ? $layers->keys()->first()
+                    : $layers->keys()->last();
 
+                    $layer = $layers->get($layerIndex);
 
-                    $layer =
-                        $layers->get(
-                            $layerIndex
+                    if (
+                        !is_array($layer)
+                        || !isset($layer['qty'], $layer['unit_cost'])
+                    ) {
+                        throw new RuntimeException(
+                            "Invalid costing layer detected. Movement ID: {$movement->id}."
                         );
-
+                    }
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Consume
+                    | Consume Quantity
                     |--------------------------------------------------------------------------
                     */
 
-                    $consume =
-                        min(
-                            $remaining,
-                            (float)
-                            $layer['qty']
-                        );
-
-
-                    $totalCogs +=
-                        $consume
-                        *
-                        (float)
-                        $layer['unit_cost'];
-
+                    $consume = bccomp(
+                        $remaining,
+                        $layer['qty'],
+                        self::QTY_SCALE
+                    ) <= 0
+                        ? $remaining
+                        : $layer['qty'];
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Remaining Layer
+                    | Calculate COGS
                     |--------------------------------------------------------------------------
                     */
 
-                    $layer['qty'] =
-                        (float)
-                        $layer['qty']
-                        -
-                        $consume;
+                    $outCost = bcmul(
+                        $consume,
+                        $layer['unit_cost'],
+                        self::VALUE_SCALE
+                    );
 
+                    $totalCogs = bcadd(
+                        $totalCogs,
+                        $outCost,
+                        self::VALUE_SCALE
+                    );
 
-                    $remaining -=
-                        $consume;
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Update Remaining Quantity
+                    |--------------------------------------------------------------------------
+                    */
 
+                    $layer['qty'] = bcsub(
+                        $layer['qty'],
+                        $consume,
+                        self::QTY_SCALE
+                    );
+
+                    $remaining = bcsub(
+                        $remaining,
+                        $consume,
+                        self::QTY_SCALE
+                    );
 
                     /*
                     |--------------------------------------------------------------------------
@@ -589,31 +551,25 @@ class InventoryCostingService
                     */
 
                     if (
-                        $layer['qty']
-                        <= 0
+                        bccomp(
+                            $layer['qty'],
+                            '0',
+                            self::QTY_SCALE
+                        ) === 0
                     ) {
 
-                        $layers->forget(
-                            $layerIndex
-                        );
+                        $layers->forget($layerIndex);
 
-                    }
-
-                    else {
+                    } else {
 
                         $layers->put(
                             $layerIndex,
                             $layer
                         );
-
                     }
-
                 }
-
             }
-
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -621,45 +577,38 @@ class InventoryCostingService
         |--------------------------------------------------------------------------
         */
 
-        $layers =
-            $layers
-                ->values();
-
+        $layers = $layers->values();
 
         /*
         |--------------------------------------------------------------------------
-        | Closing Stock
+        | Closing Stock & Stock Value
         |--------------------------------------------------------------------------
         */
 
-        $onHand =
-            $layers->sum(
-                fn ($layer) =>
-                    (float)
-                    $layer['qty']
+        $onHand = '0.000000';
+
+        $stockValue = '0';
+
+        foreach ($layers as $layer) {
+
+            $onHand = bcadd(
+                $onHand,
+                $layer['qty'],
+                self::QTY_SCALE
             );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Stock Value
-        |--------------------------------------------------------------------------
-        */
-
-        $stockValue =
-            $layers->sum(
-                fn ($layer) =>
-                    (
-                        (float)
-                        $layer['qty']
-                    )
-                    *
-                    (
-                        (float)
-                        $layer['unit_cost']
-                    )
+            $layerValue = bcmul(
+                $layer['qty'],
+                $layer['unit_cost'],
+                self::VALUE_SCALE
             );
 
+            $stockValue = bcadd(
+                $stockValue,
+                $layerValue,
+                self::VALUE_SCALE
+            );
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -667,11 +616,17 @@ class InventoryCostingService
         |--------------------------------------------------------------------------
         */
 
-        $averageCost =
-            $onHand > 0
-                ? $stockValue / $onHand
-                : 0;
-
+        $averageCost = bccomp(
+            $onHand,
+            '0',
+            self::QTY_SCALE
+        ) > 0
+            ? bcdiv(
+                $stockValue,
+                $onHand,
+                self::COST_SCALE
+            )
+            : '0.000000';
 
         /*
         |--------------------------------------------------------------------------
@@ -681,52 +636,47 @@ class InventoryCostingService
 
         return [
 
-            'method' =>
-                $method,
+            'method' => $method,
 
-            'on_hand_qty' =>
-                $onHand,
+            'on_hand_qty' => $onHand,
 
-            'average_cost' =>
-                $averageCost,
+            'average_cost' => $averageCost,
 
-            'stock_value' =>
+            'stock_value' => $this->roundBc(
                 $stockValue,
+                self::MONEY_SCALE
+            ),
 
-            'cogs' =>
+            'cogs' => $this->roundBc(
                 $totalCogs,
+                self::MONEY_SCALE
+            ),
 
-            'layers' =>
-                $layers->all(),
+            'layers' => $layers->all(),
 
         ];
-
     }
-/*
-|--------------------------------------------------------------------------
-| Calculate
-|--------------------------------------------------------------------------
-*/
 
-public function calculate(
-    int $productVariantId,
-    int $branchId,
-    int $warehouseId,
-    int $unitId,
-    string $method = 'WEIGHTED_AVERAGE',
-    ?string $dateTo = null
-): array {
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate
+    |--------------------------------------------------------------------------
+    */
 
-    $method =
-        strtoupper(
-            trim($method)
-        );
+    public function calculate(
+        int $productVariantId,
+        int $branchId,
+        int $warehouseId,
+        int $unitId,
+        string $method = 'WEIGHTED_AVERAGE',
+        ?string $dateTo = null
+    ): array {
 
+        $method = strtoupper(trim($method));
 
-    return match ($method) {
+        return match ($method) {
 
-        'FIFO' =>
-            $this->calculateFifo(
+            'FIFO' => $this->calculateFifo(
                 productVariantId: $productVariantId,
                 branchId: $branchId,
                 warehouseId: $warehouseId,
@@ -734,8 +684,7 @@ public function calculate(
                 dateTo: $dateTo
             ),
 
-        'LIFO' =>
-            $this->calculateLifo(
+            'LIFO' => $this->calculateLifo(
                 productVariantId: $productVariantId,
                 branchId: $branchId,
                 warehouseId: $warehouseId,
@@ -743,11 +692,10 @@ public function calculate(
                 dateTo: $dateTo
             ),
 
-        'WEIGHTED_AVERAGE',
-        'WEIGHTED AVERAGE',
-        'AVERAGE',
-        'WA' =>
-            $this->calculateWeightedAverage(
+            'WEIGHTED_AVERAGE',
+            'WEIGHTED AVERAGE',
+            'AVERAGE',
+            'WA' => $this->calculateWeightedAverage(
                 productVariantId: $productVariantId,
                 branchId: $branchId,
                 warehouseId: $warehouseId,
@@ -755,14 +703,12 @@ public function calculate(
                 dateTo: $dateTo
             ),
 
-        default =>
-            throw new \InvalidArgumentException(
+            default => throw new \InvalidArgumentException(
                 "Unsupported inventory costing method: {$method}"
             ),
 
-    };
-
-}
+        };
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -773,30 +719,110 @@ public function calculate(
     private function getConversionFactor(
         int $productVariantId,
         int $unitId
-    ): float {
+    ): string {
 
-        $variantUnit =
-            ProductVariantUnit::query()
-                ->where(
-                    'product_variant_id',
-                    $productVariantId
-                )
-                ->where(
-                    'unit_id',
-                    $unitId
-                )
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->first();
+        $variantUnit = ProductVariantUnit::query()
+            ->where('product_variant_id', $productVariantId)
+            ->where('unit_id', $unitId)
+            ->where('is_active', true)
+            ->first();
 
-
-        return (float) (
-            $variantUnit?->conversion_factor
-            ?? 1
+        $conversionFactor = $this->decimal(
+            $variantUnit?->conversion_factor ?? '1',
+            self::QTY_SCALE
         );
 
+        if (
+            bccomp(
+                $conversionFactor,
+                '0',
+                self::QTY_SCALE
+            ) <= 0
+        ) {
+            throw new RuntimeException(
+                "Invalid conversion factor for Product Variant ID: "
+                . "{$productVariantId}, Unit ID: {$unitId}."
+            );
+        }
+
+        return $conversionFactor;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Decimal Normalization
+    |--------------------------------------------------------------------------
+    */
+
+    private function decimal(
+        mixed $value,
+        int $scale
+    ): string {
+
+        return bcadd(
+            (string) ($value ?? '0'),
+            '0',
+            $scale
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BCMath Rounding
+    |--------------------------------------------------------------------------
+    */
+
+    private function roundBc(
+        string $value,
+        int $scale = 2
+    ): string {
+
+        $negative = str_starts_with($value, '-');
+
+        $absoluteValue = $negative
+            ? substr($value, 1)
+            : $value;
+
+        $truncated = bcadd(
+            $absoluteValue,
+            '0',
+            $scale + 1
+        );
+
+        [$integer, $fraction] = array_pad(
+            explode('.', $truncated, 2),
+            2,
+            ''
+        );
+
+        $fraction = str_pad(
+            $fraction,
+            $scale + 1,
+            '0'
+        );
+
+        $result = $integer . '.' . substr(
+            $fraction,
+            0,
+            $scale
+        );
+
+        if ((int) $fraction[$scale] >= 5) {
+
+            $increment = '0.'
+                . str_repeat('0', max(0, $scale - 1))
+                . '1';
+
+            $result = bcadd(
+                $result,
+                $increment,
+                $scale
+            );
+        }
+
+        return $negative
+            && bccomp($result, '0', $scale) !== 0
+                ? '-' . $result
+                : $result;
+    }
 }

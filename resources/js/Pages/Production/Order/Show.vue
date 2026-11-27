@@ -1886,7 +1886,7 @@ const deleterName = computed(() => {
                                 </DataTableHeaderCell>
 
 
-                                <DataTableHeaderCell width="130px">
+                                <DataTableHeaderCell width="170px">
                                     SKU
                                 </DataTableHeaderCell>
 

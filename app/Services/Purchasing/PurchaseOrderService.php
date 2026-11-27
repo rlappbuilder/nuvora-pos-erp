@@ -25,8 +25,7 @@ class PurchaseOrderService
             $documentActivityService;
     }
 
-
-  /*
+/*
 |--------------------------------------------------------------------------
 | Create
 |--------------------------------------------------------------------------
@@ -83,312 +82,39 @@ public function createPurchaseOrder(
 
             /*
             |--------------------------------------------------------------------------
-            | Calculate Totals
+            | Calculate Details and Totals - BCMath
             |--------------------------------------------------------------------------
             */
+
+            $calculation =
+                $this->preparePurchaseOrderDetails(
+                    $data['details'],
+                    $purchaseRequest
+                );
+
+
+            $preparedDetails =
+                $calculation['details'];
+
 
             $subtotal =
-                0;
+                $calculation['subtotal'];
+
 
             $discountAmount =
-                0;
+                $calculation['discount_amount'];
+
 
             $taxAmount =
-                0;
+                $calculation['tax_amount'];
+
 
             $grandTotal =
-                0;
+                $calculation['grand_total'];
+
 
             $totalQuantity =
-                0;
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Prepare Details
-            |--------------------------------------------------------------------------
-            */
-
-            $preparedDetails = [];
-
-
-            foreach (
-                $data['details']
-                as $detail
-            ) {
-
-                $purchaseRequestDetail =
-                    null;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Purchase Request Detail
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $purchaseRequest
-                ) {
-
-                    if (
-                        empty(
-                            $detail[
-                                'purchase_request_detail_id'
-                            ]
-                        )
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Purchase request detail is required when a purchase request is selected.'
-                        );
-
-                    }
-
-
-                    $purchaseRequestDetail =
-                        $purchaseRequest
-                            ->details
-                            ->firstWhere(
-                                'id',
-                                $detail[
-                                    'purchase_request_detail_id'
-                                ]
-                            );
-
-
-                    if (
-                        ! $purchaseRequestDetail
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Selected purchase request detail does not belong to the selected purchase request.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Product / Unit Must Match PR
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        (int) $detail[
-                            'product_variant_id'
-                        ]
-                        !==
-                        (int) $purchaseRequestDetail
-                            ->product_variant_id
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Product variant does not match the selected purchase request detail.'
-                        );
-
-                    }
-
-
-                    if (
-                        (int) $detail[
-                            'unit_id'
-                        ]
-                        !==
-                        (int) $purchaseRequestDetail
-                            ->unit_id
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Unit does not match the selected purchase request detail.'
-                        );
-
-                    }
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                $qty =
-                    (float) (
-                        $detail['qty']
-                        ?? 0
-                    );
-
-
-                if (
-                    $qty <= 0
-                ) {
-
-                    throw new \RuntimeException(
-                        'Purchase order quantity must be greater than zero.'
-                    );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Price
-                |--------------------------------------------------------------------------
-                */
-
-                $unitPrice =
-                    (float) (
-                        $detail['unit_price']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Discount
-                |--------------------------------------------------------------------------
-                */
-
-                $discountRate =
-                    (float) (
-                        $detail['discount_rate']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Tax
-                |--------------------------------------------------------------------------
-                */
-
-                $taxRate =
-                    (float) (
-                        $detail['tax_rate']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Calculate Line
-                |--------------------------------------------------------------------------
-                */
-
-                $lineSubtotal =
-                    $qty *
-                    $unitPrice;
-
-
-                $lineDiscount =
-                    $lineSubtotal *
-                    (
-                        $discountRate /
-                        100
-                    );
-
-
-                $lineAfterDiscount =
-                    $lineSubtotal -
-                    $lineDiscount;
-
-
-                $lineTax =
-                    $lineAfterDiscount *
-                    (
-                        $taxRate /
-                        100
-                    );
-
-
-                $lineTotal =
-                    $lineAfterDiscount +
-                    $lineTax;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Header Totals
-                |--------------------------------------------------------------------------
-                */
-
-                $subtotal +=
-                    $lineSubtotal;
-
-                $discountAmount +=
-                    $lineDiscount;
-
-                $taxAmount +=
-                    $lineTax;
-
-                $grandTotal +=
-                    $lineTotal;
-
-                $totalQuantity +=
-                    $qty;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Prepare Detail
-                |--------------------------------------------------------------------------
-                */
-
-                $preparedDetails[] = [
-
-                    'purchase_request_detail_id' =>
-                        $purchaseRequestDetail?->id,
-
-                    'product_variant_id' =>
-                        $detail[
-                            'product_variant_id'
-                        ],
-
-                    'unit_id' =>
-                        $detail[
-                            'unit_id'
-                        ],
-
-                    'qty' =>
-                        $qty,
-
-                    'received_qty' =>
-                        0,
-
-                    'remaining_qty' =>
-                        $qty,
-
-                    'unit_price' =>
-                        $unitPrice,
-
-                    'discount_rate' =>
-                        $discountRate,
-
-                    'discount_amount' =>
-                        $lineDiscount,
-
-                    'tax_rate' =>
-                        $taxRate,
-
-                    'tax_amount' =>
-                        $lineTax,
-
-                    'subtotal' =>
-                        $lineSubtotal,
-
-                    'total' =>
-                        $lineTotal,
-
-                    'description' =>
-                        $detail[
-                            'description'
-                        ] ?? null,
-
-                ];
-
-            }
+                $calculation['total_quantity'];
 
 
             /*
@@ -399,6 +125,12 @@ public function createPurchaseOrder(
 
             $header =
                 PurchaseOrderHeader::create([
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Identity
+                    |--------------------------------------------------------------------------
+                    */
 
                     'company_id' =>
                         $data[
@@ -423,6 +155,13 @@ public function createPurchaseOrder(
                     'purchase_request_id' =>
                         $purchaseRequest?->id,
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Document
+                    |--------------------------------------------------------------------------
+                    */
+
                     'number' =>
                         $this
                             ->codeGeneratorService
@@ -443,9 +182,10 @@ public function createPurchaseOrder(
                     'status' =>
                         'Draft',
 
+
                     /*
                     |--------------------------------------------------------------------------
-                    | Receiving
+                    | Receiving Summary
                     |--------------------------------------------------------------------------
                     */
 
@@ -453,10 +193,11 @@ public function createPurchaseOrder(
                         $totalQuantity,
 
                     'received_quantity' =>
-                        0,
+                        '0.000000',
 
                     'remaining_quantity' =>
                         $totalQuantity,
+
 
                     /*
                     |--------------------------------------------------------------------------
@@ -476,6 +217,7 @@ public function createPurchaseOrder(
                     'grand_total' =>
                         $grandTotal,
 
+
                     /*
                     |--------------------------------------------------------------------------
                     | Information
@@ -486,6 +228,7 @@ public function createPurchaseOrder(
                         $data[
                             'description'
                         ] ?? null,
+
 
                     /*
                     |--------------------------------------------------------------------------
@@ -559,13 +302,8 @@ public function createPurchaseOrder(
     );
 }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update
-    |--------------------------------------------------------------------------
-    */
 
-    /*
+/*
 |--------------------------------------------------------------------------
 | Update
 |--------------------------------------------------------------------------
@@ -674,318 +412,32 @@ public function updatePurchaseOrder(
 
             /*
             |--------------------------------------------------------------------------
-            | Calculate Totals
+            | Calculate Details and Totals - BCMath
             |--------------------------------------------------------------------------
             */
+
+            $calculation = $this->preparePurchaseOrderDetails(
+                $data['details'],
+                $purchaseRequest
+            );
+
+            $preparedDetails =
+                $calculation['details'];
 
             $subtotal =
-                0;
+                $calculation['subtotal'];
 
             $discountAmount =
-                0;
+                $calculation['discount_amount'];
 
             $taxAmount =
-                0;
+                $calculation['tax_amount'];
 
             $grandTotal =
-                0;
+                $calculation['grand_total'];
 
             $totalQuantity =
-                0;
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Prepare Details
-            |--------------------------------------------------------------------------
-            */
-
-            $preparedDetails = [];
-
-
-            foreach (
-                $data['details']
-                as $detail
-            ) {
-
-                $purchaseRequestDetail =
-                    null;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Purchase Request Detail
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $purchaseRequest
-                ) {
-
-                    if (
-                        empty(
-                            $detail[
-                                'purchase_request_detail_id'
-                            ]
-                        )
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Purchase request detail is required when a purchase request is selected.'
-                        );
-
-                    }
-
-
-                    $purchaseRequestDetail =
-                        $purchaseRequest
-                            ->details
-                            ->firstWhere(
-                                'id',
-                                $detail[
-                                    'purchase_request_detail_id'
-                                ]
-                            );
-
-
-                    if (
-                        ! $purchaseRequestDetail
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Selected purchase request detail does not belong to the selected purchase request.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Product Must Match PR
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        (int) $detail[
-                            'product_variant_id'
-                        ]
-                        !==
-                        (int) $purchaseRequestDetail
-                            ->product_variant_id
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Product variant does not match the selected purchase request detail.'
-                        );
-
-                    }
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Unit Must Match PR
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        (int) $detail[
-                            'unit_id'
-                        ]
-                        !==
-                        (int) $purchaseRequestDetail
-                            ->unit_id
-                    ) {
-
-                        throw new \RuntimeException(
-                            'Unit does not match the selected purchase request detail.'
-                        );
-
-                    }
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                $qty =
-                    (float) (
-                        $detail['qty']
-                        ?? 0
-                    );
-
-
-                if (
-                    $qty <= 0
-                ) {
-
-                    throw new \RuntimeException(
-                        'Purchase order quantity must be greater than zero.'
-                    );
-
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Unit Price
-                |--------------------------------------------------------------------------
-                */
-
-                $unitPrice =
-                    (float) (
-                        $detail['unit_price']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Discount
-                |--------------------------------------------------------------------------
-                */
-
-                $discountRate =
-                    (float) (
-                        $detail['discount_rate']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Tax
-                |--------------------------------------------------------------------------
-                */
-
-                $taxRate =
-                    (float) (
-                        $detail['tax_rate']
-                        ?? 0
-                    );
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Line Calculation
-                |--------------------------------------------------------------------------
-                */
-
-                $lineSubtotal =
-                    $qty *
-                    $unitPrice;
-
-
-                $lineDiscount =
-                    $lineSubtotal *
-                    (
-                        $discountRate /
-                        100
-                    );
-
-
-                $lineAfterDiscount =
-                    $lineSubtotal -
-                    $lineDiscount;
-
-
-                $lineTax =
-                    $lineAfterDiscount *
-                    (
-                        $taxRate /
-                        100
-                    );
-
-
-                $lineTotal =
-                    $lineAfterDiscount +
-                    $lineTax;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Header Totals
-                |--------------------------------------------------------------------------
-                */
-
-                $subtotal +=
-                    $lineSubtotal;
-
-                $discountAmount +=
-                    $lineDiscount;
-
-                $taxAmount +=
-                    $lineTax;
-
-                $grandTotal +=
-                    $lineTotal;
-
-                $totalQuantity +=
-                    $qty;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Prepare Detail
-                |--------------------------------------------------------------------------
-                */
-
-                $preparedDetails[] = [
-
-                    'purchase_request_detail_id' =>
-                        $purchaseRequestDetail?->id,
-
-                    'product_variant_id' =>
-                        $detail[
-                            'product_variant_id'
-                        ],
-
-                    'unit_id' =>
-                        $detail[
-                            'unit_id'
-                        ],
-
-                    'qty' =>
-                        $qty,
-
-                    'received_qty' =>
-                        0,
-
-                    'remaining_qty' =>
-                        $qty,
-
-                    'unit_price' =>
-                        $unitPrice,
-
-                    'discount_rate' =>
-                        $discountRate,
-
-                    'discount_amount' =>
-                        $lineDiscount,
-
-                    'tax_rate' =>
-                        $taxRate,
-
-                    'tax_amount' =>
-                        $lineTax,
-
-                    'subtotal' =>
-                        $lineSubtotal,
-
-                    'total' =>
-                        $lineTotal,
-
-                    'description' =>
-                        $detail[
-                            'description'
-                        ] ?? null,
-
-                ];
-
-            }
+                $calculation['total_quantity'];
 
 
             /*
@@ -1029,14 +481,26 @@ public function updatePurchaseOrder(
                         'required_date'
                     ] ?? null,
 
+                /*
+                |--------------------------------------------------------------------------
+                | Receiving Summary
+                |--------------------------------------------------------------------------
+                */
+
                 'total_quantity' =>
                     $totalQuantity,
 
                 'received_quantity' =>
-                    0,
+                    '0.000000',
 
                 'remaining_quantity' =>
                     $totalQuantity,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Amount
+                |--------------------------------------------------------------------------
+                */
 
                 'subtotal' =>
                     $subtotal,
@@ -1050,10 +514,22 @@ public function updatePurchaseOrder(
                 'grand_total' =>
                     $grandTotal,
 
+                /*
+                |--------------------------------------------------------------------------
+                | Information
+                |--------------------------------------------------------------------------
+                */
+
                 'description' =>
                     $data[
                         'description'
                     ] ?? null,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Audit
+                |--------------------------------------------------------------------------
+                */
 
                 'updated_by' =>
                     auth()->id(),
@@ -1996,5 +1472,409 @@ public function deletePurchaseOrders(
 
         }
     );
+}
+/**
+ * Normalize decimal input without using float arithmetic.
+ */
+private function decimalValue(
+    mixed $value,
+    int $scale
+): string {
+
+    $value = trim((string) ($value ?? '0'));
+
+    if (! is_numeric($value)) {
+        throw new \InvalidArgumentException(
+            'Invalid decimal value.'
+        );
+    }
+
+    return bcadd($value, '0', $scale);
+}
+
+/**
+ * Round decimal using half-up rounding.
+ */
+private function roundDecimal(
+    string $value,
+    int $scale = 2
+): string {
+
+    $negative = str_starts_with($value, '-');
+
+    if ($negative) {
+        $value = substr($value, 1);
+    }
+
+    $parts = explode('.', $value, 2);
+
+    $integer = $parts[0] ?? '0';
+    $fraction = $parts[1] ?? '';
+
+    $fraction = str_pad(
+        $fraction,
+        $scale + 1,
+        '0'
+    );
+
+    $roundedFraction = substr(
+        $fraction,
+        0,
+        $scale
+    );
+
+    $nextDigit = (int) ($fraction[$scale] ?? '0');
+
+    $scaledInteger = ltrim(
+        $integer . $roundedFraction,
+        '0'
+    );
+
+    if ($scaledInteger === '') {
+        $scaledInteger = '0';
+    }
+
+    if ($nextDigit >= 5) {
+        $scaledInteger = bcadd(
+            $scaledInteger,
+            '1',
+            0
+        );
+    }
+
+    if ($scale === 0) {
+        $result = $scaledInteger;
+    } else {
+
+        $scaledInteger = str_pad(
+            $scaledInteger,
+            $scale + 1,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        $result =
+            substr(
+                $scaledInteger,
+                0,
+                -$scale
+            )
+            . '.'
+            . substr(
+                $scaledInteger,
+                -$scale
+            );
+    }
+
+    if (
+        $negative &&
+        bccomp($scaledInteger, '0', 0) !== 0
+    ) {
+        $result = '-' . $result;
+    }
+
+    return $result;
+}
+
+/**
+ * Prepare purchase order details and calculate totals.
+ */
+private function preparePurchaseOrderDetails(
+    array $details,
+    $purchaseRequest = null
+): array {
+
+    if (empty($details)) {
+        throw new \RuntimeException(
+            'Purchase order must have at least one detail.'
+        );
+    }
+
+    $subtotal = '0.00';
+    $discountAmount = '0.00';
+    $taxAmount = '0.00';
+    $grandTotal = '0.00';
+    $totalQuantity = '0.000000';
+
+    $preparedDetails = [];
+
+    foreach ($details as $detail) {
+
+        $purchaseRequestDetail = null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Purchase Request Detail
+        |--------------------------------------------------------------------------
+        */
+
+        if ($purchaseRequest) {
+
+            if (
+                empty(
+                    $detail['purchase_request_detail_id']
+                )
+            ) {
+                throw new \RuntimeException(
+                    'Purchase request detail is required when a purchase request is selected.'
+                );
+            }
+
+            $purchaseRequestDetail =
+                $purchaseRequest->details->firstWhere(
+                    'id',
+                    $detail['purchase_request_detail_id']
+                );
+
+            if (! $purchaseRequestDetail) {
+                throw new \RuntimeException(
+                    'Selected purchase request detail does not belong to the selected purchase request.'
+                );
+            }
+
+            if (
+                (int) $detail['product_variant_id']
+                !==
+                (int) $purchaseRequestDetail->product_variant_id
+            ) {
+                throw new \RuntimeException(
+                    'Product variant does not match the selected purchase request detail.'
+                );
+            }
+
+            if (
+                (int) $detail['unit_id']
+                !==
+                (int) $purchaseRequestDetail->unit_id
+            ) {
+                throw new \RuntimeException(
+                    'Unit does not match the selected purchase request detail.'
+                );
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize Values
+        |--------------------------------------------------------------------------
+        */
+
+        $qty = $this->decimalValue(
+            $detail['qty'] ?? 0,
+            6
+        );
+
+        if (bccomp($qty, '0', 6) <= 0) {
+            throw new \RuntimeException(
+                'Purchase order quantity must be greater than zero.'
+            );
+        }
+
+        $unitPrice = $this->decimalValue(
+            $detail['unit_price'] ?? 0,
+            6
+        );
+
+        $discountRate = $this->decimalValue(
+            $detail['discount_rate'] ?? 0,
+            4
+        );
+
+        $taxRate = $this->decimalValue(
+            $detail['tax_rate'] ?? 0,
+            4
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Line Subtotal
+        |--------------------------------------------------------------------------
+        */
+
+        $lineSubtotalRaw = bcmul(
+            $qty,
+            $unitPrice,
+            12
+        );
+
+        $lineSubtotal = $this->roundDecimal(
+            $lineSubtotalRaw,
+            2
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Discount
+        |--------------------------------------------------------------------------
+        */
+
+        $discountMultiplier = bcdiv(
+            $discountRate,
+            '100',
+            12
+        );
+
+        $lineDiscountRaw = bcmul(
+            $lineSubtotal,
+            $discountMultiplier,
+            12
+        );
+
+        $lineDiscount = $this->roundDecimal(
+            $lineDiscountRaw,
+            2
+        );
+
+        $lineAfterDiscount = bcsub(
+            $lineSubtotal,
+            $lineDiscount,
+            2
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Tax
+        |--------------------------------------------------------------------------
+        */
+
+        $taxMultiplier = bcdiv(
+            $taxRate,
+            '100',
+            12
+        );
+
+        $lineTaxRaw = bcmul(
+            $lineAfterDiscount,
+            $taxMultiplier,
+            12
+        );
+
+        $lineTax = $this->roundDecimal(
+            $lineTaxRaw,
+            2
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Line Total
+        |--------------------------------------------------------------------------
+        */
+
+        $lineTotal = bcadd(
+            $lineAfterDiscount,
+            $lineTax,
+            2
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Header Totals
+        |--------------------------------------------------------------------------
+        */
+
+        $subtotal = bcadd(
+            $subtotal,
+            $lineSubtotal,
+            2
+        );
+
+        $discountAmount = bcadd(
+            $discountAmount,
+            $lineDiscount,
+            2
+        );
+
+        $taxAmount = bcadd(
+            $taxAmount,
+            $lineTax,
+            2
+        );
+
+        $grandTotal = bcadd(
+            $grandTotal,
+            $lineTotal,
+            2
+        );
+
+        $totalQuantity = bcadd(
+            $totalQuantity,
+            $qty,
+            6
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prepare Detail
+        |--------------------------------------------------------------------------
+        */
+
+        $preparedDetails[] = [
+
+            'purchase_request_detail_id' =>
+                $purchaseRequestDetail?->id,
+
+            'product_variant_id' =>
+                $detail['product_variant_id'],
+
+            'unit_id' =>
+                $detail['unit_id'],
+
+            'qty' =>
+                $qty,
+
+            'received_qty' =>
+                '0.000000',
+
+            'remaining_qty' =>
+                $qty,
+
+            'unit_price' =>
+                $unitPrice,
+
+            'discount_rate' =>
+                $discountRate,
+
+            'discount_amount' =>
+                $lineDiscount,
+
+            'tax_rate' =>
+                $taxRate,
+
+            'tax_amount' =>
+                $lineTax,
+
+            'subtotal' =>
+                $lineSubtotal,
+
+            'total' =>
+                $lineTotal,
+
+            'description' =>
+                $detail['description'] ?? null,
+
+        ];
+    }
+
+    return [
+
+        'details' =>
+            $preparedDetails,
+
+        'subtotal' =>
+            $subtotal,
+
+        'discount_amount' =>
+            $discountAmount,
+
+        'tax_amount' =>
+            $taxAmount,
+
+        'grand_total' =>
+            $grandTotal,
+
+        'total_quantity' =>
+            $totalQuantity,
+
+    ];
 }
 }

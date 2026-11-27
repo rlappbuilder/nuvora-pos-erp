@@ -97,13 +97,13 @@ class InventoryMovement extends Model
 
     protected $casts = [
 
-        'qty_in' => 'decimal:2',
+        'qty_in' => 'decimal:6',
 
-        'qty_out' => 'decimal:2',
+        'qty_out' => 'decimal:6',
 
-        'balance_qty' => 'decimal:2',
+        'balance_qty' => 'decimal:6',
 
-        'unit_cost' => 'decimal:2',
+        'unit_cost' => 'decimal:6',
 
         'total_cost' => 'decimal:2',
 

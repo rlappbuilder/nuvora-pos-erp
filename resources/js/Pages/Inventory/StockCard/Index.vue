@@ -1,25 +1,44 @@
 <script setup>
+import {
+    ref,
+    reactive,
+    computed,
+    watch,
+    toRefs,
+    nextTick,
+} from 'vue'
 
-import { ref, reactive, computed,watch,toRefs,} from 'vue'
-import {router,} from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
+
 import AppLayout from '@/Layouts/AppLayout.vue'
-import PageHeader from '@/Components/Layout/PageHeader.vue'
 import Card from '@/Components/Layout/Card.vue'
 import StatsCard from '@/Components/Card/StatsCard.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
+
 import DataTable from '@/Components/Table/DataTable.vue'
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
 import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
+
 import TablePagination from '@/Components/Table/TablePagination.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
+
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { currency, formatDate,} from '@/Utils'
+
+import { currency, formatDate } from '@/Utils'
+
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-import { LoadingOverlay,} from '@/Components/Feedback'
+
+import { LoadingOverlay } from '@/Components/Feedback'
+
+import {
+    FunnelIcon,
+    ArrowPathIcon,
+} from '@heroicons/vue/24/outline'
+
 
 /*
 |--------------------------------------------------------------------------
@@ -30,72 +49,48 @@ import { LoadingOverlay,} from '@/Components/Feedback'
 const props = defineProps({
 
     stockCard: {
-
         type: Object,
 
         default: () => ({
-
             summary: {
-
                 opening_qty: 0,
-
                 total_qty_in: 0,
-
                 total_qty_out: 0,
-
                 closing_qty: 0,
-
             },
 
-            rows: [],
+            data: [],
 
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+            total: 0,
         }),
-
     },
-
 
     branches: {
-
         type: Array,
-
         default: () => [],
-
     },
-
 
     warehouses: {
-
         type: Array,
-
         default: () => [],
-
     },
-
 
     variants: {
-
         type: Array,
-
         default: () => [],
-
     },
-
 
     units: {
-
         type: Array,
-
         default: () => [],
-
     },
 
-
     filters: {
-
         type: Object,
-
         default: () => ({}),
-
     },
 
 })
@@ -108,24 +103,24 @@ const {
 
 /*
 |--------------------------------------------------------------------------
-| Page
-|--------------------------------------------------------------------------
-*/
-
-const pageTitle =
-    computed(
-        () => 'Stock Card'
-    )
-
-
-/*
-|--------------------------------------------------------------------------
 | Loading
 |--------------------------------------------------------------------------
 */
 
-const loading =
-    ref(false)
+const loading = ref(false)
+
+
+/*
+|--------------------------------------------------------------------------
+| Filter Visibility
+|--------------------------------------------------------------------------
+*/
+
+const showFilters = ref(false)
+
+const suspendFilterWatchers = ref(false)
+
+const skipWarehouseWatch = ref(false)
 
 
 /*
@@ -134,34 +129,27 @@ const loading =
 |--------------------------------------------------------------------------
 */
 
-const filters =
-    reactive({
+const filters = reactive({
 
-        date_from:
-            props.filters?.date_from
-            ?? '',
+    date_from:
+        props.filters?.date_from ?? '',
 
-        date_to:
-            props.filters?.date_to
-            ?? '',
+    date_to:
+        props.filters?.date_to ?? '',
 
-        branch_id:
-            props.filters?.branch_id
-            ?? '',
+    branch_id:
+        props.filters?.branch_id ?? '',
 
-        warehouse_id:
-            props.filters?.warehouse_id
-            ?? '',
+    warehouse_id:
+        props.filters?.warehouse_id ?? '',
 
-        product_variant_id:
-            props.filters?.product_variant_id
-            ?? '',
+    product_variant_id:
+        props.filters?.product_variant_id ?? '',
 
-        unit_id:
-            props.filters?.unit_id
-            ?? '',
+    unit_id:
+        props.filters?.unit_id ?? '',
 
-    })
+})
 
 
 /*
@@ -170,8 +158,31 @@ const filters =
 |--------------------------------------------------------------------------
 */
 
-const dateRange =
-    ref('')
+const dateRange = ref(
+    filters.date_from && filters.date_to
+        ? `${filters.date_from} to ${filters.date_to}`
+        : filters.date_from || filters.date_to || ''
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Active Filter
+|--------------------------------------------------------------------------
+*/
+
+const hasActiveFilter = computed(() => {
+
+    return Boolean(
+        filters.date_from ||
+        filters.date_to ||
+        filters.branch_id ||
+        filters.warehouse_id ||
+        filters.product_variant_id ||
+        filters.unit_id
+    )
+
+})
 
 
 /*
@@ -180,28 +191,29 @@ const dateRange =
 |--------------------------------------------------------------------------
 */
 
-function loadData()
-{
+function loadData() {
 
     router.get(
 
-        route(
-            'stock-card.index'
-        ),
-
-        filters,
+        route('stock-card.index'),
 
         {
+            ...filters,
+            page: 1,
+        },
 
-            preserveState:
-                true,
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
 
-            preserveScroll:
-                true,
+            onStart: () => {
+                loading.value = true
+            },
 
-            replace:
-                true,
-
+            onFinish: () => {
+                loading.value = false
+            },
         }
 
     )
@@ -211,89 +223,119 @@ function loadData()
 
 /*
 |--------------------------------------------------------------------------
-| Branch
+| Branch Watcher
 |--------------------------------------------------------------------------
 */
 
 watch(
+    () => filters.branch_id,
 
-    () =>
-        filters.branch_id,
+    (newValue, oldValue) => {
 
-    () => {
+        if (
+            suspendFilterWatchers.value ||
+            newValue === oldValue
+        ) {
+            return
+        }
 
         /*
         |--------------------------------------------------------------------------
-        | Reset Warehouse
+        | Reset Warehouse When Branch Changes
         |--------------------------------------------------------------------------
         */
 
-        filters.warehouse_id = ''
+        if (filters.warehouse_id) {
+
+            skipWarehouseWatch.value = true
+
+            filters.warehouse_id = ''
+
+        }
 
         loadData()
 
     }
-
 )
 
 
 /*
 |--------------------------------------------------------------------------
-| Warehouse
+| Warehouse Watcher
 |--------------------------------------------------------------------------
 */
 
 watch(
+    () => filters.warehouse_id,
 
-    () =>
-        filters.warehouse_id,
+    (newValue, oldValue) => {
 
-    () => {
+        if (
+            suspendFilterWatchers.value ||
+            newValue === oldValue
+        ) {
+            return
+        }
+
+        if (skipWarehouseWatch.value) {
+
+            skipWarehouseWatch.value = false
+
+            return
+
+        }
 
         loadData()
 
     }
-
 )
 
 
 /*
 |--------------------------------------------------------------------------
-| Product Variant
+| Product Variant Watcher
 |--------------------------------------------------------------------------
 */
 
 watch(
+    () => filters.product_variant_id,
 
-    () =>
-        filters.product_variant_id,
+    (newValue, oldValue) => {
 
-    () => {
+        if (
+            suspendFilterWatchers.value ||
+            newValue === oldValue
+        ) {
+            return
+        }
 
         loadData()
 
     }
-
 )
 
 
 /*
 |--------------------------------------------------------------------------
-| Unit
+| Unit Watcher
 |--------------------------------------------------------------------------
 */
 
 watch(
+    () => filters.unit_id,
 
-    () =>
-        filters.unit_id,
+    (newValue, oldValue) => {
 
-    () => {
+        if (
+            suspendFilterWatchers.value ||
+            newValue === oldValue
+        ) {
+            return
+        }
 
         loadData()
 
     }
-
 )
 
 
@@ -303,37 +345,23 @@ watch(
 |--------------------------------------------------------------------------
 */
 
-const filteredWarehouses =
-    computed(
-        () => {
+const filteredWarehouses = computed(() => {
 
-            if (
-                !filters.branch_id
-            ) {
+    if (!filters.branch_id) {
+        return props.warehouses
+    }
 
-                return props.warehouses
+    return props.warehouses.filter(
 
-            }
+        warehouse =>
 
+            Number(warehouse.branch_id)
+            ===
+            Number(filters.branch_id)
 
-            return props.warehouses.filter(
-
-                warehouse =>
-
-                    Number(
-                        warehouse.branch_id
-                    )
-
-                    ===
-
-                    Number(
-                        filters.branch_id
-                    )
-
-            )
-
-        }
     )
+
+})
 
 
 /*
@@ -342,33 +370,17 @@ const filteredWarehouses =
 |--------------------------------------------------------------------------
 */
 
-function formatDateForFilter(
-    date
-) {
+function formatDateForFilter(date) {
 
-    const year =
-        date.getFullYear()
+    const year = date.getFullYear()
 
+    const month = String(
+        date.getMonth() + 1
+    ).padStart(2, '0')
 
-    const month =
-        String(
-            date.getMonth() + 1
-        )
-        .padStart(
-            2,
-            '0'
-        )
-
-
-    const day =
-        String(
-            date.getDate()
-        )
-        .padStart(
-            2,
-            '0'
-        )
-
+    const day = String(
+        date.getDate()
+    ).padStart(2, '0')
 
     return `${year}-${month}-${day}`
 
@@ -381,19 +393,12 @@ function formatDateForFilter(
 |--------------------------------------------------------------------------
 */
 
-function handleDateRangeChange(
-    selectedDates
-) {
+function handleDateRangeChange(selectedDates) {
 
-    if (
-        ! selectedDates.length
-    ) {
+    if (!selectedDates.length) {
 
-        filters.date_from =
-            ''
-
-        filters.date_to =
-            ''
+        filters.date_from = ''
+        filters.date_to = ''
 
         loadData()
 
@@ -401,24 +406,72 @@ function handleDateRangeChange(
 
     }
 
+    filters.date_from = formatDateForFilter(
+        selectedDates[0]
+    )
 
-    filters.date_from =
-        formatDateForFilter(
+    filters.date_to = selectedDates.length > 1
+
+        ? formatDateForFilter(
+            selectedDates[1]
+        )
+
+        : formatDateForFilter(
             selectedDates[0]
         )
 
+    loadData()
 
-    filters.date_to =
-        selectedDates.length > 1
+}
 
-            ? formatDateForFilter(
-                selectedDates[1]
-            )
 
-            : formatDateForFilter(
-                selectedDates[0]
-            )
+/*
+|--------------------------------------------------------------------------
+| Date Range Configuration
+|--------------------------------------------------------------------------
+*/
 
+const dateRangeConfig = {
+
+    mode: 'range',
+
+    dateFormat: 'Y-m-d',
+
+    onChange: handleDateRangeChange,
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Reset Filters
+|--------------------------------------------------------------------------
+*/
+
+async function resetFilters() {
+
+    suspendFilterWatchers.value = true
+
+    skipWarehouseWatch.value = false
+
+    Object.assign(filters, {
+
+        date_from: '',
+        date_to: '',
+
+        branch_id: '',
+        warehouse_id: '',
+
+        product_variant_id: '',
+        unit_id: '',
+
+    })
+
+    dateRange.value = ''
+
+    await nextTick()
+
+    suspendFilterWatchers.value = false
 
     loadData()
 
@@ -431,43 +484,9 @@ function handleDateRangeChange(
 |--------------------------------------------------------------------------
 */
 
-function refresh()
-{
+function refresh() {
 
-    Object.assign(
-
-        filters,
-
-        {
-
-            date_from:
-                '',
-
-            date_to:
-                '',
-
-            branch_id:
-                '',
-
-            warehouse_id:
-                '',
-
-            product_variant_id:
-                '',
-
-            unit_id:
-                '',
-
-        }
-
-    )
-
-
-    dateRange.value =
-        ''
-
-
-    loadData()
+    resetFilters()
 
 }
 
@@ -478,251 +497,205 @@ function refresh()
 |--------------------------------------------------------------------------
 */
 
-function formatNumber(
-    value
-)
-{
+function formatNumber(value) {
 
-    return new Intl.NumberFormat(
+    return new Intl.NumberFormat('id-ID', {
 
-        'id-ID',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
 
-        {
-
-            minimumFractionDigits:
-                0,
-
-            maximumFractionDigits:
-                2,
-
-        }
-
-    ).format(
-
-        Number(
-            value
-            ?? 0
-        )
-
+    }).format(
+        Number(value ?? 0)
     )
 
 }
 
 
-function formatCurrency(
-    value
-)
-{
+/*
+|--------------------------------------------------------------------------
+| Currency Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatCurrency(value) {
 
     return currency(
-
-        Number(
-            value
-            ?? 0
-        )
-
+        Number(value ?? 0)
     )
 
 }
 
 
-const summary =
-    computed(
-        () =>
+/*
+|--------------------------------------------------------------------------
+| Summary
+|--------------------------------------------------------------------------
+*/
 
-            stockCard.value?.summary
-            ?? {
+const summary = computed(
 
-                opening_qty: 0,
+    () => stockCard.value?.summary ?? {
 
-                total_qty_in: 0,
-
-                total_qty_out: 0,
-
-                closing_qty: 0,
-
-            }
-
-    )
-
-
-const rows =
-    computed(
-        () =>
-            stockCard.value?.data
-            ?? []
-    )
-const hasData =
-    computed(
-        () =>
-            rows.value.length > 0
-    )
-
-const sort =
-    ref(
-        props.filters?.sort_by
-        ?? 'date'
-    )
-
-const direction =
-    ref(
-        props.filters?.sort_direction
-        ?? 'desc'
-    )
-function sortBy(column)
-{
-
-    if (
-        column !== 'date'
-    ) {
-
-        return
+        opening_qty: 0,
+        total_qty_in: 0,
+        total_qty_out: 0,
+        closing_qty: 0,
 
     }
 
-
-    if (
-        sort.value === column
-    ) {
-
-        direction.value =
-            direction.value === 'asc'
-                ? 'desc'
-                : 'asc'
-
-    }
-    else {
-
-        sort.value =
-            column
-
-        direction.value =
-            'asc'
-
-    }
+)
 
 
-    router.get(
+/*
+|--------------------------------------------------------------------------
+| Stock Card Rows
+|--------------------------------------------------------------------------
+*/
 
-        route(
-            'stock-card.index'
-        ),
+const rows = computed(
 
-        {
+    () => stockCard.value?.data ?? []
 
-            ...filters,
+)
 
-            page: 1,
-
-            sort_by:
-                sort.value,
-
-            sort_direction:
-                direction.value,
-
-        },
-
-        {
-
-            preserveState:
-                true,
-
-            preserveScroll:
-                true,
-
-            replace:
-                true,
-
-        }
-
-    )
-
-}
 </script>
+
+
 <template>
-<AppLayout>
+    <AppLayout title="Stock Card">
 
-    <div class="space-y-6">
+        <div class="space-y-6">
 
-           <!-- ===================================================== -->
-            <!-- Statistics -->
             <!-- ===================================================== -->
-
-           
-            <div
-                class="
-                    grid
-                    grid-cols-1
-                    gap-4
-                    md:grid-cols-2
-                    xl:grid-cols-4
-                "
-            >
-
-                <StatsCard
-                    title="Opening Balance"
-                    :value="
-                        formatNumber(
-                            summary?.opening_qty
-                            ?? 0
-                        )
-                    "
-                    icon="↩️"
-                />
-
-
-                <StatsCard
-                    title="Total In"
-                    :value="
-                        formatNumber(
-                            summary?.total_qty_in
-                            ?? 0
-                        )
-                    "
-                    icon="📥"
-                />
-
-
-                <StatsCard
-                    title="Total Out"
-                    :value="
-                        formatNumber(
-                            summary?.total_qty_out
-                            ?? 0
-                        )
-                    "
-                    icon="📤"
-                />
-
-
-                <StatsCard
-                    title="Closing Balance"
-                    :value="
-                        formatNumber(
-                            summary?.closing_qty
-                            ?? 0
-                        )
-                    "
-                    icon="📦"
-                />
-
-            </div>
-
-        <Card class="mt-4">
-        <!-- ===================================================== -->
-            <!-- Toolbar -->
+            <!-- Page Header -->
             <!-- ===================================================== -->
 
             <div
                 class="
                     flex
                     flex-col
-                    gap-3
+                    gap-4
+                    lg:flex-row
+                    lg:items-center
+                    lg:justify-between
                 "
             >
 
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                        Stock Card
+                    </h1>
+
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        View detailed inventory movement history and stock balance.
+                    </p>
+                </div>
+
+
+                <!-- Date Range & Refresh -->
+
+                <div
+                    class="
+                        flex
+                        w-full
+                        flex-col
+                        gap-2
+                        sm:flex-row
+                        lg:w-auto
+                        sm:items-center
+                    "
+                >
+
+                    <div class="w-full sm:w-64">
+                        <FlatPickr
+                            v-model="dateRange"
+                            :config="dateRangeConfig"
+                            placeholder="Select date range"
+                            class="
+                                w-full
+                                rounded-lg
+                                border-gray-300
+                                text-sm
+                                shadow-sm
+                                focus:border-blue-500
+                                focus:ring-blue-500
+                                dark:border-gray-700
+                                dark:bg-gray-800
+                                dark:text-white
+                            "
+                        />
+                    </div>
+
+
+                    <BaseButton
+                        variant="secondary"
+                        class="w-full shrink-0 sm:w-auto"
+                        @click="refresh"
+                    >
+                        <span class="inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                            <ArrowPathIcon class="h-4 w-4 shrink-0" />
+                            Refresh
+                        </span>
+                    </BaseButton>
+
+                </div>
+
+            </div>
+
+
+            <!-- ===================================================== -->
+            <!-- Statistics -->
+            <!-- ===================================================== -->
+
+            <div
+                class="
+                    grid
+                    grid-cols-1
+                    gap-4
+                    sm:grid-cols-2
+                    xl:grid-cols-4
+                "
+            >
+
+                <StatsCard
+                    title="Opening Balance"
+                    :value="formatNumber(summary.opening_qty)"
+                    icon="📦"
+                    color="blue"
+                />
+
+                <StatsCard
+                    title="Total In"
+                    :value="formatNumber(summary.total_qty_in)"
+                    icon="📥"
+                    color="green"
+                />
+
+                <StatsCard
+                    title="Total Out"
+                    :value="formatNumber(summary.total_qty_out)"
+                    icon="📤"
+                    color="red"
+                />
+
+                <StatsCard
+                    title="Closing Balance"
+                    :value="formatNumber(summary.closing_qty)"
+                    icon="📊"
+                    color="purple"
+                />
+
+            </div>
+
+
+            <!-- ===================================================== -->
+            <!-- Stock Card Table -->
+            <!-- ===================================================== -->
+
+            <Card>
+
                 <!-- ================================================= -->
-                <!-- Row 1 -->
+                <!-- Toolbar -->
                 <!-- ================================================= -->
 
                 <div
@@ -730,87 +703,97 @@ function sortBy(column)
                         flex
                         flex-col
                         gap-3
-                        lg:flex-row
-                        lg:items-center
-                        lg:justify-between
+                        border-b
+                        border-gray-200
+                        p-4
+                        dark:border-gray-700
+                        sm:flex-row
+                        sm:items-center
+                        sm:justify-between
                     "
                 >
 
-                    <!-- Left -->
+                    <div>
+                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                            Inventory Movements
+                        </h2>
 
-                    <div
-                        class="
-                            flex
-                            flex-1
-                            flex-col
-                            gap-3
-                            lg:flex-row
-                            lg:items-center
-                        "
-                    >
-
-                        <!-- Date Range -->
-
-                        <div
-                            class="
-                                w-full
-                                lg:w-72
-                            "
-                        >
-
-                            <FlatPickr
-                                v-model="dateRange"
-                                :config="{
-                                    mode: 'range',
-                                    dateFormat: 'Y-m-d',
-                                }"
-                                placeholder="Date Range"
-                                class="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-gray-300
-                                    px-4
-                                    py-2.5
-                                    text-sm
-                                "
-                                @on-change="
-                                    handleDateRangeChange
-                                "
-                            />
-
-                        </div>
-
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Detailed stock movement transactions.
+                        </p>
                     </div>
 
 
-                    <!-- Right -->
+                    <!-- Filter Actions -->
 
                     <div
                         class="
                             flex
                             w-full
-                            flex-col
+                            flex-wrap
+                            items-center
                             gap-2
-                            lg:w-auto
-                            lg:flex-row
-                            lg:items-center
+                            sm:w-auto
+                            sm:justify-end
                         "
                     >
 
-                        <!-- Refresh -->
+                        <!-- Show / Hide Filter -->
 
                         <BaseButton
                             variant="secondary"
-                            class="
-                                w-full
-                                shrink-0
-                                whitespace-nowrap
-                                lg:w-auto
-                            "
-                            @click="refresh"
+                            class="w-full sm:w-auto"
+                            @click="showFilters = !showFilters"
                         >
-                            Refresh
+                            <span
+                                class="
+                                    inline-flex
+                                    items-center
+                                    justify-center
+                                    gap-2
+                                    whitespace-nowrap
+                                "
+                            >
+
+                                <FunnelIcon class="h-4 w-4 shrink-0" />
+
+                                <span>
+                                    {{ showFilters ? 'Hide Filter' : 'Show Filter' }}
+                                </span>
+
+                                <span
+                                    v-if="hasActiveFilter"
+                                    class="h-2 w-2 shrink-0 rounded-full bg-blue-500"
+                                ></span>
+
+                            </span>
+                        </BaseButton>
+
+
+                        <!-- Reset Filter -->
+                        <!-- Only visible when filters are expanded -->
+
+                        <BaseButton
+                            v-if="showFilters"
+                            variant="secondary"
+                            class="w-full sm:w-auto"
+                            @click="resetFilters"
+                        >
+                            <span
+                                class="
+                                    inline-flex
+                                    items-center
+                                    justify-center
+                                    gap-2
+                                    whitespace-nowrap
+                                "
+                            >
+                                <ArrowPathIcon class="h-4 w-4 shrink-0" />
+
+                                <span>
+                                    Reset Filter
+                                </span>
+                            </span>
                         </BaseButton>
 
                     </div>
@@ -819,511 +802,457 @@ function sortBy(column)
 
 
                 <!-- ================================================= -->
-                <!-- Row 2 -->
+                <!-- Filter Panel -->
                 <!-- ================================================= -->
 
                 <div
+                    v-if="showFilters"
                     class="
-                        flex
-                        flex-col
-                        gap-3
-                        lg:flex-row
-                        lg:items-center
-                        lg:justify-between
+                        border-b
+                        border-gray-200
+                        bg-gray-50
+                        p-4
+                        dark:border-gray-700
+                        dark:bg-gray-800/50
                     "
                 >
 
-                    <!-- Left Filters -->
-
                     <div
                         class="
-                            flex
-                            flex-1
-                            flex-col
-                            gap-3
-                            lg:flex-row
-                            lg:items-center
+                            grid
+                            grid-cols-1
+                            gap-4
+                            sm:grid-cols-2
+                            xl:grid-cols-4
                         "
                     >
 
                         <!-- Branch -->
 
-                        <SearchableSelect
-                            v-model="filters.branch_id"
-                            :options="branches"
-                            label="label"
-                            value-key="id"
-                            placeholder="All Branches"
-                        />
+                        <div class="min-w-0">
+
+                            <label
+                                class="
+                                    mb-1.5
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                    dark:text-gray-300
+                                "
+                            >
+                                Branch
+                            </label>
+
+                            <SearchableSelect
+                                v-model="filters.branch_id"
+                                :options="branches"
+                                label="label"
+                                value-key="id"
+                                placeholder="All Branches"
+                            />
+
+                        </div>
 
 
                         <!-- Warehouse -->
 
-                        <SearchableSelect
-                            v-model="filters.warehouse_id"
-                            :options="filteredWarehouses"
-                            label="label"
-                            value-key="id"
-                            placeholder="All Warehouses"
-                        />
+                        <div class="min-w-0">
+
+                            <label
+                                class="
+                                    mb-1.5
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                    dark:text-gray-300
+                                "
+                            >
+                                Warehouse
+                            </label>
+
+                            <SearchableSelect
+                                v-model="filters.warehouse_id"
+                                :options="filteredWarehouses"
+                                label="label"
+                                value-key="id"
+                                placeholder="All Warehouses"
+                            />
+
+                        </div>
 
 
                         <!-- Product / Variant -->
 
-                        <SearchableSelect
-                            v-model="
-                                filters.product_variant_id
-                            "
-                            :options="variants"
-                            label="label"
-                            value-key="id"
-                            placeholder="All Products"
-                        />
+                        <div class="min-w-0">
+
+                            <label
+                                class="
+                                    mb-1.5
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                    dark:text-gray-300
+                                "
+                            >
+                                Product / Variant
+                            </label>
+
+                            <SearchableSelect
+                                v-model="filters.product_variant_id"
+                                :options="variants"
+                                label="label"
+                                value-key="id"
+                                placeholder="All Products"
+                            />
+
+                        </div>
 
 
                         <!-- Unit -->
 
-                        <SearchableSelect
-                            v-model="filters.unit_id"
-                            :options="units"
-                            label="label"
-                            value-key="id"
-                            placeholder="All Units"
-                        />
+                        <div class="min-w-0">
+
+                            <label
+                                class="
+                                    mb-1.5
+                                    block
+                                    text-sm
+                                    font-medium
+                                    text-gray-700
+                                    dark:text-gray-300
+                                "
+                            >
+                                Unit
+                            </label>
+
+                            <SearchableSelect
+                                v-model="filters.unit_id"
+                                :options="units"
+                                label="label"
+                                value-key="id"
+                                placeholder="All Units"
+                            />
+
+                        </div>
 
                     </div>
 
                 </div>
 
-            </div>
-            <!-- ===================================================== -->
-            <!-- Table -->
-            <!-- ===================================================== -->
 
-            <div class="mt-6">
+                <!-- ================================================= -->
+                <!-- Table -->
+                <!-- ================================================= -->
 
-                <!-- Loading -->
+                <div class="relative mt-6">
 
-                <LoadingOverlay
-                    :show="loading"
-                    text="Loading Stock Card ..."
-                />
-               
-                <!-- ===================================================== -->
-                <!-- Stock Card DataTable -->
-                <!-- ===================================================== -->
+                    <!-- Loading -->
 
-                <DataTable
-                    v-if="rows.length"
-                    sticky-header
-                    max-height="650px"
-                >
+                    <LoadingOverlay
+                        :show="loading"
+                        text="Loading Stock Card..."
+                    />
 
-                    <DataTableHead sticky>
 
-                        <!-- Date -->
+                    <!-- Data -->
 
-                        <DataTableHeaderCell
-                             sortable
-                            column="date"
-                            :sort="sort"
-                            :direction="direction"
-                            @sort="sortBy"
-                            width="120px"
-                            align="right"
-                        >
-                            Date
-                        </DataTableHeaderCell>
+                    <DataTable
+                        v-if="rows.length"
+                        sticky-header
+                        max-height="650px"
+                    >
 
+                        <DataTableHead sticky>
 
-                        <!-- Reference -->
+                            <DataTableHeaderCell width="140px">
+                                Date
+                            </DataTableHeaderCell>
 
-                        <DataTableHeaderCell
-                            width="220px"
-                        >
-                            Reference
-                        </DataTableHeaderCell>
 
+                            <DataTableHeaderCell width="180px">
+                                Reference
+                            </DataTableHeaderCell>
 
-                        <!-- Description -->
 
-                        <DataTableHeaderCell
-                            width="280px"
-                        >
-                            Description
-                        </DataTableHeaderCell>
+                            <DataTableHeaderCell width="260px">
+                                Description
+                            </DataTableHeaderCell>
 
 
-                        <!-- Opening -->
+                            <DataTableHeaderCell
+                                width="140px"
+                                align="right"
+                            >
+                                Stock Awal
+                            </DataTableHeaderCell>
 
-                        <DataTableHeaderCell
-                            width="140px"
-                            align="right"
-                        >
-                            Stock Awal
-                        </DataTableHeaderCell>
 
+                            <DataTableHeaderCell
+                                width="130px"
+                                align="right"
+                            >
+                                Qty In
+                            </DataTableHeaderCell>
 
-                        <!-- Qty In -->
 
-                        <DataTableHeaderCell
-                            width="140px"
-                            align="right"
-                        >
-                            Qty In
-                        </DataTableHeaderCell>
+                            <DataTableHeaderCell
+                                width="130px"
+                                align="right"
+                            >
+                                Qty Out
+                            </DataTableHeaderCell>
 
 
-                        <!-- Qty Out -->
+                            <DataTableHeaderCell
+                                width="140px"
+                                align="right"
+                            >
+                                Balance
+                            </DataTableHeaderCell>
 
-                        <DataTableHeaderCell
-                            width="140px"
-                            align="right"
-                        >
-                            Qty Out
-                        </DataTableHeaderCell>
 
+                            <DataTableHeaderCell
+                                width="160px"
+                                align="right"
+                            >
+                                Unit Cost
+                            </DataTableHeaderCell>
 
-                        <!-- Balance -->
 
-                        <DataTableHeaderCell
-                            width="140px"
-                            align="right"
-                        >
-                            Balance
-                        </DataTableHeaderCell>
+                            <DataTableHeaderCell
+                                width="180px"
+                                align="right"
+                            >
+                                Total Cost
+                            </DataTableHeaderCell>
 
+                        </DataTableHead>
 
-                        <!-- Unit Cost -->
 
-                        <DataTableHeaderCell
-                            width="160px"
-                            align="right"
-                        >
-                            Unit Cost
-                        </DataTableHeaderCell>
+                        <DataTableBody>
 
+                            <DataTableRow
+                                v-for="(row, index) in rows"
+                                :key="row.id ?? index"
+                            >
 
-                        <!-- Total Cost -->
+                                <!-- Date -->
 
-                        <DataTableHeaderCell
-                            width="180px"
-                            align="right"
-                        >
-                            Total Cost
-                        </DataTableHeaderCell>
-
-                    </DataTableHead>
-
-
-                    <DataTableBody>
-
-                        <DataTableRow
-                            v-for="row in rows"
-                            :key="
-                                row.id
-                                ??
-                                `opening-${row.date}`
-                            "
-                        >
-
-                            <!-- ================================================= -->
-                            <!-- Date -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell>
-
-                                <span
-                                    class="
-                                        whitespace-nowrap
-                                        text-gray-900
-                                    "
-                                >
-                                    {{
-                                        row.date
-                                        ?? '-'
-                                    }}
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Reference -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell>
-
-                                <div
-                                    class="
-                                        font-medium
-                                        text-gray-900
-                                    "
-                                >
-
-                                    {{
-                                        row.reference_number
-                                        ??
-                                        'Opening Balance'
-                                    }}
-
-                                </div>
-
-
-                                <div
-                                    class="
-                                        mt-0.5
-                                        text-xs
-                                        text-gray-500
-                                    "
-                                >
-
-                                    {{
-                                        row.reference_type
-                                        ?? '-'
-                                    }}
-
-                                </div>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Description -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell>
-
-                                <span
-                                    class="text-gray-600"
-                                >
-
-                                    {{
-                                        row.description
-                                        ?? '-'
-                                    }}
-
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Opening -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    class="
-                                        font-medium
-                                        text-gray-700
-                                    "
-                                >
-
-                                    {{
-                                        formatNumber(
-                                            row.opening_qty
-                                        )
-                                    }}
-
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Qty In -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    v-if="
-                                        Number(row.qty_in)
-                                        > 0
-                                    "
-                                    class="
-                                        font-semibold
-                                        text-green-600
-                                    "
-                                >
-
-                                    +{{
-                                        formatNumber(
-                                            row.qty_in
-                                        )
-                                    }}
-
-                                </span>
-
-                                <span
-                                    v-else
-                                    class="text-gray-400"
-                                >
-                                    -
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Qty Out -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    v-if="
-                                        Number(row.qty_out)
-                                        > 0
-                                    "
-                                    class="
-                                        font-semibold
-                                        text-red-600
-                                    "
-                                >
-
-                                    -{{
-                                        formatNumber(
-                                            row.qty_out
-                                        )
-                                    }}
-
-                                </span>
-
-                                <span
-                                    v-else
-                                    class="text-gray-400"
-                                >
-                                    -
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Balance -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    class="
-                                        font-bold
-                                        text-gray-900
-                                    "
-                                >
-
-                                    {{
-                                        formatNumber(
-                                            row.balance_qty
-                                        )
-                                    }}
-
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Unit Cost -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    v-if="
-                                        Number(row.unit_cost)
-                                        > 0
-                                    "
-                                >
-
-                                    {{
-                                        formatCurrency(
-                                            row.unit_cost
-                                        )
-                                    }}
-
-                                </span>
-
-                                <span
-                                    v-else
-                                    class="text-gray-400"
-                                >
-                                    -
-                                </span>
-
-                            </DataTableCell>
-
-
-                            <!-- ================================================= -->
-                            <!-- Total Cost -->
-                            <!-- ================================================= -->
-
-                            <DataTableCell align="right">
-
-                                <span
-                                    v-if="
-                                        Number(row.total_cost)
-                                        > 0
-                                    "
-                                    class="
-                                        font-semibold
-                                        text-gray-900
-                                    "
-                                >
-
-                                    {{
-                                        formatCurrency(
-                                            row.total_cost
-                                        )
-                                    }}
-
-                                </span>
-
-                                <span
-                                    v-else
-                                    class="text-gray-400"
-                                >
-                                    -
-                                </span>
-
-                            </DataTableCell>
-
-                        </DataTableRow>
-
-                    </DataTableBody>
-
-                </DataTable>
-                <!-- Empty -->
-
-              <TableEmpty
-                    v-else
-                    icon="📋 Stock Card "
-                    title="No Stock Card Transaction Found"
-                    description="
-                        Select Product, Branch, Warehouse and Unit
-                        to view stock card transactions.
-                    "
-                />
+                                <DataTableCell>
+                                    <span
+                                        class="
+                                            whitespace-nowrap
+                                            text-sm
+                                            text-gray-700
+                                            dark:text-gray-300
+                                        "
+                                    >
+                                        {{ formatDate(row.transaction_date ?? row.date) }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Reference -->
+
+                                <DataTableCell>
+                                    <span
+                                        class="
+                                            font-medium
+                                            text-blue-600
+                                            dark:text-blue-400
+                                        "
+                                    >
+                                        {{ row.reference_number ?? row.reference ?? '-' }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Description -->
+
+                                <DataTableCell>
+                                    <span
+                                        class="
+                                            text-sm
+                                            text-gray-700
+                                            dark:text-gray-300
+                                        "
+                                    >
+                                        {{ row.description ?? '-' }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Opening Balance -->
+
+                                <DataTableCell align="right">
+                                    <span
+                                        class="
+                                            tabular-nums
+                                            text-sm
+                                            text-gray-700
+                                            dark:text-gray-300
+                                        "
+                                    >
+                                        {{ formatNumber(row.opening_qty ?? row.stock_awal ?? 0) }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Qty In -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        v-if="Number(row.qty_in) > 0"
+                                        class="
+                                            tabular-nums
+                                            text-sm
+                                            font-medium
+                                            text-green-600
+                                            dark:text-green-400
+                                        "
+                                    >
+                                        +{{ formatNumber(row.qty_in) }}
+                                    </span>
+
+                                    <span
+                                        v-else
+                                        class="text-gray-400"
+                                    >
+                                        -
+                                    </span>
+
+                                </DataTableCell>
+
+
+                                <!-- Qty Out -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        v-if="Number(row.qty_out) > 0"
+                                        class="
+                                            tabular-nums
+                                            text-sm
+                                            font-medium
+                                            text-red-600
+                                            dark:text-red-400
+                                        "
+                                    >
+                                        -{{ formatNumber(row.qty_out) }}
+                                    </span>
+
+                                    <span
+                                        v-else
+                                        class="text-gray-400"
+                                    >
+                                        -
+                                    </span>
+
+                                </DataTableCell>
+
+
+                                <!-- Balance -->
+
+                                <DataTableCell align="right">
+                                    <span
+                                        class="
+                                            tabular-nums
+                                            text-sm
+                                            font-semibold
+                                            text-gray-900
+                                            dark:text-white
+                                        "
+                                    >
+                                        {{ formatNumber(row.balance_qty) }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Unit Cost -->
+
+                                <DataTableCell align="right">
+                                    <span
+                                        class="
+                                            whitespace-nowrap
+                                            tabular-nums
+                                            text-sm
+                                            text-gray-700
+                                            dark:text-gray-300
+                                        "
+                                    >
+                                        {{ formatCurrency(row.unit_cost) }}
+                                    </span>
+                                </DataTableCell>
+
+
+                                <!-- Total Cost -->
+
+                                <DataTableCell align="right">
+                                    <span
+                                        class="
+                                            whitespace-nowrap
+                                            tabular-nums
+                                            text-sm
+                                            font-medium
+                                            text-gray-900
+                                            dark:text-white
+                                        "
+                                    >
+                                        {{ formatCurrency(row.total_cost) }}
+                                    </span>
+                                </DataTableCell>
+
+                            </DataTableRow>
+
+                        </DataTableBody>
+
+                    </DataTable>
+
+
+                    <!-- Empty State -->
+
+                    <TableEmpty
+                        v-else
+                        icon="📦"
+                        title="No Stock Card Found"
+                        description="
+                            There are no stock movements matching
+                            the selected filters.
+                        "
+                    />
 
                 </div>
 
-            <!-- ===================================================== -->
-            <!-- 
-              Pagination -->
-            <!-- ===================================================== -->
 
-            <div class="mt-6">
+                <!-- ================================================= -->
+                <!-- Pagination -->
+                <!-- ================================================= -->
 
-               <TablePagination
-                :data="stockCard"
-                label="Stock Card"
-                />
-            </div>
+                <div
+                    v-if="stockCard && stockCard.last_page > 1"
+                    class="
+                        mt-6
+                        border-t
+                        border-gray-200
+                        px-4
+                        py-3
+                        dark:border-gray-700
+                    "
+                >
 
-        </Card>
-    </div>    
-</AppLayout>
+                    <TablePagination
+                        :data="stockCard"
+                    />
+
+                </div>
+
+            </Card>
+
+        </div>
+
+    </AppLayout>
 </template>

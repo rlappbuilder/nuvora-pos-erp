@@ -84,13 +84,13 @@ class ProductStock extends Model
 
     protected $casts = [
 
-        'on_hand_qty' => 'decimal:2',
+        'on_hand_qty' => 'decimal:6',
 
-        'reserved_qty' => 'decimal:2',
+        'reserved_qty' => 'decimal:6',
 
-        'available_qty' => 'decimal:2',
+        'available_qty' => 'decimal:6',
 
-        'average_cost' => 'decimal:2',
+        'average_cost' => 'decimal:6',
 
         'last_transaction_at' => 'datetime',
 

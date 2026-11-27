@@ -99,11 +99,24 @@ watch(
     }
 )
 
+/*
+|--------------------------------------------------------------------------
+| Number Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatQty(value) {
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value ?? 0))
+}
+
 function formatAmount(value) {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0,
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value ?? 0))
 }
@@ -202,10 +215,12 @@ function applyFilters() {
         window.location.pathname,
         {
             history_search: search.value.trim() || undefined,
+
             history_status:
                 status.value !== 'all'
                     ? status.value
                     : undefined,
+
             history_date_from: dateFrom.value || undefined,
             history_date_to: dateTo.value || undefined,
         },
@@ -336,7 +351,7 @@ function exportExcel() {
                 </p>
 
                 <p class="mt-2 text-2xl font-semibold text-gray-800">
-                    {{ stats.totalQty }}
+                    {{ formatQty(stats.totalQty) }}
                 </p>
             </div>
         </div>
@@ -457,6 +472,7 @@ function exportExcel() {
                         rounded-lg border border-gray-300
                         bg-white px-4 py-2 text-sm font-medium
                         text-gray-700 transition hover:bg-gray-50
+                        disabled:cursor-not-allowed disabled:opacity-50
                     "
                     :disabled="loading"
                     @click="resetFilters"
@@ -581,7 +597,7 @@ function exportExcel() {
                                 </div>
 
                                 <div class="mt-1 text-sm text-gray-500">
-                                    Qty: {{ getTotalQty(transfer) }}
+                                    Qty: {{ formatQty(getTotalQty(transfer)) }}
                                 </div>
                             </td>
 

@@ -1,12 +1,24 @@
+
 <script setup>
 
-import { ref, reactive, computed,watch,toRefs,} from 'vue'
-import {router,} from '@inertiajs/vue3'
+import {
+    ref,
+    reactive,
+    computed,
+    watch,
+    toRefs,
+} from 'vue'
+
+import {
+    router,
+} from '@inertiajs/vue3'
+
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PageHeader from '@/Components/Layout/PageHeader.vue'
 import Card from '@/Components/Layout/Card.vue'
 import StatsCard from '@/Components/Card/StatsCard.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
+
 import DataTable from '@/Components/Table/DataTable.vue'
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
@@ -15,11 +27,28 @@ import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
 import TablePagination from '@/Components/Table/TablePagination.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
+
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { currency, formatDate,} from '@/Utils'
+
+import {
+    currency,
+    formatDate,
+} from '@/Utils'
+
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
-import { LoadingOverlay,} from '@/Components/Feedback'
+
+import {
+    LoadingOverlay,
+} from '@/Components/Feedback'
+
+
+/*
+|--------------------------------------------------------------------------
+| Props
+|--------------------------------------------------------------------------
+*/
+
 const props = defineProps({
 
     stockBalance: {
@@ -42,7 +71,6 @@ const props = defineProps({
 
     },
 
-
     statistics: {
 
         type: Object,
@@ -63,7 +91,6 @@ const props = defineProps({
 
     },
 
-
     branches: {
 
         type: Array,
@@ -71,7 +98,6 @@ const props = defineProps({
         default: () => [],
 
     },
-
 
     warehouses: {
 
@@ -81,7 +107,6 @@ const props = defineProps({
 
     },
 
-
     variants: {
 
         type: Array,
@@ -90,7 +115,6 @@ const props = defineProps({
 
     },
 
-
     units: {
 
         type: Array,
@@ -98,7 +122,6 @@ const props = defineProps({
         default: () => [],
 
     },
-
 
     filters: {
 
@@ -117,13 +140,24 @@ const {
 } = toRefs(props)
 
 
-const pageTitle =
-    computed(
-        () => 'Stock Balance'
-    )
+/*
+|--------------------------------------------------------------------------
+| Page
+|--------------------------------------------------------------------------
+*/
 
-const loading =
-    ref(false)
+const pageTitle = computed(
+    () => 'Stock Balance'
+)
+
+const loading = ref(false)
+
+
+/*
+|--------------------------------------------------------------------------
+| Filters
+|--------------------------------------------------------------------------
+*/
 
 const filters = reactive({
 
@@ -153,231 +187,48 @@ const filters = reactive({
 
 })
 
-let debounceTimer =
-    null
+
+/*
+|--------------------------------------------------------------------------
+| As Of Date
+|--------------------------------------------------------------------------
+*/
+
+const asOfDate = ref(
+    props.filters?.date_to ?? ''
+)
 
 
-function loadData()
-{
+/*
+|--------------------------------------------------------------------------
+| Sorting
+|--------------------------------------------------------------------------
+*/
+
+const sort = ref(
+    props.filters?.sort_by ?? 'id'
+)
+
+const direction = ref(
+    props.filters?.sort_direction ?? 'desc'
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Data
+|--------------------------------------------------------------------------
+*/
+
+function loadData() {
 
     router.get(
 
-        route(
-            'stock-balance.index'
-        ),
-
-        filters,
+        route('stock-balance.index'),
 
         {
 
-            preserveState:
-                true,
-
-            preserveScroll:
-                true,
-
-            replace:
-                true,
-
-        }
-
-    )
-
-}
-
-watch(
-
-    () =>
-        filters.search,
-
-    () => {
-
-        clearTimeout(
-            debounceTimer
-        )
-
-
-        debounceTimer =
-            setTimeout(
-
-                () => {
-
-                    loadData()
-
-                },
-
-                500
-
-            )
-
-    }
-
-)
-
-
-watch(
-
-    () =>
-        filters.branch_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
-    () =>
-        filters.warehouse_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-watch(
-
-    () =>
-        filters.product_variant_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-watch(
-
-    () =>
-        filters.unit_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-watch(
-
-    () =>
-        filters.per_page,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-function refresh()
-{
-
-    Object.assign(
-    filters,
-    {
-        search: '',
-        date_from: '',
-        date_to: '',
-        branch_id: '',
-        warehouse_id: '',
-        product_variant_id: '',
-        unit_id: '',
-        per_page: 10,
-    }
-)
-
-dateRange.value = ''
-
-loadData()
-
-}
-
-const sort =
-    ref(
-
-        props.filters?.sort_by
-        ?? 'id'
-
-    )
-
-
-const direction =
-    ref(
-
-        props.filters?.sort_direction
-        ?? 'desc'
-
-    )
-
-
-function sortBy(
-    column
-)
-{
-
-    if (
-        sort.value === column
-    ) {
-
-        direction.value =
-
-            direction.value === 'asc'
-
-                ? 'desc'
-
-                : 'asc'
-
-    }
-
-    else {
-
-        sort.value =
-            column
-
-        direction.value =
-            'asc'
-
-    }
-
-
-    router.get(
-
-        route(
-            'stock-balance.index'
-        ),
-
-        {
-
-            search:
-                filters.search,
-
-            branch_id:
-                filters.branch_id,
-
-            warehouse_id:
-                filters.warehouse_id,
-
-            product_variant_id:
-                filters.product_variant_id,
-
-            unit_id:
-                filters.unit_id,
-
-            per_page:
-                filters.per_page,
+            ...filters,
 
             sort_by:
                 sort.value,
@@ -389,14 +240,23 @@ function sortBy(
 
         {
 
-            preserveState:
-                true,
+            preserveState: true,
 
-            preserveScroll:
-                true,
+            preserveScroll: true,
 
-            replace:
-                true,
+            replace: true,
+
+            onStart: () => {
+
+                loading.value = true
+
+            },
+
+            onFinish: () => {
+
+                loading.value = false
+
+            },
 
         }
 
@@ -404,43 +264,292 @@ function sortBy(
 
 }
 
-const filteredWarehouses =
-    computed(
-        () => {
 
-            if (
-                !filters.branch_id
-            ) {
+/*
+|--------------------------------------------------------------------------
+| Search Watcher
+|--------------------------------------------------------------------------
+*/
 
-                return props.warehouses
+let debounceTimer = null
 
-            }
+watch(
+
+    () => filters.search,
+
+    () => {
+
+        clearTimeout(
+            debounceTimer
+        )
+
+        debounceTimer = setTimeout(
+
+            () => {
+
+                loadData()
+
+            },
+
+            500
+
+        )
+
+    }
+
+)
 
 
-            return props.warehouses.filter(
+/*
+|--------------------------------------------------------------------------
+| Branch Watcher
+|--------------------------------------------------------------------------
+*/
 
-                warehouse =>
+watch(
 
-                    Number(
-                        warehouse.branch_id
-                    )
+    () => filters.branch_id,
 
-                    ===
+    () => {
 
-                    Number(
-                        filters.branch_id
-                    )
+        loadData()
 
-            )
+    }
 
+)
+
+watch(
+    () => stockBalance.value?.data,
+    (rows) => {
+        if (rows?.length) {
+            console.log('Stock Balance Raw Data:', {
+                on_hand_qty: rows[0].on_hand_qty,
+                reserved_qty: rows[0].reserved_qty,
+                available_qty: rows[0].available_qty,
+            })
         }
+    },
+    { immediate: true }
+)
+/*
+|--------------------------------------------------------------------------
+| Warehouse Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () => filters.warehouse_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Product Variant Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () => filters.product_variant_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Unit Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () => filters.unit_id,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Per Page Watcher
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () => filters.per_page,
+
+    () => {
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Refresh
+|--------------------------------------------------------------------------
+*/
+
+function refresh() {
+
+    clearTimeout(
+        debounceTimer
     )
 
+    Object.assign(
 
-function formatNumber(
-    value
+        filters,
+
+        {
+
+            search: '',
+
+            date_from: '',
+
+            date_to: '',
+
+            branch_id: '',
+
+            warehouse_id: '',
+
+            product_variant_id: '',
+
+            unit_id: '',
+
+            per_page: 10,
+
+        }
+
+    )
+
+    asOfDate.value = ''
+
+    sort.value = 'id'
+
+    direction.value = 'desc'
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Sort
+|--------------------------------------------------------------------------
+*/
+
+function sortBy(column) {
+
+    const allowedSorts = [
+
+        'on_hand_qty',
+
+        'reserved_qty',
+
+        'available_qty',
+
+        'stock_value',
+
+    ]
+
+    if (!allowedSorts.includes(column)) {
+
+        return
+
+    }
+
+    if (sort.value === column) {
+
+        direction.value =
+
+            direction.value === 'asc'
+
+                ? 'desc'
+
+                : 'asc'
+
+    } else {
+
+        sort.value = column
+
+        direction.value = 'asc'
+
+    }
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Filtered Warehouses
+|--------------------------------------------------------------------------
+*/
+
+const filteredWarehouses = computed(
+
+    () => {
+
+        if (!filters.branch_id) {
+
+            return props.warehouses
+
+        }
+
+        return props.warehouses.filter(
+
+            warehouse =>
+
+                Number(warehouse.branch_id)
+
+                ===
+
+                Number(filters.branch_id)
+
+        )
+
+    }
+
 )
-{
+
+
+/*
+|--------------------------------------------------------------------------
+| Number Formatting
+|--------------------------------------------------------------------------
+|
+| Quantity:
+| Backend precision = 6 decimal places
+| UI display = maximum 2 decimal places
+|
+*/
+
+function formatNumber(value) {
 
     return new Intl.NumberFormat(
 
@@ -448,55 +557,74 @@ function formatNumber(
 
         {
 
-            minimumFractionDigits:
-                0,
+            minimumFractionDigits: 2,
 
-            maximumFractionDigits:
-                2,
+            maximumFractionDigits: 2,
 
         }
 
     ).format(
 
-        Number(
-            value
-            ?? 0
-        )
+        Number(value ?? 0)
 
     )
 
 }
 
-function formatCurrency(
-    value
-)
-{
+
+/*
+|--------------------------------------------------------------------------
+| Currency Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatCurrency(value) {
 
     return currency(
-        Number(
-            value
-            ?? 0
-        )
+
+        Number(value ?? 0)
+
     )
 
 }
 
 
-const selectedItem =
-    ref(null)
+/*
+|--------------------------------------------------------------------------
+| Selected Item
+|--------------------------------------------------------------------------
+*/
+
+const selectedItem = ref(null)
 
 
-const showViewModal =
-    ref(false)
+/*
+|--------------------------------------------------------------------------
+| View Modal
+|--------------------------------------------------------------------------
+*/
+
+const showViewModal = ref(false)
 
 const activeViewTab = ref('overview')
+
 const movementLoading = ref(false)
 
 const movements = ref([])
-async function loadMovements()
-{
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Inventory Movements
+|--------------------------------------------------------------------------
+*/
+
+async function loadMovements() {
+
     if (!selectedItem.value) {
+
         return
+
     }
 
     movementLoading.value = true
@@ -531,16 +659,22 @@ async function loadMovements()
         }
 
 
-        const response =
-            await fetch(
-                `${route('stock-balance.movements')}?${params.toString()}`,
-                {
-                    headers: {
-                        'Accept':
-                            'application/json',
-                    },
-                }
-            )
+        const response = await fetch(
+
+            `${route('stock-balance.movements')}?${params.toString()}`,
+
+            {
+
+                headers: {
+
+                    'Accept':
+                        'application/json',
+
+                },
+
+            }
+
+        )
 
 
         if (!response.ok) {
@@ -552,14 +686,14 @@ async function loadMovements()
         }
 
 
-        const result =
-            await response.json()
+        const result = await response.json()
 
 
         movements.value =
             result.data ?? []
 
     }
+
     catch (error) {
 
         console.error(
@@ -570,37 +704,76 @@ async function loadMovements()
         movements.value = []
 
     }
+
     finally {
 
-        movementLoading.value =
-            false
+        movementLoading.value = false
 
     }
+
 }
-function openMovementTab()
-{
+
+
+/*
+|--------------------------------------------------------------------------
+| Open Movement Tab
+|--------------------------------------------------------------------------
+*/
+
+function openMovementTab() {
+
     activeViewTab.value = 'movement'
 
     if (!movements.value.length) {
+
         loadMovements()
+
     }
+
 }
-function openView(item)
-{
+
+
+/*
+|--------------------------------------------------------------------------
+| Open View
+|--------------------------------------------------------------------------
+*/
+
+function openView(item) {
+
     selectedItem.value = item
+
     activeViewTab.value = 'overview'
+
     movements.value = []
+
     showViewModal.value = true
+
 }
 
 
-function closeView()
-{
+/*
+|--------------------------------------------------------------------------
+| Close View
+|--------------------------------------------------------------------------
+*/
+
+function closeView() {
+
     showViewModal.value = false
+
     selectedItem.value = null
+
     activeViewTab.value = 'overview'
+
 }
-const dateRange = ref('')
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Formatting
+|--------------------------------------------------------------------------
+*/
 
 function formatDateForFilter(date) {
 
@@ -618,48 +791,41 @@ function formatDateForFilter(date) {
         ).padStart(2, '0')
 
     return `${year}-${month}-${day}`
+
 }
 
 
-function handleDateRangeChange(
-    selectedDates
-) {
+/*
+|--------------------------------------------------------------------------
+| As Of Date Change
+|--------------------------------------------------------------------------
+|
+| Historical Stock Balance menggunakan date_to
+| untuk menghitung saldo sampai tanggal terpilih.
+|
+*/
 
-    if (!selectedDates.length) {
+function handleAsOfDateChange(selectedDates) {
 
-        filters.date_from = ''
+    filters.date_from = ''
 
-        filters.date_to = ''
+    filters.date_to = selectedDates.length
 
-        loadData()
-
-        return
-    }
-
-
-    filters.date_from =
-        formatDateForFilter(
+        ? formatDateForFilter(
             selectedDates[0]
         )
 
+        : ''
 
-    filters.date_to =
-        selectedDates.length > 1
-
-            ? formatDateForFilter(
-                selectedDates[1]
-            )
-
-            : formatDateForFilter(
-                selectedDates[0]
-            )
-
+    asOfDate.value =
+        filters.date_to
 
     loadData()
 
 }
 
 </script>
+
 
 <template>
 <AppLayout>
@@ -797,26 +963,30 @@ function handleDateRangeChange(
                 "
             >
 
-                <FlatPickr
-                    v-model="dateRange"
-                    :config="{
-                        mode: 'range',
-                        dateFormat: 'Y-m-d',
-                    }"
-                    placeholder="Date Range"
-                    class="
-                        w-full
-                        rounded-xl
-                        border
-                        border-gray-300
-                        px-4
-                        py-2.5
-                        text-sm
-                    "
-                    @on-change="
-                        handleDateRangeChange
-                    "
-                />
+                <!-- As of Date -->
+
+                    <div class="w-full lg:w-72">
+
+                        <FlatPickr
+                            v-model="asOfDate"
+                            :config="{
+                                mode: 'single',
+                                dateFormat: 'Y-m-d',
+                            }"
+                            placeholder="As of Date"
+                            class="
+                                w-full
+                                rounded-xl
+                                border
+                                border-gray-300
+                                px-4
+                                py-2.5
+                                text-sm
+                            "
+                            @on-change="handleAsOfDateChange"
+                        />
+
+                    </div>
 
             </div>
 
@@ -953,438 +1123,438 @@ function handleDateRangeChange(
 <!-- Data -->
 <!-- ===================================================== -->
 
-<DataTable
-    v-if="stockBalance?.data?.length"
-    sticky-header
-    max-height="650px"
->
-
-    <DataTableHead sticky>
-
-        <!-- Product -->
-
-        <DataTableHeaderCell
-            sortable
-            column="product"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="280px"
-        >
-            Product
-        </DataTableHeaderCell>
-
-
-        <!-- Location -->
-
-        <DataTableHeaderCell
-            width="220px"
-        >
-            Branch / Warehouse
-        </DataTableHeaderCell>
-
-
-        <!-- Units -->
-
-        <DataTableHeaderCell
-            width="110px"
-            align="center"
-        >
-            Units
-        </DataTableHeaderCell>
-
-
-        <!-- On Hand -->
-
-        <DataTableHeaderCell
-            sortable
-            column="on_hand_qty"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="140px"
-            align="right"
-        >
-            On Hand
-        </DataTableHeaderCell>
-
-
-        <!-- Reserved -->
-
-        <DataTableHeaderCell
-            sortable
-            column="reserved_qty"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="140px"
-            align="right"
-        >
-            Reserved
-        </DataTableHeaderCell>
-
-
-        <!-- Available -->
-
-        <DataTableHeaderCell
-            sortable
-            column="available_qty"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="140px"
-            align="right"
-        >
-            Available
-        </DataTableHeaderCell>
-
-
-        <!-- Average Cost -->
-
-        <DataTableHeaderCell
-            width="160px"
-            align="right"
-        >
-            Average Cost
-        </DataTableHeaderCell>
-
-
-        <!-- Stock Value -->
-
-        <DataTableHeaderCell
-            sortable
-            column="stock_value"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="180px"
-            align="right"
-        >
-            Stock Value
-        </DataTableHeaderCell>
-        <DataTableHeaderCell
-            width="160px"
-            align="right"
-        >
-            Retail Price
-        </DataTableHeaderCell>
-
-        <DataTableHeaderCell
-            sortable
-            column="sales_value"
-            :sort="sort"
-            :direction="direction"
-            @sort="sortBy"
-            width="180px"
-            align="right"
-        >
-            Sales Value
-        </DataTableHeaderCell>
-
-        <!-- Actions -->
-
-        <DataTableHeaderCell
-            width="90px"
-            align="center"
-        >
-            Actions
-        </DataTableHeaderCell>
-
-    </DataTableHead>
-
-
-    <DataTableBody>
-
-        <DataTableRow
-            v-for="item in stockBalance.data"
-            :key="item.id"
-        >
-
-            <!-- ================================================= -->
-            <!-- Product -->
-            <!-- ================================================= -->
-
-            <DataTableCell>
-
-                <div
-                    class="
-                        font-medium
-                        text-gray-900
-                    "
-                >
-                    {{
-                        item.product?.name
-                        ?? '-'
-                    }}
-                </div>
-
-
-                <div
-                    class="
-                        mt-0.5
-                        text-xs
-                        text-gray-500
-                    "
-                >
-
-                    <span>
-                        SKU:
-                        {{
-                            item.variant?.sku
-                            ?? '-'
-                        }}
-                    </span>
-
-
-                    <span
-                        v-if="
-                            item.variant?.name
-                        "
-                    >
-                        ·
-                        {{
-                            item.variant.name
-                        }}
-                    </span>
-
-                </div>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- Branch / Warehouse -->
-            <!-- ================================================= -->
-
-            <DataTableCell>
-
-                <div
-                    class="
-                        font-medium
-                        text-gray-900
-                    "
-                >
-                    {{
-                        item.branch?.name
-                        ?? '-'
-                    }}
-                </div>
-
-
-                <div
-                    class="
-                        mt-0.5
-                        text-xs
-                        text-gray-500
-                    "
-                >
-                    {{
-                        item.warehouse?.name
-                        ?? '-'
-                    }}
-                </div>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- Units -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="center">
-
-                <button
-                    type="button"
-                    class="
-                        inline-flex
-                        items-center
-                        rounded-lg
-                        border
-                        border-gray-200
-                        bg-gray-50
-                        px-3
-                        py-1.5
-                        text-xs
-                        font-medium
-                        text-gray-700
-                        hover:bg-gray-100
-                    "
-                    @click="
-                        openView(item)
-                    "
-                >
-
-                    {{
-                        item.unit_count
-                        ?? 0
-                    }}
-
-                    {{
-                        (
-                            item.unit_count
-                            ?? 0
-                        ) === 1
-                            ? 'Unit'
-                            : 'Units'
-                    }}
-
-                </button>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- On Hand -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="right">
-
-                <span
-                    class="
-                        font-medium
-                        text-gray-900
-                    "
-                >
-                    {{
-                        formatNumber(
-                            item.on_hand_qty
-                        )
-                    }}
-                </span>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- Reserved -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="right">
-
-                <span
-                    class="text-gray-600"
-                >
-                    {{
-                        formatNumber(
-                            item.reserved_qty
-                        )
-                    }}
-                </span>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- Available -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="right">
-
-                <span
-                    class="
-                        font-semibold
-                        text-gray-900
-                    "
-                >
-                    {{
-                        formatNumber(
-                            item.available_qty
-                        )
-                    }}
-                </span>
-
-            </DataTableCell>
-
-
-            <!-- ================================================= -->
-            <!-- Average Cost -->
-            <!-- ================================================= -->
-
-              <DataTableCell align="right">
-
-                {{
-                    formatCurrency(
-                        item.average_cost ?? 0
-                    )
-                }}
-
-             </DataTableCell>
-
-            <!-- ================================================= -->
-            <!-- Stock Value -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="right">
-
-                <span
-                    class="
-                        font-semibold
-                        text-gray-900
-                    "
-                >
-                    {{
-                        formatCurrency(
-                            item.stock_value
-                            ?? 0
-                        )
-                    }}
-                </span>
-
-            </DataTableCell>
-            <!-- Retail Price -->
-
-            <DataTableCell align="right">
-
-                {{
-                    formatCurrency(
-                        item.selling_price ?? 0
-                        
-                    )
-                }}
-
-            </DataTableCell>
-
-
-            <!-- Sales Value -->
-
-            <DataTableCell align="right">
-
-                <span
-                    class="
-                        font-semibold
-                        text-gray-900
-                    "
-                >
-                    {{
-                        formatCurrency(
-                            item.sales_value ?? 0
-                        )
-                    }}
-                </span>
-
-            </DataTableCell>
-
-            <!-- ================================================= -->
-            <!-- Actions -->
-            <!-- ================================================= -->
-
-            <DataTableCell align="center">
-
-               <button
-                type="button"
-                class="text-blue-600 hover:text-blue-800"
-                @click="openView(item)"
+            <DataTable
+                v-if="stockBalance?.data?.length"
+                sticky-header
+                max-height="650px"
             >
-                View
-            </button>
 
-            </DataTableCell>
+                <DataTableHead sticky>
 
-        </DataTableRow>
+                    <!-- Product -->
 
-    </DataTableBody>
+                    <DataTableHeaderCell
+                        sortable
+                        column="product"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="280px"
+                    >
+                        Product
+                    </DataTableHeaderCell>
 
-</DataTable>
+
+                    <!-- Location -->
+
+                    <DataTableHeaderCell
+                        width="220px"
+                    >
+                        Branch / Warehouse
+                    </DataTableHeaderCell>
+
+
+                    <!-- Units -->
+
+                    <DataTableHeaderCell
+                        width="110px"
+                        align="center"
+                    >
+                        Units
+                    </DataTableHeaderCell>
+
+
+                    <!-- On Hand -->
+
+                    <DataTableHeaderCell
+                        sortable
+                        column="on_hand_qty"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="140px"
+                        align="right"
+                    >
+                        On Hand
+                    </DataTableHeaderCell>
+
+
+                    <!-- Reserved -->
+
+                    <DataTableHeaderCell
+                        sortable
+                        column="reserved_qty"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="140px"
+                        align="right"
+                    >
+                        Reserved
+                    </DataTableHeaderCell>
+
+
+                    <!-- Available -->
+
+                    <DataTableHeaderCell
+                        sortable
+                        column="available_qty"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="140px"
+                        align="right"
+                    >
+                        Available
+                    </DataTableHeaderCell>
+
+
+                    <!-- Average Cost -->
+
+                    <DataTableHeaderCell
+                        width="160px"
+                        align="right"
+                    >
+                        Average Cost
+                    </DataTableHeaderCell>
+
+
+                    <!-- Stock Value -->
+
+                    <DataTableHeaderCell
+                        sortable
+                        column="stock_value"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="180px"
+                        align="right"
+                    >
+                        Stock Value
+                    </DataTableHeaderCell>
+                    <DataTableHeaderCell
+                        width="160px"
+                        align="right"
+                    >
+                        Retail Price
+                    </DataTableHeaderCell>
+
+                    <DataTableHeaderCell
+                        sortable
+                        column="sales_value"
+                        :sort="sort"
+                        :direction="direction"
+                        @sort="sortBy"
+                        width="180px"
+                        align="right"
+                    >
+                        Sales Value
+                    </DataTableHeaderCell>
+
+                    <!-- Actions -->
+
+                    <DataTableHeaderCell
+                        width="90px"
+                        align="center"
+                    >
+                        Actions
+                    </DataTableHeaderCell>
+
+                </DataTableHead>
+
+
+                        <DataTableBody>
+
+                            <DataTableRow
+                                v-for="item in stockBalance.data"
+                                :key="item.id"
+                            >
+
+                                <!-- ================================================= -->
+                                <!-- Product -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell>
+
+                                    <div
+                                        class="
+                                            font-medium
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            item.product?.name
+                                            ?? '-'
+                                        }}
+                                    </div>
+
+
+                                    <div
+                                        class="
+                                            mt-0.5
+                                            text-xs
+                                            text-gray-500
+                                        "
+                                    >
+
+                                        <span>
+                                            SKU:
+                                            {{
+                                                item.variant?.sku
+                                                ?? '-'
+                                            }}
+                                        </span>
+
+
+                                        <span
+                                            v-if="
+                                                item.variant?.name
+                                            "
+                                        >
+                                            ·
+                                            {{
+                                                item.variant.name
+                                            }}
+                                        </span>
+
+                                    </div>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- Branch / Warehouse -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell>
+
+                                    <div
+                                        class="
+                                            font-medium
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            item.branch?.name
+                                            ?? '-'
+                                        }}
+                                    </div>
+
+
+                                    <div
+                                        class="
+                                            mt-0.5
+                                            text-xs
+                                            text-gray-500
+                                        "
+                                    >
+                                        {{
+                                            item.warehouse?.name
+                                            ?? '-'
+                                        }}
+                                    </div>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- Units -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="center">
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            inline-flex
+                                            items-center
+                                            rounded-lg
+                                            border
+                                            border-gray-200
+                                            bg-gray-50
+                                            px-3
+                                            py-1.5
+                                            text-xs
+                                            font-medium
+                                            text-gray-700
+                                            hover:bg-gray-100
+                                        "
+                                        @click="
+                                            openView(item)
+                                        "
+                                    >
+
+                                        {{
+                                            item.unit_count
+                                            ?? 0
+                                        }}
+
+                                        {{
+                                            (
+                                                item.unit_count
+                                                ?? 0
+                                            ) === 1
+                                                ? 'Unit'
+                                                : 'Units'
+                                        }}
+
+                                    </button>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- On Hand -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        class="
+                                            font-medium
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            formatNumber(
+                                                item.on_hand_qty
+                                            )
+                                        }}
+                                    </span>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- Reserved -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        class="text-gray-600"
+                                    >
+                                        {{
+                                            formatNumber(
+                                                item.reserved_qty
+                                            )
+                                        }}
+                                    </span>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- Available -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        class="
+                                            font-semibold
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            formatNumber(
+                                                item.available_qty
+                                            )
+                                        }}
+                                    </span>
+
+                                </DataTableCell>
+
+
+                                <!-- ================================================= -->
+                                <!-- Average Cost -->
+                                <!-- ================================================= -->
+
+                                  <DataTableCell align="right">
+
+                                    {{
+                                        formatCurrency(
+                                            item.average_cost ?? 0
+                                        )
+                                    }}
+
+                                 </DataTableCell>
+
+                                <!-- ================================================= -->
+                                <!-- Stock Value -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        class="
+                                            font-semibold
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            formatCurrency(
+                                                item.stock_value
+                                                ?? 0
+                                            )
+                                        }}
+                                    </span>
+
+                                </DataTableCell>
+                                <!-- Retail Price -->
+
+                                <DataTableCell align="right">
+
+                                    {{
+                                        formatCurrency(
+                                            item.selling_price ?? 0
+                                            
+                                        )
+                                    }}
+
+                                </DataTableCell>
+
+
+                                <!-- Sales Value -->
+
+                                <DataTableCell align="right">
+
+                                    <span
+                                        class="
+                                            font-semibold
+                                            text-gray-900
+                                        "
+                                    >
+                                        {{
+                                            formatCurrency(
+                                                item.sales_value ?? 0
+                                            )
+                                        }}
+                                    </span>
+
+                                </DataTableCell>
+
+                                <!-- ================================================= -->
+                                <!-- Actions -->
+                                <!-- ================================================= -->
+
+                                <DataTableCell align="center">
+
+                                   <button
+                                    type="button"
+                                    class="text-blue-600 hover:text-blue-800"
+                                    @click="openView(item)"
+                                >
+                                    View
+                                </button>
+
+                                </DataTableCell>
+
+                            </DataTableRow>
+
+                        </DataTableBody>
+
+                    </DataTable>
                 <!-- Empty -->
 
                 <TableEmpty

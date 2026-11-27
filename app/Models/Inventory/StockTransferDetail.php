@@ -90,9 +90,9 @@ class StockTransferDetail extends Model
 
     protected $casts = [
 
-        'qty' => 'decimal:2',
+        'qty' => 'decimal:6',
 
-        'unit_cost' => 'decimal:2',
+        'unit_cost' => 'decimal:6',
 
         'total_cost' => 'decimal:2',
 

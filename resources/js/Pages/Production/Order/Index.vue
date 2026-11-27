@@ -688,7 +688,7 @@ onUnmounted(() => {
                                     Branch
                                 </DataTableHeaderCell>
 
-                                <DataTableHeaderCell width="160px">
+                                <DataTableHeaderCell width="210px">
                                     BOM
                                 </DataTableHeaderCell>
 

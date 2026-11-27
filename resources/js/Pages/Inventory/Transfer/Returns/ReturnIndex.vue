@@ -223,8 +223,15 @@ const statCards = computed(() => {
 |--------------------------------------------------------------------------
 */
 
+function formatCount(value) {
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 0,
+    }).format(Number(value ?? 0))
+}
+
 function formatNumber(value) {
     return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value ?? 0))
 }
@@ -541,7 +548,7 @@ onBeforeUnmount(() => {
                     >
                         {{ stat.isAmount
                             ? formatAmount(stat.value)
-                            : formatNumber(stat.value)
+                            : formatCount(stat.value)
                         }}
                     </p>
                 </div>
@@ -874,11 +881,11 @@ onBeforeUnmount(() => {
                                     <!-- ITEMS -->
                                     <td class="whitespace-nowrap px-4 py-4 text-right align-top">
                                         <span class="text-sm font-medium tabular-nums text-slate-800">
-                                            {{ formatNumber(getItemCount(item)) }}
+                                            {{ formatCount(getItemCount(item)) }}
                                         </span>
 
                                         <p class="mt-1 text-xs text-slate-400">
-                                            {{ formatNumber(getTotalQty(item)) }} qty
+                                           {{ formatNumber(getTotalQty(item)) }} qty
                                         </p>
                                     </td>
 

@@ -11,8 +11,6 @@ use App\Models\Inventory\InventoryMovement;
 use App\Models\Inventory\StockTransferHeader;
 use App\Models\Inventory\StockTransferReturnHeader;
 use App\Models\Inventory\StockTransferReturnDetail;
-use App\Models\MasterData\Branch;
-use App\Models\MasterData\Warehouse;
 use App\Services\Accounting\JournalEntryService;
 use App\Services\Core\CodeGeneratorService;
 use App\Services\Core\DocumentActivityService;
@@ -93,9 +91,6 @@ class StockTransferReturnService
 
             /*
              * Lock existing stock records in a stable order.
-             * The original transfer header lock serializes creation
-             * requests for the same transfer, provided all return
-             * creation paths use this service.
              */
             $stockKeys = $transfer->details
                 ->whereIn('id', $detailIds)
@@ -137,9 +132,18 @@ class StockTransferReturnService
                     ]);
                 }
 
-                $qty = (float) ($item['qty'] ?? 0);
+                $rawQty = (string) ($item['qty'] ?? '');
 
-                if (! is_finite($qty) || $qty <= 0) {
+                if (! is_numeric($rawQty)) {
+                    throw ValidationException::withMessages([
+                        "details.{$index}.qty" =>
+                            'Return quantity must be a valid number.',
+                    ]);
+                }
+
+                $qty = bcadd($rawQty, '0', 6);
+
+                if (bccomp($qty, '0', 6) <= 0) {
                     throw ValidationException::withMessages([
                         "details.{$index}.qty" =>
                             'Return quantity must be greater than zero.',
@@ -160,16 +164,29 @@ class StockTransferReturnService
                     true
                 );
 
-                $maxQty = min($remainingQty, $availableStock);
+                $maxQty = bccomp(
+                    $remainingQty,
+                    $availableStock,
+                    6
+                ) <= 0
+                    ? $remainingQty
+                    : $availableStock;
 
-                if ($qty > $maxQty + 0.000001) {
+                if (bccomp($qty, $maxQty, 6) > 0) {
                     throw ValidationException::withMessages([
                         "details.{$index}.qty" =>
                             "Maximum return quantity is {$maxQty}.",
                     ]);
                 }
 
-                if ((float) $originalDetail->unit_cost < 0) {
+                if (
+                    ! is_numeric((string) $originalDetail->unit_cost) ||
+                    bccomp(
+                        (string) $originalDetail->unit_cost,
+                        '0',
+                        6
+                    ) < 0
+                ) {
                     throw ValidationException::withMessages([
                         "details.{$index}.qty" =>
                             'Original transfer cost is invalid.',
@@ -204,8 +221,17 @@ class StockTransferReturnService
                     (int) $item['stock_transfer_detail_id']
                 );
 
-                $qty = (float) $item['qty'];
-                $unitCost = (float) $originalDetail->unit_cost;
+                $qty = bcadd((string) $item['qty'], '0', 6);
+                $unitCost = bcadd(
+                    (string) $originalDetail->unit_cost,
+                    '0',
+                    6
+                );
+
+                $totalCost = $this->roundBc(
+                    bcmul($qty, $unitCost, 12),
+                    2
+                );
 
                 StockTransferReturnDetail::create([
                     'stock_transfer_return_header_id' => $return->id,
@@ -214,7 +240,7 @@ class StockTransferReturnService
                     'unit_id' => $originalDetail->unit_id,
                     'qty' => $qty,
                     'unit_cost' => $unitCost,
-                    'total_cost' => round($qty * $unitCost, 2),
+                    'total_cost' => $totalCost,
                     'description' => $item['description'] ?? null,
                     'created_by' => auth()->id(),
                 ]);
@@ -473,7 +499,7 @@ class StockTransferReturnService
                 }
             }
 
-            $totalReturnValue = 0.0;
+            $totalReturnValue = '0.00';
 
             foreach ($return->details as $detail) {
                 $originalDetail = $transfer->details->firstWhere(
@@ -523,36 +549,63 @@ class StockTransferReturnService
                     );
                 }
 
-                $availableQty = (float) $stock->available_qty;
-                $qty = (float) $detail->qty;
+                $availableQty = bcadd(
+                    (string) $stock->available_qty,
+                    '0',
+                    6
+                );
+
+                $qty = bcadd((string) $detail->qty, '0', 6);
 
                 if (
-                    ! is_finite($qty) ||
-                    $qty <= 0 ||
-                    $qty > $remainingQty + 0.000001 ||
-                    $qty > $availableQty + 0.000001
+                    bccomp($qty, '0', 6) <= 0 ||
+                    bccomp($qty, $remainingQty, 6) > 0 ||
+                    bccomp($qty, $availableQty, 6) > 0
                 ) {
                     throw new RuntimeException(
                         'Return quantity exceeds the remaining transfer quantity or available stock.'
                     );
                 }
 
-                $actualUnitCost = (float) $stock->average_cost;
-                $returnUnitCost = (float) $originalDetail->unit_cost;
+                $actualUnitCost = bcadd(
+                    (string) $stock->average_cost,
+                    '0',
+                    6
+                );
+
+                $returnUnitCost = bcadd(
+                    (string) $originalDetail->unit_cost,
+                    '0',
+                    6
+                );
 
                 /*
                  * Temporary costing policy:
                  * do not post when actual average cost differs from
-                 * the original transfer cost.
+                 * the original transfer cost by more than 0.005.
                  */
-                if (abs($actualUnitCost - $returnUnitCost) > 0.005) {
+                $costDifference = bcsub(
+                    $actualUnitCost,
+                    $returnUnitCost,
+                    6
+                );
+
+                if (str_starts_with($costDifference, '-')) {
+                    $costDifference = substr($costDifference, 1);
+                }
+
+                if (bccomp($costDifference, '0.005000', 6) > 0) {
                     throw new RuntimeException(
                         'Return posting blocked: the current inventory average cost differs from the original transfer cost. Resolve the cost variance policy before posting.'
                     );
                 }
 
                 $unitCost = $returnUnitCost;
-                $totalCost = round($qty * $unitCost, 2);
+
+                $totalCost = $this->roundBc(
+                    bcmul($qty, $unitCost, 12),
+                    2
+                );
 
                 $detail->update([
                     'unit_cost' => $unitCost,
@@ -560,7 +613,11 @@ class StockTransferReturnService
                     'updated_by' => auth()->id(),
                 ]);
 
-                $totalReturnValue += $totalCost;
+                $totalReturnValue = bcadd(
+                    $totalReturnValue,
+                    $totalCost,
+                    2
+                );
 
                 /*
                  * Inventory out from the return-origin branch.
@@ -571,7 +628,7 @@ class StockTransferReturnService
                     'warehouse_id' => $return->from_warehouse_id,
                     'product_variant_id' => $detail->product_variant_id,
                     'unit_id' => $detail->unit_id,
-                    'qty' => -$qty,
+                    'qty' => bcsub('0', $qty, 6),
                     'average_cost' => $unitCost,
                     'transaction_date' => $return->transaction_date,
                     'update_average_cost' => false,
@@ -582,7 +639,7 @@ class StockTransferReturnService
                     'reference_type' => 'STOCK_TRANSFER_RETURN',
                     'reference_id' => $return->id,
                     'reference_number' => $return->number,
-                    'qty_in' => 0,
+                    'qty_in' => '0.000000',
                     'qty_out' => $qty,
                     'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
@@ -612,7 +669,7 @@ class StockTransferReturnService
                     'reference_id' => $return->id,
                     'reference_number' => $return->number,
                     'qty_in' => $qty,
-                    'qty_out' => 0,
+                    'qty_out' => '0.000000',
                     'unit_cost' => $unitCost,
                     'total_cost' => $totalCost,
                     'transaction_date' => $return->transaction_date,
@@ -621,7 +678,7 @@ class StockTransferReturnService
                 ]);
             }
 
-            if ($totalReturnValue <= 0) {
+            if (bccomp($totalReturnValue, '0.00', 2) <= 0) {
                 throw new RuntimeException(
                     'Stock transfer return value must be greater than zero.'
                 );
@@ -647,13 +704,13 @@ class StockTransferReturnService
                         'branch_id' => $return->from_branch_id,
                         'description' => 'Inter-Branch Payable - ' . $return->number,
                         'debit' => $totalReturnValue,
-                        'credit' => 0,
+                        'credit' => '0.00',
                     ],
                     [
                         'account_id' => $fromInventory,
                         'branch_id' => $return->from_branch_id,
                         'description' => 'Inventory return out - ' . $return->number,
-                        'debit' => 0,
+                        'debit' => '0.00',
                         'credit' => $totalReturnValue,
                     ],
                 ],
@@ -681,13 +738,13 @@ class StockTransferReturnService
                         'branch_id' => $return->to_branch_id,
                         'description' => 'Inventory return in - ' . $return->number,
                         'debit' => $totalReturnValue,
-                        'credit' => 0,
+                        'credit' => '0.00',
                     ],
                     [
                         'account_id' => $toReceivable,
                         'branch_id' => $return->to_branch_id,
                         'description' => 'Inter-Branch Receivable - ' . $return->number,
-                        'debit' => 0,
+                        'debit' => '0.00',
                         'credit' => $totalReturnValue,
                     ],
                 ],
@@ -846,7 +903,7 @@ class StockTransferReturnService
         StockTransferHeader $transfer,
         $originalDetail,
         ?int $excludeReturnId = null
-    ): float {
+    ): string {
         $returnedQty = StockTransferReturnDetail::query()
             ->where(
                 'stock_transfer_detail_id',
@@ -881,10 +938,27 @@ class StockTransferReturnService
             )
             ->sum('qty');
 
-        return max(
-            0,
-            (float) $originalDetail->qty - (float) $returnedQty
+        $originalQty = bcadd(
+            (string) $originalDetail->qty,
+            '0',
+            6
         );
+
+        $returnedQty = bcadd(
+            (string) $returnedQty,
+            '0',
+            6
+        );
+
+        $remainingQty = bcsub(
+            $originalQty,
+            $returnedQty,
+            6
+        );
+
+        return bccomp($remainingQty, '0', 6) < 0
+            ? '0.000000'
+            : $remainingQty;
     }
 
     private function getAvailableStock(
@@ -894,7 +968,7 @@ class StockTransferReturnService
         int $variantId,
         int $unitId,
         bool $lock = false
-    ): float {
+    ): string {
         $query = ProductStock::query()
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -907,7 +981,11 @@ class StockTransferReturnService
             $query->lockForUpdate();
         }
 
-        return (float) ($query->first()?->available_qty ?? 0);
+        return bcadd(
+            (string) ($query->first()?->available_qty ?? '0'),
+            '0',
+            6
+        );
     }
 
     private function getBranchAccount(
@@ -953,12 +1031,18 @@ class StockTransferReturnService
 
         $stock = $query->first();
 
+        $movementQty = bcadd(
+            (string) $data['qty'],
+            '0',
+            6
+        );
+
         if (! $stock) {
             /*
              * Do not silently create a missing source stock record
              * for an inventory-out operation.
              */
-            if ((float) $data['qty'] < 0) {
+            if (bccomp($movementQty, '0', 6) < 0) {
                 throw new RuntimeException(
                     'Cannot issue stock because the source stock record does not exist.'
                 );
@@ -972,56 +1056,102 @@ class StockTransferReturnService
             $stock->product_variant_id = $data['product_variant_id'];
             $stock->reseller_id = $data['reseller_id'] ?? null;
             $stock->unit_id = $data['unit_id'];
-            $stock->on_hand_qty = 0;
-            $stock->reserved_qty = 0;
-            $stock->available_qty = 0;
-            $stock->average_cost = 0;
+            $stock->on_hand_qty = '0.000000';
+            $stock->reserved_qty = '0.000000';
+            $stock->available_qty = '0.000000';
+            $stock->average_cost = '0.000000';
         }
 
-        $oldQty = (float) $stock->on_hand_qty;
-        $oldAverageCost = (float) $stock->average_cost;
-        $movementQty = (float) $data['qty'];
-        $newQty = $oldQty + $movementQty;
+        $oldQty = bcadd(
+            (string) $stock->on_hand_qty,
+            '0',
+            6
+        );
 
-        if ($newQty < -0.000001) {
+        $oldAverageCost = bcadd(
+            (string) $stock->average_cost,
+            '0',
+            6
+        );
+
+        $newQty = bcadd(
+            $oldQty,
+            $movementQty,
+            6
+        );
+
+        if (bccomp($newQty, '0', 6) < 0) {
             throw new RuntimeException(
                 'Stock quantity cannot be negative.'
             );
         }
 
-        /*
-         * Clamp insignificant floating-point residue.
-         */
-        if (abs($newQty) < 0.000001) {
-            $newQty = 0;
-        }
-
         if (
             ($data['update_average_cost'] ?? false) === true &&
-            $movementQty > 0
+            bccomp($movementQty, '0', 6) > 0
         ) {
-            $incomingCost = (float) ($data['average_cost'] ?? 0);
+            $incomingCost = bcadd(
+                (string) ($data['average_cost'] ?? '0'),
+                '0',
+                6
+            );
 
-            if ($oldQty <= 0) {
+            if (bccomp($oldQty, '0', 6) <= 0) {
                 $stock->average_cost = $incomingCost;
             } else {
-                $stock->average_cost = (
-                    ($oldQty * $oldAverageCost) +
-                    ($movementQty * $incomingCost)
-                ) / $newQty;
+                $oldStockValue = bcmul(
+                    $oldQty,
+                    $oldAverageCost,
+                    12
+                );
+
+                $incomingStockValue = bcmul(
+                    $movementQty,
+                    $incomingCost,
+                    12
+                );
+
+                $totalStockValue = bcadd(
+                    $oldStockValue,
+                    $incomingStockValue,
+                    12
+                );
+
+                if (bccomp($newQty, '0', 6) <= 0) {
+                    throw new RuntimeException(
+                        'Cannot calculate average cost with zero stock quantity.'
+                    );
+                }
+
+                $stock->average_cost = bcdiv(
+                    $totalStockValue,
+                    $newQty,
+                    6
+                );
             }
         }
 
         $stock->on_hand_qty = $newQty;
-        $stock->available_qty =
-            $stock->on_hand_qty - (float) $stock->reserved_qty;
 
-        if ($stock->available_qty < -0.000001) {
+        $reservedQty = bcadd(
+            (string) $stock->reserved_qty,
+            '0',
+            6
+        );
+
+        $availableQty = bcsub(
+            $newQty,
+            $reservedQty,
+            6
+        );
+
+        if (bccomp($availableQty, '0', 6) < 0) {
             throw new RuntimeException(
                 'Stock availability cannot become negative.'
             );
         }
 
+        $stock->available_qty = $availableQty;
         $stock->last_transaction_at = $data['transaction_date'];
         $stock->updated_by = auth()->id();
         $stock->created_by ??= auth()->id();
@@ -1045,14 +1175,72 @@ class StockTransferReturnService
             'reference_type' => $data['reference_type'],
             'reference_id' => $data['reference_id'],
             'reference_number' => $data['reference_number'],
-            'qty_in' => $data['qty_in'] ?? 0,
-            'qty_out' => $data['qty_out'] ?? 0,
+            'qty_in' => $data['qty_in'] ?? '0.000000',
+            'qty_out' => $data['qty_out'] ?? '0.000000',
             'balance_qty' => $stock->on_hand_qty,
-            'unit_cost' => $data['unit_cost'] ?? 0,
-            'total_cost' => $data['total_cost'] ?? 0,
+            'unit_cost' => $data['unit_cost'] ?? '0.000000',
+            'total_cost' => $data['total_cost'] ?? '0.00',
             'transaction_date' => $data['transaction_date'],
             'description' => $data['description'] ?? null,
             'created_by' => auth()->id(),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Decimal Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function roundBc(
+        string $value,
+        int $scale = 2
+    ): string {
+        $negative = str_starts_with($value, '-');
+
+        $absoluteValue = $negative
+            ? substr($value, 1)
+            : $value;
+
+        $truncated = bcadd(
+            $absoluteValue,
+            '0',
+            $scale + 1
+        );
+
+        [$integer, $fraction] = array_pad(
+            explode('.', $truncated, 2),
+            2,
+            ''
+        );
+
+        $fraction = str_pad(
+            $fraction,
+            $scale + 1,
+            '0'
+        );
+
+        $result = $integer . '.' . substr(
+            $fraction,
+            0,
+            $scale
+        );
+
+        if ((int) $fraction[$scale] >= 5) {
+            $increment = '0.' .
+                str_repeat('0', max(0, $scale - 1)) .
+                '1';
+
+            $result = bcadd(
+                $result,
+                $increment,
+                $scale
+            );
+        }
+
+        return $negative &&
+            bccomp($result, '0', $scale) !== 0
+                ? '-' . $result
+                : $result;
     }
 }

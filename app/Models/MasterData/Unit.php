@@ -28,12 +28,16 @@ class Unit extends Model
 
     'created_by',
 
+    'rounding_precision',
+
     'updated_by',
 
 ];
     protected $casts = [
 
         'status' => 'boolean',
+
+        'rounding_precision' => 'decimal:6',
 
     ];
 public function getRouteKeyName(): string

@@ -1071,13 +1071,15 @@ public function deleteInventoryAdjustments(
                 'unit_cost' =>
                     $data['unit_cost'] ?? 0,
 
-                'total_cost' =>
-                    $data['total_cost']
-                    ??
-                    (
-                        $data['qty']
-                        *
-                        ($data['unit_cost'] ?? 0)
+                'total_cost' => $data['total_cost']
+                    ?? bcadd(
+                        bcmul(
+                            (string) $data['qty'],
+                            (string) ($data['unit_cost'] ?? '0'),
+                            8
+                        ),
+                        '0.005',
+                        2
                     ),
 
                 'transaction_date' =>
@@ -1100,36 +1102,119 @@ public function deleteInventoryAdjustments(
 {
     DB::transaction(function () use ($data) {
 
+        /*
+        |--------------------------------------------------------------------------
+        | Find / Lock Stock
+        |--------------------------------------------------------------------------
+        */
+
         $stock = ProductStock::where([
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
             'warehouse_id' => $data['warehouse_id'],
             'product_variant_id' => $data['product_variant_id'],
             'unit_id' => $data['unit_id'],
-             'reseller_id' =>$data['reseller_id'] ?? null,
+            'reseller_id' => $data['reseller_id'] ?? null,
         ])
         ->lockForUpdate()
         ->firstOrFail();
 
-        if ($stock->available_qty < $data['qty']) {
+        /*
+        |--------------------------------------------------------------------------
+        | Quantity
+        |--------------------------------------------------------------------------
+        */
+
+        $movementQty = (string) $data['qty'];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Available Stock
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            bccomp(
+                (string) $stock->available_qty,
+                $movementQty,
+                6
+            ) < 0
+        ) {
             throw new \RuntimeException(
                 'Insufficient available stock.'
             );
         }
 
-        $stock->on_hand_qty -= $data['qty'];
+        /*
+        |--------------------------------------------------------------------------
+        | Update Stock Quantity
+        |--------------------------------------------------------------------------
+        */
 
-        $stock->available_qty =
-            $stock->on_hand_qty -
-            $stock->reserved_qty;
+        $stock->on_hand_qty = bcsub(
+            (string) $stock->on_hand_qty,
+            $movementQty,
+            6
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Available Quantity
+        |--------------------------------------------------------------------------
+        */
+
+        $stock->available_qty = bcsub(
+            (string) $stock->on_hand_qty,
+            (string) $stock->reserved_qty,
+            6
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Transaction
+        |--------------------------------------------------------------------------
+        */
 
         $stock->last_transaction_at =
             $data['transaction_date'];
 
-        $stock->updated_by =
-            auth()->id();
+        /*
+        |--------------------------------------------------------------------------
+        | Audit
+        |--------------------------------------------------------------------------
+        */
+
+        $stock->updated_by = auth()->id();
 
         $stock->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cost
+        |--------------------------------------------------------------------------
+        */
+
+        $unitCost = (string) (
+            $data['unit_cost']
+            ?? $stock->average_cost
+        );
+
+        $totalCost = $data['total_cost']
+            ?? bcadd(
+                bcmul(
+                    $movementQty,
+                    $unitCost,
+                    8
+                ),
+                '0.005',
+                2
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Inventory Movement
+        |--------------------------------------------------------------------------
+        */
 
         $this->createMovement(
             $stock,
@@ -1143,24 +1228,13 @@ public function deleteInventoryAdjustments(
                 'reference_number' =>
                     $data['reference_number'],
 
-                'qty_in' => 0,
+                'qty_in' => '0.000000',
 
-                'qty_out' =>
-                    $data['qty'],
+                'qty_out' => $movementQty,
 
-                'unit_cost' =>
-                    $data['unit_cost']
-                    ?? $stock->average_cost,
+                'unit_cost' => $unitCost,
 
-                'total_cost' =>
-                    $data['total_cost']
-                    ??
-                    (
-                        $data['qty']
-                        *
-                        ($data['unit_cost']
-                            ?? $stock->average_cost)
-                    ),
+                'total_cost' => $totalCost,
 
                 'transaction_date' =>
                     $data['transaction_date'],
@@ -1169,16 +1243,34 @@ public function deleteInventoryAdjustments(
                     $data['description'] ?? null,
 
                 'reseller_id' =>
-                $data['reseller_id'] ?? null,
+                    $data['reseller_id'] ?? null,
             ]
         );
 
     });
 }
 
-    public function adjustment(array $data): void
+  public function adjustment(array $data): void
 {
     DB::transaction(function () use ($data) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Quantity
+        |--------------------------------------------------------------------------
+        */
+
+        $movementQty = (string) $data['qty'];
+
+        $absoluteQty = str_starts_with($movementQty, '-')
+            ? substr($movementQty, 1)
+            : $movementQty;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find / Lock Stock
+        |--------------------------------------------------------------------------
+        */
 
         $stock = ProductStock::where([
             'company_id' => $data['company_id'],
@@ -1198,7 +1290,7 @@ public function deleteInventoryAdjustments(
 
         if (! $stock) {
 
-            if ($data['qty'] < 0) {
+            if (bccomp($movementQty, '0', 6) < 0) {
                 throw new \RuntimeException(
                     'Cannot reduce stock that does not exist.'
                 );
@@ -1222,7 +1314,7 @@ public function deleteInventoryAdjustments(
                     $data['unit_id'],
 
                 'qty' =>
-                    $data['qty'],
+                    $movementQty,
 
                 'average_cost' =>
                     $data['unit_cost'] ?? 0,
@@ -1240,12 +1332,13 @@ public function deleteInventoryAdjustments(
             |--------------------------------------------------------------------------
             */
 
-            $newQty =
-                $stock->on_hand_qty
-                +
-                $data['qty'];
+            $newQty = bcadd(
+                (string) $stock->on_hand_qty,
+                $movementQty,
+                6
+            );
 
-            if ($newQty < 0) {
+            if (bccomp($newQty, '0', 6) < 0) {
 
                 throw new \RuntimeException(
                     'Adjustment would result in negative stock.'
@@ -1253,30 +1346,78 @@ public function deleteInventoryAdjustments(
 
             }
 
-            $stock->on_hand_qty =
-                $newQty;
+            $stock->on_hand_qty = $newQty;
 
-            $stock->available_qty =
-                $stock->on_hand_qty
-                -
-                $stock->reserved_qty;
+            /*
+            |--------------------------------------------------------------------------
+            | Available Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $stock->available_qty = bcsub(
+                (string) $stock->on_hand_qty,
+                (string) $stock->reserved_qty,
+                6
+            );
+
+            /*
+            |--------------------------------------------------------------------------
+            | Average Cost
+            |--------------------------------------------------------------------------
+            */
 
             if (isset($data['unit_cost'])) {
 
-                $stock->average_cost =
-                    $data['unit_cost'];
+                $stock->average_cost = bcadd(
+                    (string) $data['unit_cost'],
+                    '0',
+                    6
+                );
 
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Transaction
+            |--------------------------------------------------------------------------
+            */
 
             $stock->last_transaction_at =
                 $data['transaction_date'];
 
-            $stock->updated_by =
-                auth()->id();
+            /*
+            |--------------------------------------------------------------------------
+            | Audit
+            |--------------------------------------------------------------------------
+            */
+
+            $stock->updated_by = auth()->id();
 
             $stock->save();
 
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Movement Cost
+        |--------------------------------------------------------------------------
+        */
+
+        $unitCost = (string) (
+            $data['unit_cost']
+            ?? $stock->average_cost
+        );
+
+        $totalCost = $data['total_cost']
+            ?? bcadd(
+                bcmul(
+                    $absoluteQty,
+                    $unitCost,
+                    8
+                ),
+                '0.005',
+                2
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -1300,26 +1441,20 @@ public function deleteInventoryAdjustments(
                     $data['reference_number'],
 
                 'qty_in' =>
-                    $data['qty'] > 0
-                        ? $data['qty']
-                        : 0,
+                    bccomp($movementQty, '0', 6) > 0
+                        ? $absoluteQty
+                        : '0.000000',
 
                 'qty_out' =>
-                    $data['qty'] < 0
-                        ? abs($data['qty'])
-                        : 0,
+                    bccomp($movementQty, '0', 6) < 0
+                        ? $absoluteQty
+                        : '0.000000',
 
                 'unit_cost' =>
-                    $data['unit_cost']
-                    ?? $stock->average_cost,
+                    $unitCost,
 
                 'total_cost' =>
-                    abs($data['qty'])
-                    *
-                    (
-                        $data['unit_cost']
-                        ?? $stock->average_cost
-                    ),
+                    $totalCost,
 
                 'transaction_date' =>
                     $data['transaction_date'],
@@ -1333,7 +1468,6 @@ public function deleteInventoryAdjustments(
 
     });
 }
-
 public function transfer(array $data): void
 {
     DB::transaction(function () use ($data) {
@@ -1663,28 +1797,17 @@ private function updateCurrentStock(
 
         $stock = new ProductStock();
 
-        $stock->company_id =
-            $data['company_id'] ?? null;
+        $stock->company_id = $data['company_id'] ?? null;
+        $stock->branch_id = $data['branch_id'];
+        $stock->warehouse_id = $data['warehouse_id'];
+        $stock->product_variant_id = $data['product_variant_id'];
+        $stock->unit_id = $data['unit_id'];
+        $stock->reseller_id = $resellerId;
 
-        $stock->branch_id =
-            $data['branch_id'];
-
-        $stock->warehouse_id =
-            $data['warehouse_id'];
-
-        $stock->product_variant_id =
-            $data['product_variant_id'];
-
-        $stock->unit_id =
-            $data['unit_id'];
-
-        $stock->reseller_id =
-            $resellerId;
-
-        $stock->on_hand_qty = 0;
-        $stock->reserved_qty = 0;
-        $stock->available_qty = 0;
-        $stock->average_cost = 0;
+        $stock->on_hand_qty = '0.000000';
+        $stock->reserved_qty = '0.000000';
+        $stock->available_qty = '0.000000';
+        $stock->average_cost = '0.000000';
     }
 
     /*
@@ -1693,11 +1816,11 @@ private function updateCurrentStock(
     |--------------------------------------------------------------------------
     */
 
-    $oldQty = (float) $stock->on_hand_qty;
+    $oldQty = (string) $stock->on_hand_qty;
 
-    $oldAverageCost = (float) $stock->average_cost;
+    $oldAverageCost = (string) $stock->average_cost;
 
-    $movementQty = (float) $data['qty'];
+    $movementQty = (string) $data['qty'];
 
     /*
     |--------------------------------------------------------------------------
@@ -1705,8 +1828,13 @@ private function updateCurrentStock(
     |--------------------------------------------------------------------------
     */
 
-    $stock->on_hand_qty =
-        $oldQty + $movementQty;
+    $newQty = bcadd(
+        $oldQty,
+        $movementQty,
+        6
+    );
+
+    $stock->on_hand_qty = $newQty;
 
     /*
     |--------------------------------------------------------------------------
@@ -1714,7 +1842,7 @@ private function updateCurrentStock(
     |--------------------------------------------------------------------------
     */
 
-    if ($stock->on_hand_qty < 0) {
+    if (bccomp($newQty, '0', 6) < 0) {
 
         throw new \RuntimeException(
             'Stock quantity cannot be negative.'
@@ -1729,26 +1857,46 @@ private function updateCurrentStock(
 
     if (
         ($data['update_average_cost'] ?? false) === true
-        && $movementQty > 0
+        && bccomp($movementQty, '0', 6) > 0
     ) {
 
-        $incomingCost = (float) (
-            $data['average_cost'] ?? 0
+        $incomingCost = (string) (
+            $data['average_cost'] ?? '0'
         );
 
-        if ($oldQty <= 0) {
+        if (bccomp($oldQty, '0', 6) <= 0) {
 
-            $stock->average_cost = $incomingCost;
+            $stock->average_cost = bcadd(
+                $incomingCost,
+                '0',
+                6
+            );
 
         } else {
 
-            $stock->average_cost =
-                (
-                    ($oldQty * $oldAverageCost)
-                    +
-                    ($movementQty * $incomingCost)
-                )
-                / $stock->on_hand_qty;
+            $oldStockValue = bcmul(
+                $oldQty,
+                $oldAverageCost,
+                12
+            );
+
+            $incomingStockValue = bcmul(
+                $movementQty,
+                $incomingCost,
+                12
+            );
+
+            $totalStockValue = bcadd(
+                $oldStockValue,
+                $incomingStockValue,
+                12
+            );
+
+            $stock->average_cost = bcdiv(
+                $totalStockValue,
+                $newQty,
+                6
+            );
         }
     }
 
@@ -1758,8 +1906,11 @@ private function updateCurrentStock(
     |--------------------------------------------------------------------------
     */
 
-    $stock->available_qty =
-        $stock->on_hand_qty - $stock->reserved_qty;
+    $stock->available_qty = bcsub(
+        (string) $stock->on_hand_qty,
+        (string) $stock->reserved_qty,
+        6
+    );
 
     /*
     |--------------------------------------------------------------------------
@@ -2503,9 +2654,9 @@ public function postInventoryAdjustment(
         |--------------------------------------------------------------------------
         */
 
-        $totalIncrease = 0;
+        $totalIncrease = '0.00';
 
-        $totalDecrease = 0;
+        $totalDecrease = '0.00';
 
 
         /*
@@ -2519,15 +2670,13 @@ public function postInventoryAdjustment(
             as $detail
         ) {
 
-            /*
+           /*
             |--------------------------------------------------------------------------
             | Validate Difference
             |--------------------------------------------------------------------------
             */
 
-            $differenceQty =
-                (float) $detail->difference_qty;
-
+            $differenceQty = (string) $detail->difference_qty;
 
             /*
             |--------------------------------------------------------------------------
@@ -2535,14 +2684,9 @@ public function postInventoryAdjustment(
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $differenceQty == 0
-            ) {
-
+            if (bccomp($differenceQty, '0', 6) === 0) {
                 continue;
-
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -2550,16 +2694,15 @@ public function postInventoryAdjustment(
             |--------------------------------------------------------------------------
             */
 
-            $qtyIn =
-                $differenceQty > 0
-                    ? $differenceQty
-                    : 0;
+            $isIncrease = bccomp($differenceQty, '0', 6) > 0;
 
+            $qtyIn = $isIncrease
+                ? $differenceQty
+                : '0.000000';
 
-            $qtyOut =
-                $differenceQty < 0
-                    ? abs($differenceQty)
-                    : 0;
+            $qtyOut = $isIncrease
+                ? '0.000000'
+                : bcsub('0', $differenceQty, 6);
 
 
             /*
@@ -2569,40 +2712,36 @@ public function postInventoryAdjustment(
             */
 
             $stock =
-                $this->updateCurrentStock([
+            $this->updateCurrentStock([
 
-                    'company_id' =>
-                        $inventoryAdjustment
-                            ->company_id,
+                'company_id' =>
+                    $inventoryAdjustment->company_id,
 
-                    'branch_id' =>
-                        $inventoryAdjustment
-                            ->branch_id,
+                'branch_id' =>
+                    $inventoryAdjustment->branch_id,
 
-                    'warehouse_id' =>
-                        $inventoryAdjustment
-                            ->warehouse_id,
+                'warehouse_id' =>
+                    $inventoryAdjustment->warehouse_id,
 
-                    'product_variant_id' =>
-                        $detail
-                            ->product_variant_id,
+                'product_variant_id' =>
+                    $detail->product_variant_id,
 
-                    'unit_id' =>
-                        $detail
-                            ->unit_id,
+                'unit_id' =>
+                    $detail->unit_id,
 
-                    'qty' =>
-                        $differenceQty,
+                'qty' =>
+                    $differenceQty,
 
-                    'average_cost' =>
-                        $detail
-                            ->unit_cost,
+                'average_cost' =>
+                    $detail->unit_cost,
 
-                    'transaction_date' =>
-                        $inventoryAdjustment
-                            ->transaction_date,
+                'update_average_cost' =>
+                    true,
 
-                ]);
+                'transaction_date' =>
+                    $inventoryAdjustment->transaction_date,
+
+            ]);
 
 
             /*
@@ -2659,28 +2798,34 @@ public function postInventoryAdjustment(
 
             );
 
-
             /*
             |--------------------------------------------------------------------------
             | Accumulate Accounting Value
             |--------------------------------------------------------------------------
             */
 
-            $totalCost =
-                abs(
-                    (float) $detail->total_cost
+            $totalCost = (string) $detail->total_cost;
+
+            // Ensure positive accounting value
+            if (bccomp($totalCost, '0', 2) < 0) {
+                $totalCost = bcsub('0', $totalCost, 2);
+            }
+
+            if ($isIncrease) {
+
+                $totalIncrease = bcadd(
+                    $totalIncrease,
+                    $totalCost,
+                    2
                 );
-
-
-            if (
-                $differenceQty > 0
-            ) {
-
-                $totalIncrease += $totalCost;
 
             } else {
 
-                $totalDecrease += $totalCost;
+                $totalDecrease = bcadd(
+                    $totalDecrease,
+                    $totalCost,
+                    2
+                );
 
             }
 
@@ -2694,8 +2839,8 @@ public function postInventoryAdjustment(
         */
 
         if (
-            $totalIncrease <= 0 &&
-            $totalDecrease <= 0
+            bccomp($totalIncrease, '0', 2) <= 0 &&
+            bccomp($totalDecrease, '0', 2) <= 0
         ) {
 
             throw new \RuntimeException(
@@ -2713,56 +2858,51 @@ public function postInventoryAdjustment(
 
         $journalLines = [];
 
+           /*
+            |--------------------------------------------------------------------------
+            | Stock Increase
+            |--------------------------------------------------------------------------
+            |
+            | Dr Inventory
+            | Cr Inventory Adjustment Gain
+            |
+            */
 
-        /*
-        |--------------------------------------------------------------------------
-        | Stock Increase
-        |--------------------------------------------------------------------------
-        |
-        | Dr Inventory
-        | Cr Inventory Adjustment Gain
-        |
-        */
+            if (bccomp($totalIncrease, '0', 2) > 0) {
 
-        if (
-            $totalIncrease > 0
-        ) {
+                $journalLines[] = [
 
-            $journalLines[] = [
+                    'account_id' =>
+                        $inventoryAccount->id,
 
-                'account_id' =>
-                    $inventoryAccount->id,
+                    'description' =>
+                        'Inventory adjustment increase',
 
-                'description' =>
-                    'Inventory adjustment increase',
+                    'debit' =>
+                        $totalIncrease,
 
-                'debit' =>
-                    $totalIncrease,
+                    'credit' =>
+                        '0.00',
 
-                'credit' =>
-                    0,
+                ];
 
-            ];
+                $journalLines[] = [
 
+                    'account_id' =>
+                        $adjustmentGainAccount->id,
 
-            $journalLines[] = [
+                    'description' =>
+                        'Inventory adjustment gain',
 
-                'account_id' =>
-                    $adjustmentGainAccount->id,
+                    'debit' =>
+                        '0.00',
 
-                'description' =>
-                    'Inventory adjustment gain',
+                    'credit' =>
+                        $totalIncrease,
 
-                'debit' =>
-                    0,
+                ];
 
-                'credit' =>
-                    $totalIncrease,
-
-            ];
-
-        }
-
+            }
 
         /*
         |--------------------------------------------------------------------------
@@ -2774,40 +2914,30 @@ public function postInventoryAdjustment(
         |
         */
 
-        if (
-            $totalDecrease > 0
-        ) {
+        if (bccomp($totalDecrease, '0', 2) > 0) {
 
             $journalLines[] = [
 
-                'account_id' =>
-                    $adjustmentExpenseAccount->id,
+                'account_id' => $adjustmentExpenseAccount->id,
 
-                'description' =>
-                    'Inventory adjustment expense',
+                'description' => 'Inventory adjustment expense',
 
-                'debit' =>
-                    $totalDecrease,
+                'debit' => $totalDecrease,
 
-                'credit' =>
-                    0,
+                'credit' => '0.00',
 
             ];
 
 
             $journalLines[] = [
 
-                'account_id' =>
-                    $inventoryAccount->id,
+                'account_id' => $inventoryAccount->id,
 
-                'description' =>
-                    'Inventory adjustment decrease',
+                'description' => 'Inventory adjustment decrease',
 
-                'debit' =>
-                    0,
+                'debit' => '0.00',
 
-                'credit' =>
-                    $totalDecrease,
+                'credit' => $totalDecrease,
 
             ];
 
@@ -3374,9 +3504,7 @@ public function postStockIssue(
             StockIssueHeader::query()
                 ->with('details')
                 ->lockForUpdate()
-                ->findOrFail(
-                    $stockIssue->id
-                );
+                ->findOrFail($stockIssue->id);
 
 
         /*
@@ -3385,10 +3513,7 @@ public function postStockIssue(
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $stockIssue->status
-            !== 'Draft'
-        ) {
+        if ($stockIssue->status !== 'Draft') {
 
             throw new \RuntimeException(
                 'Only Draft stock issue can be posted.'
@@ -3403,12 +3528,9 @@ public function postStockIssue(
         |--------------------------------------------------------------------------
         */
 
-        $issueType =
-            strtolower(
-                trim(
-                    $stockIssue->issue_type
-                )
-            );
+        $issueType = strtolower(
+            trim($stockIssue->issue_type)
+        );
 
 
         $allowedIssueTypes = [
@@ -3424,9 +3546,7 @@ public function postStockIssue(
         ];
 
 
-        if (
-            $issueType === 'production'
-        ) {
+        if ($issueType === 'production') {
 
             throw new \RuntimeException(
                 'Production stock issue cannot be posted until manufacturing accounting is implemented.'
@@ -3435,13 +3555,7 @@ public function postStockIssue(
         }
 
 
-        if (
-            !in_array(
-                $issueType,
-                $allowedIssueTypes,
-                true
-            )
-        ) {
+        if (! in_array($issueType, $allowedIssueTypes, true)) {
 
             throw new \RuntimeException(
                 'Unsupported stock issue type.'
@@ -3556,7 +3670,7 @@ public function postStockIssue(
 
         /*
         |--------------------------------------------------------------------------
-        | Resolve Expense Account
+        | Resolve Expense Accounts
         |--------------------------------------------------------------------------
         */
 
@@ -3590,7 +3704,7 @@ public function postStockIssue(
         |--------------------------------------------------------------------------
         */
 
-        $totalCost = 0;
+        $totalCost = '0.00';
 
 
         /*
@@ -3599,10 +3713,7 @@ public function postStockIssue(
         |--------------------------------------------------------------------------
         */
 
-        foreach (
-            $stockIssue->details
-            as $detail
-        ) {
+        foreach ($stockIssue->details as $detail) {
 
             /*
             |--------------------------------------------------------------------------
@@ -3610,16 +3721,33 @@ public function postStockIssue(
             |--------------------------------------------------------------------------
             */
 
-            $qty =
-                (float) $detail->qty;
+            $qty = (string) $detail->qty;
 
-
-            if (
-                $qty <= 0
-            ) {
+            if (bccomp($qty, '0', 6) <= 0) {
 
                 throw new \RuntimeException(
                     'Stock issue quantity must be greater than zero.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Resolve Detail Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $unitCost = (string) $detail->unit_cost;
+
+            $detailCost = (string) $detail->total_cost;
+
+            if (bccomp($detailCost, '0', 2) < 0) {
+
+                $detailCost = bcsub(
+                    '0',
+                    $detailCost,
+                    2
                 );
 
             }
@@ -3635,37 +3763,34 @@ public function postStockIssue(
                 $this->updateCurrentStock([
 
                     'company_id' =>
-                        $stockIssue
-                            ->company_id,
+                        $stockIssue->company_id,
 
                     'branch_id' =>
-                        $stockIssue
-                            ->branch_id,
+                        $stockIssue->branch_id,
 
                     'warehouse_id' =>
-                        $stockIssue
-                            ->warehouse_id,
+                        $stockIssue->warehouse_id,
 
                     'product_variant_id' =>
-                        $detail
-                            ->product_variant_id,
+                        $detail->product_variant_id,
 
                     'unit_id' =>
-                        $detail
-                            ->unit_id,
+                        $detail->unit_id,
 
-                    'qty' =>
-                        -abs(
-                            $qty
-                        ),
+                    'qty' => bcsub(
+                        '0',
+                        $qty,
+                        6
+                    ),
 
                     'average_cost' =>
-                        $detail
-                            ->unit_cost,
+                        $unitCost,
+
+                    'update_average_cost' =>
+                        false,
 
                     'transaction_date' =>
-                        $stockIssue
-                            ->transaction_date,
+                        $stockIssue->transaction_date,
 
                 ]);
 
@@ -3686,37 +3811,30 @@ public function postStockIssue(
                         'STOCK_ISSUE',
 
                     'reference_id' =>
-                        $stockIssue
-                            ->id,
+                        $stockIssue->id,
 
                     'reference_number' =>
-                        $stockIssue
-                            ->number,
+                        $stockIssue->number,
 
                     'qty_in' =>
-                        0,
+                        '0.000000',
 
                     'qty_out' =>
                         $qty,
 
                     'unit_cost' =>
-                        $detail
-                            ->unit_cost,
+                        $unitCost,
 
                     'total_cost' =>
-                        $detail
-                            ->total_cost,
+                        $detailCost,
 
                     'transaction_date' =>
-                        $stockIssue
-                            ->transaction_date,
+                        $stockIssue->transaction_date,
 
                     'description' =>
-                        $detail
-                            ->description
+                        $detail->description
                         ??
-                        $stockIssue
-                            ->description
+                        $stockIssue->description
                         ??
                         null,
 
@@ -3731,10 +3849,11 @@ public function postStockIssue(
             |--------------------------------------------------------------------------
             */
 
-            $totalCost +=
-                abs(
-                    (float) $detail->total_cost
-                );
+            $totalCost = bcadd(
+                $totalCost,
+                $detailCost,
+                2
+            );
 
         }
 
@@ -3745,9 +3864,7 @@ public function postStockIssue(
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $totalCost <= 0
-        ) {
+        if (bccomp($totalCost, '0.00', 2) <= 0) {
 
             throw new \RuntimeException(
                 'Stock issue total cost must be greater than zero.'
@@ -3813,32 +3930,25 @@ public function postStockIssue(
                 ->create([
 
                     'company_id' =>
-                        $stockIssue
-                            ->company_id,
+                        $stockIssue->company_id,
 
                     'branch_id' =>
-                        $stockIssue
-                            ->branch_id,
+                        $stockIssue->branch_id,
 
                     'accounting_journal_id' =>
-                        $accountingJournal
-                            ->id,
+                        $accountingJournal->id,
 
                     'fiscal_year_id' =>
-                        $fiscalYear
-                            ->id,
+                        $fiscalYear->id,
 
                     'accounting_period_id' =>
-                        $accountingPeriod
-                            ->id,
+                        $accountingPeriod->id,
 
                     'entry_date' =>
-                        $stockIssue
-                            ->transaction_date,
+                        $stockIssue->transaction_date,
 
                     'reference' =>
-                        $stockIssue
-                            ->number,
+                        $stockIssue->number,
 
                     'description' =>
                         'Stock issue - '
@@ -3849,35 +3959,31 @@ public function postStockIssue(
                         [
 
                             'account_id' =>
-                                $expenseAccount
-                                    ->id,
+                                $expenseAccount->id,
 
                             'description' =>
                                 'Stock issue - '
-                                . $stockIssue
-                                    ->issue_type,
+                                . $stockIssue->issue_type,
 
                             'debit' =>
                                 $totalCost,
 
                             'credit' =>
-                                0,
+                                '0.00',
 
                         ],
 
                         [
 
                             'account_id' =>
-                                $inventoryAccount
-                                    ->id,
+                                $inventoryAccount->id,
 
                             'description' =>
                                 'Inventory issued - '
-                                . $stockIssue
-                                    ->issue_type,
+                                . $stockIssue->issue_type,
 
                             'debit' =>
-                                0,
+                                '0.00',
 
                             'credit' =>
                                 $totalCost,
@@ -3896,9 +4002,7 @@ public function postStockIssue(
         */
 
         $this->journalEntryService
-            ->post(
-                $journalEntry
-            );
+            ->post($journalEntry);
 
 
         /*
@@ -5091,44 +5195,42 @@ public function updateStockTransfer(
 
         }
         /*
-|--------------------------------------------------------------------------
-| Update Workflow State
-|--------------------------------------------------------------------------
-*/
+        |--------------------------------------------------------------------------
+        | Update Workflow State
+        |--------------------------------------------------------------------------
+        */
 
-if ($transfer->status === 'Rejected') {
+        if ($transfer->status === 'Rejected') {
 
-    $transfer->update([
+            $transfer->update([
 
-        'status' =>
-            'Draft',
+                'status' =>
+                    'Draft',
 
-        'rejected_at' =>
-            null,
+                'rejected_at' =>
+                    null,
 
-        'rejected_by' =>
-            null,
+                'rejected_by' =>
+                    null,
 
-        'rejected_reason' =>
-            null,
+                'rejected_reason' =>
+                    null,
 
-        'updated_by' =>
-            auth()->id(),
+                'updated_by' =>
+                    auth()->id(),
 
-    ]);
+            ]);
 
-}
-        
-    });
-    
-}
+        }
+                
+            });
+            
+        }
 public function postStockTransfer(
     StockTransferHeader $stockTransfer
 ): void {
 
-    DB::transaction(function () use (
-        $stockTransfer
-    ) {
+    DB::transaction(function () use ($stockTransfer) {
 
         /*
         |--------------------------------------------------------------------------
@@ -5140,9 +5242,7 @@ public function postStockTransfer(
             StockTransferHeader::query()
                 ->with('details')
                 ->lockForUpdate()
-                ->findOrFail(
-                    $stockTransfer->id
-                );
+                ->findOrFail($stockTransfer->id);
 
 
         /*
@@ -5151,9 +5251,7 @@ public function postStockTransfer(
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $stockTransfer->status !== 'Approved'
-        ) {
+        if ($stockTransfer->status !== 'Approved') {
 
             throw new \RuntimeException(
                 'Only Approved stock transfer can be posted.'
@@ -5374,7 +5472,7 @@ public function postStockTransfer(
         |--------------------------------------------------------------------------
         */
 
-        $totalTransferValue = 0;
+        $totalTransferValue = '0.00';
 
 
         /*
@@ -5383,12 +5481,28 @@ public function postStockTransfer(
         |--------------------------------------------------------------------------
         */
 
-        foreach (
-            $stockTransfer->details
-            as $detail
-        ) {
+        foreach ($stockTransfer->details as $detail) {
 
-           /*
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Transfer Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $transferQty = (string) $detail->qty;
+
+            if (bccomp($transferQty, '0', 6) <= 0) {
+
+                throw new \RuntimeException(
+                    'Transfer quantity must be greater than zero for product variant ID '
+                    . $detail->product_variant_id
+                    . '.'
+                );
+
+            }
+
+
+            /*
             |--------------------------------------------------------------------------
             | Lock Source Stock
             |--------------------------------------------------------------------------
@@ -5420,6 +5534,7 @@ public function postStockTransfer(
                     ->whereNull('reseller_id')
                     ->first();
 
+
             /*
             |--------------------------------------------------------------------------
             | Validate Source Stock
@@ -5438,9 +5553,11 @@ public function postStockTransfer(
 
 
             if (
-                (float) $sourceStock->available_qty
-                <
-                (float) $detail->qty
+                bccomp(
+                    (string) $sourceStock->available_qty,
+                    $transferQty,
+                    6
+                ) < 0
             ) {
 
                 throw new \RuntimeException(
@@ -5458,13 +5575,23 @@ public function postStockTransfer(
             |--------------------------------------------------------------------------
             */
 
-            $unitCost =
-                (float) $sourceStock->average_cost;
+            $unitCost = (string) $sourceStock->average_cost;
 
 
-            $totalCost =
-                $unitCost *
-                (float) $detail->qty;
+            /*
+            |--------------------------------------------------------------------------
+            | Total Cost
+            |--------------------------------------------------------------------------
+            */
+
+            $totalCost = $this->roundBc(
+                bcmul(
+                    $unitCost,
+                    $transferQty,
+                    12
+                ),
+                2
+            );
 
 
             /*
@@ -5473,8 +5600,11 @@ public function postStockTransfer(
             |--------------------------------------------------------------------------
             */
 
-            $totalTransferValue +=
-                $totalCost;
+            $totalTransferValue = bcadd(
+                $totalTransferValue,
+                $totalCost,
+                2
+            );
 
 
             /*
@@ -5521,10 +5651,11 @@ public function postStockTransfer(
                     'unit_id' =>
                         $detail->unit_id,
 
-                    'qty' =>
-                        -(
-                            (float) $detail->qty
-                        ),
+                    'qty' => bcsub(
+                        '0',
+                        $transferQty,
+                        6
+                    ),
 
                     'average_cost' =>
                         $unitCost,
@@ -5563,10 +5694,10 @@ public function postStockTransfer(
                         $stockTransfer->number,
 
                     'qty_in' =>
-                        0,
+                        '0.000000',
 
                     'qty_out' =>
-                        $detail->qty,
+                        $transferQty,
 
                     'unit_cost' =>
                         $unitCost,
@@ -5614,7 +5745,7 @@ public function postStockTransfer(
                         $detail->unit_id,
 
                     'qty' =>
-                        (float) $detail->qty,
+                        $transferQty,
 
                     'average_cost' =>
                         $unitCost,
@@ -5653,10 +5784,10 @@ public function postStockTransfer(
                         $stockTransfer->number,
 
                     'qty_in' =>
-                        $detail->qty,
+                        $transferQty,
 
                     'qty_out' =>
-                        0,
+                        '0.000000',
 
                     'unit_cost' =>
                         $unitCost,
@@ -5688,7 +5819,11 @@ public function postStockTransfer(
         */
 
         if (
-            $totalTransferValue <= 0
+            bccomp(
+                $totalTransferValue,
+                '0.00',
+                2
+            ) <= 0
         ) {
 
             throw new \RuntimeException(
@@ -5698,191 +5833,294 @@ public function postStockTransfer(
         }
 
 
-       /*
-|--------------------------------------------------------------------------
-| Resolve Source Inter-Branch Receivable Account
-|--------------------------------------------------------------------------
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Source Inter-Branch Receivable Account
+        |--------------------------------------------------------------------------
+        */
 
-$sourceReceivableMapping = BranchAccountMapping::query()
-    ->with('account')
-    ->where('company_id', $stockTransfer->company_id)
-    ->where('branch_id', $stockTransfer->from_branch_id)
-    ->where('key', 'inventory_transfer_receivable')
-    ->where('is_active', true)
-    ->first();
+        $sourceReceivableMapping =
+            BranchAccountMapping::query()
+                ->with('account')
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $stockTransfer->from_branch_id
+                )
+                ->where(
+                    'key',
+                    'inventory_transfer_receivable'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
 
-if (
-    ! $sourceReceivableMapping ||
-    ! $sourceReceivableMapping->account
-) {
-    throw new \RuntimeException(
-        'Inter-Branch Receivable account is not configured for the source branch.'
-    );
-}
+        if (
+            ! $sourceReceivableMapping ||
+            ! $sourceReceivableMapping->account
+        ) {
 
-/*
-|--------------------------------------------------------------------------
-| Resolve Destination Inter-Branch Payable Account
-|--------------------------------------------------------------------------
-*/
+            throw new \RuntimeException(
+                'Inter-Branch Receivable account is not configured for the source branch.'
+            );
 
-$destinationPayableMapping = BranchAccountMapping::query()
-    ->with('account')
-    ->where('company_id', $stockTransfer->company_id)
-    ->where('branch_id', $stockTransfer->to_branch_id)
-    ->where('key', 'inventory_transfer_payable')
-    ->where('is_active', true)
-    ->first();
+        }
 
-if (
-    ! $destinationPayableMapping ||
-    ! $destinationPayableMapping->account
-) {
-    throw new \RuntimeException(
-        'Inter-Branch Payable account is not configured for the destination branch.'
-    );
-}
 
-/*
-|--------------------------------------------------------------------------
-| Create Source Journal Entry
-|--------------------------------------------------------------------------
-|
-| Source branch:
-| Debit  Inter-Branch Receivable
-| Credit Merchandise Inventory
-|
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | Resolve Destination Inter-Branch Payable Account
+        |--------------------------------------------------------------------------
+        */
 
-$sourceJournalEntry = $this->journalEntryService->create([
-    'company_id' => $stockTransfer->company_id,
+        $destinationPayableMapping =
+            BranchAccountMapping::query()
+                ->with('account')
+                ->where(
+                    'company_id',
+                    $stockTransfer->company_id
+                )
+                ->where(
+                    'branch_id',
+                    $stockTransfer->to_branch_id
+                )
+                ->where(
+                    'key',
+                    'inventory_transfer_payable'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
 
-    'branch_id' => $stockTransfer->from_branch_id,
+        if (
+            ! $destinationPayableMapping ||
+            ! $destinationPayableMapping->account
+        ) {
 
-    'accounting_journal_id' => $accountingJournal->id,
+            throw new \RuntimeException(
+                'Inter-Branch Payable account is not configured for the destination branch.'
+            );
 
-    'fiscal_year_id' => $fiscalYear->id,
+        }
 
-    'accounting_period_id' => $accountingPeriod->id,
 
-    'entry_date' => $stockTransfer->transaction_date,
+        /*
+        |--------------------------------------------------------------------------
+        | Create Source Journal Entry
+        |--------------------------------------------------------------------------
+        |
+        | Source branch:
+        | Debit  Inter-Branch Receivable
+        | Credit Merchandise Inventory
+        |
+        */
 
-    'reference' => $stockTransfer->number,
+        $sourceJournalEntry =
+            $this->journalEntryService
+                ->create([
 
-    'description' => 'Stock transfer out ' . $stockTransfer->number,
+                    'company_id' =>
+                        $stockTransfer->company_id,
 
-    'lines' => [
-        [
-            'account_id' => $sourceReceivableMapping->account->id,
+                    'branch_id' =>
+                        $stockTransfer->from_branch_id,
 
-            'branch_id' => $stockTransfer->from_branch_id,
+                    'accounting_journal_id' =>
+                        $accountingJournal->id,
 
-            'description' => 'Inter-Branch Receivable - '
-                . $stockTransfer->number,
+                    'fiscal_year_id' =>
+                        $fiscalYear->id,
 
-            'debit' => $totalTransferValue,
+                    'accounting_period_id' =>
+                        $accountingPeriod->id,
 
-            'credit' => 0,
-        ],
-        [
-            'account_id' => $sourceInventoryMapping->account->id,
+                    'entry_date' =>
+                        $stockTransfer->transaction_date,
 
-            'branch_id' => $stockTransfer->from_branch_id,
+                    'reference' =>
+                        $stockTransfer->number,
 
-            'description' => 'Inventory transfer out - '
-                . $stockTransfer->number,
+                    'description' =>
+                        'Stock transfer out '
+                        . $stockTransfer->number,
 
-            'debit' => 0,
+                    'lines' => [
 
-            'credit' => $totalTransferValue,
-        ],
-    ],
-]);
+                        [
 
-/*
-|--------------------------------------------------------------------------
-| Post Source Journal Entry
-|--------------------------------------------------------------------------
-*/
+                            'account_id' =>
+                                $sourceReceivableMapping->account->id,
 
-$this->journalEntryService->post($sourceJournalEntry);
+                            'branch_id' =>
+                                $stockTransfer->from_branch_id,
 
-/*
-|--------------------------------------------------------------------------
-| Create Destination Journal Entry
-|--------------------------------------------------------------------------
-|
-| Destination branch:
-| Debit  Merchandise Inventory
-| Credit Inter-Branch Payable
-|
-*/
+                            'description' =>
+                                'Inter-Branch Receivable - '
+                                . $stockTransfer->number,
 
-$destinationJournalEntry = $this->journalEntryService->create([
-    'company_id' => $stockTransfer->company_id,
+                            'debit' =>
+                                $totalTransferValue,
 
-    'branch_id' => $stockTransfer->to_branch_id,
+                            'credit' =>
+                                '0.00',
 
-    'accounting_journal_id' => $accountingJournal->id,
+                        ],
 
-    'fiscal_year_id' => $fiscalYear->id,
+                        [
 
-    'accounting_period_id' => $accountingPeriod->id,
+                            'account_id' =>
+                                $sourceInventoryMapping->account->id,
 
-    'entry_date' => $stockTransfer->transaction_date,
+                            'branch_id' =>
+                                $stockTransfer->from_branch_id,
 
-    'reference' => $stockTransfer->number,
+                            'description' =>
+                                'Inventory transfer out - '
+                                . $stockTransfer->number,
 
-    'description' => 'Stock transfer in ' . $stockTransfer->number,
+                            'debit' =>
+                                '0.00',
 
-    'lines' => [
-        [
-            'account_id' => $destinationInventoryMapping->account->id,
+                            'credit' =>
+                                $totalTransferValue,
 
-            'branch_id' => $stockTransfer->to_branch_id,
+                        ],
 
-            'description' => 'Inventory transfer in - '
-                . $stockTransfer->number,
+                    ],
 
-            'debit' => $totalTransferValue,
+                ]);
 
-            'credit' => 0,
-        ],
-        [
-            'account_id' => $destinationPayableMapping->account->id,
 
-            'branch_id' => $stockTransfer->to_branch_id,
+        /*
+        |--------------------------------------------------------------------------
+        | Post Source Journal Entry
+        |--------------------------------------------------------------------------
+        */
 
-            'description' => 'Inter-Branch Payable - '
-                . $stockTransfer->number,
+        $this->journalEntryService
+            ->post($sourceJournalEntry);
 
-            'debit' => 0,
 
-            'credit' => $totalTransferValue,
-        ],
-    ],
-]);
+        /*
+        |--------------------------------------------------------------------------
+        | Create Destination Journal Entry
+        |--------------------------------------------------------------------------
+        |
+        | Destination branch:
+        | Debit  Merchandise Inventory
+        | Credit Inter-Branch Payable
+        |
+        */
 
-/*
-|--------------------------------------------------------------------------
-| Post Destination Journal Entry
-|--------------------------------------------------------------------------
-*/
+        $destinationJournalEntry =
+            $this->journalEntryService
+                ->create([
 
-$this->journalEntryService->post($destinationJournalEntry);
+                    'company_id' =>
+                        $stockTransfer->company_id,
 
-/*
-|--------------------------------------------------------------------------
-| Save Journal References
-|--------------------------------------------------------------------------
-*/
+                    'branch_id' =>
+                        $stockTransfer->to_branch_id,
 
-$stockTransfer->update([
-    'source_journal_entry_id' => $sourceJournalEntry->id,
+                    'accounting_journal_id' =>
+                        $accountingJournal->id,
 
-    'destination_journal_entry_id' => $destinationJournalEntry->id,
-]);
+                    'fiscal_year_id' =>
+                        $fiscalYear->id,
+
+                    'accounting_period_id' =>
+                        $accountingPeriod->id,
+
+                    'entry_date' =>
+                        $stockTransfer->transaction_date,
+
+                    'reference' =>
+                        $stockTransfer->number,
+
+                    'description' =>
+                        'Stock transfer in '
+                        . $stockTransfer->number,
+
+                    'lines' => [
+
+                        [
+
+                            'account_id' =>
+                                $destinationInventoryMapping->account->id,
+
+                            'branch_id' =>
+                                $stockTransfer->to_branch_id,
+
+                            'description' =>
+                                'Inventory transfer in - '
+                                . $stockTransfer->number,
+
+                            'debit' =>
+                                $totalTransferValue,
+
+                            'credit' =>
+                                '0.00',
+
+                        ],
+
+                        [
+
+                            'account_id' =>
+                                $destinationPayableMapping->account->id,
+
+                            'branch_id' =>
+                                $stockTransfer->to_branch_id,
+
+                            'description' =>
+                                'Inter-Branch Payable - '
+                                . $stockTransfer->number,
+
+                            'debit' =>
+                                '0.00',
+
+                            'credit' =>
+                                $totalTransferValue,
+
+                        ],
+
+                    ],
+
+                ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Post Destination Journal Entry
+        |--------------------------------------------------------------------------
+        */
+
+        $this->journalEntryService
+            ->post($destinationJournalEntry);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Journal References
+        |--------------------------------------------------------------------------
+        */
+
+        $stockTransfer->update([
+
+            'source_journal_entry_id' =>
+                $sourceJournalEntry->id,
+
+            'destination_journal_entry_id' =>
+                $destinationJournalEntry->id,
+
+        ]);
+
 
         /*
         |--------------------------------------------------------------------------
@@ -5929,6 +6167,7 @@ $stockTransfer->update([
             );
 
     });
+
 }
 public function cancelStockTransfer(
     StockTransferHeader $stockTransfer,
@@ -6976,9 +7215,8 @@ public function postStockOpname(
         |--------------------------------------------------------------------------
         */
 
-        $totalIncrease = 0;
-
-        $totalDecrease = 0;
+        $totalIncrease = '0.00';
+        $totalDecrease = '0.00';
 
 
         /*
@@ -6998,9 +7236,7 @@ public function postStockOpname(
             |--------------------------------------------------------------------------
             */
 
-            $differenceQty =
-                (float) $detail->difference_qty;
-
+            $differenceQty = (string) $detail->difference_qty;
 
             /*
             |--------------------------------------------------------------------------
@@ -7008,14 +7244,9 @@ public function postStockOpname(
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $differenceQty == 0
-            ) {
-
+            if (bccomp($differenceQty, '0', 6) === 0) {
                 continue;
-
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -7023,11 +7254,11 @@ public function postStockOpname(
             |--------------------------------------------------------------------------
             */
 
-            $differenceCost =
-                abs(
-                    (float) $detail->difference_cost
-                );
+            $differenceCost = (string) $detail->difference_cost;
 
+            if (bccomp($differenceCost, '0', 2) < 0) {
+                $differenceCost = bcsub('0', $differenceCost, 2);
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -7035,19 +7266,15 @@ public function postStockOpname(
             |--------------------------------------------------------------------------
             */
 
-            $qtyIn =
-                $differenceQty > 0
-                    ? $differenceQty
-                    : 0;
+            $isIncrease = bccomp($differenceQty, '0', 6) > 0;
 
+            $qtyIn = $isIncrease
+                ? $differenceQty
+                : '0.000000';
 
-            $qtyOut =
-                $differenceQty < 0
-                    ? abs(
-                        $differenceQty
-                    )
-                    : 0;
-
+            $qtyOut = $isIncrease
+                ? '0.000000'
+                : bcsub('0', $differenceQty, 6);
 
             /*
             |--------------------------------------------------------------------------
@@ -7056,40 +7283,36 @@ public function postStockOpname(
             */
 
             $stock =
-                $this->updateCurrentStock([
+            $this->updateCurrentStock([
 
-                    'company_id' =>
-                        $stockOpname
-                            ->company_id,
+                'company_id' =>
+                    $stockOpname->company_id,
 
-                    'branch_id' =>
-                        $stockOpname
-                            ->branch_id,
+                'branch_id' =>
+                    $stockOpname->branch_id,
 
-                    'warehouse_id' =>
-                        $stockOpname
-                            ->warehouse_id,
+                'warehouse_id' =>
+                    $stockOpname->warehouse_id,
 
-                    'product_variant_id' =>
-                        $detail
-                            ->product_variant_id,
+                'product_variant_id' =>
+                    $detail->product_variant_id,
 
-                    'unit_id' =>
-                        $detail
-                            ->unit_id,
+                'unit_id' =>
+                    $detail->unit_id,
 
-                    'qty' =>
-                        $differenceQty,
+                'qty' =>
+                    $differenceQty,
 
-                    'average_cost' =>
-                        $detail
-                            ->unit_cost,
+                'average_cost' =>
+                    $detail->unit_cost,
 
-                    'transaction_date' =>
-                        $stockOpname
-                            ->transaction_date,
+                'update_average_cost' =>
+                    true,
 
-                ]);
+                'transaction_date' =>
+                    $stockOpname->transaction_date,
+
+            ]);
 
 
             /*
@@ -7126,8 +7349,7 @@ public function postStockOpname(
                             ->unit_cost,
 
                     'total_cost' =>
-                        $detail
-                            ->difference_cost,
+                         $differenceCost,
 
                     'transaction_date' =>
                         $stockOpname
@@ -7147,23 +7369,27 @@ public function postStockOpname(
             );
 
 
-            /*
+           /*
             |--------------------------------------------------------------------------
             | Accumulate Accounting Amount
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $differenceQty > 0
-            ) {
+            if ($isIncrease) {
 
-                $totalIncrease +=
-                    $differenceCost;
+                $totalIncrease = bcadd(
+                    $totalIncrease,
+                    $differenceCost,
+                    2
+                );
 
             } else {
 
-                $totalDecrease +=
-                    $differenceCost;
+                $totalDecrease = bcadd(
+                    $totalDecrease,
+                    $differenceCost,
+                    2
+                );
 
             }
 
@@ -7188,49 +7414,30 @@ public function postStockOpname(
         |--------------------------------------------------------------------------
         */
 
-        if (
-            round(
-                $totalIncrease,
-                2
-            ) > 0
-        ) {
+        if (bccomp($totalIncrease, '0', 2) > 0) {
 
             $lines[] = [
 
-                'account_id' =>
-                    $inventoryAccount->id,
+                'account_id' => $inventoryAccount->id,
 
-                'description' =>
-                    'Inventory adjustment increase.',
+                'description' => 'Inventory adjustment increase.',
 
-                'debit' =>
-                    round(
-                        $totalIncrease,
-                        2
-                    ),
+                'debit' => $totalIncrease,
 
-                'credit' =>
-                    0,
+                'credit' => '0.00',
 
             ];
 
 
             $lines[] = [
 
-                'account_id' =>
-                    $adjustmentGainAccount->id,
+                'account_id' => $adjustmentGainAccount->id,
 
-                'description' =>
-                    'Inventory adjustment gain.',
+                'description' => 'Inventory adjustment gain.',
 
-                'debit' =>
-                    0,
+                'debit' => '0.00',
 
-                'credit' =>
-                    round(
-                        $totalIncrease,
-                        2
-                    ),
+                'credit' => $totalIncrease,
 
             ];
 
@@ -7246,49 +7453,30 @@ public function postStockOpname(
         |--------------------------------------------------------------------------
         */
 
-        if (
-            round(
-                $totalDecrease,
-                2
-            ) > 0
-        ) {
+        if (bccomp($totalDecrease, '0', 2) > 0) {
 
             $lines[] = [
 
-                'account_id' =>
-                    $adjustmentExpenseAccount->id,
+                'account_id' => $adjustmentExpenseAccount->id,
 
-                'description' =>
-                    'Inventory adjustment expense.',
+                'description' => 'Inventory adjustment expense.',
 
-                'debit' =>
-                    round(
-                        $totalDecrease,
-                        2
-                    ),
+                'debit' => $totalDecrease,
 
-                'credit' =>
-                    0,
+                'credit' => '0.00',
 
             ];
 
 
             $lines[] = [
 
-                'account_id' =>
-                    $inventoryAccount->id,
+                'account_id' => $inventoryAccount->id,
 
-                'description' =>
-                    'Inventory adjustment decrease.',
+                'description' => 'Inventory adjustment decrease.',
 
-                'debit' =>
-                    0,
+                'debit' => '0.00',
 
-                'credit' =>
-                    round(
-                        $totalDecrease,
-                        2
-                    ),
+                'credit' => $totalDecrease,
 
             ];
 
@@ -8024,5 +8212,58 @@ public function issuePurchaseReturnStock(
 
     );
 
+}
+private function roundBc(
+    string $value,
+    int $scale = 2
+): string {
+
+    $negative = str_starts_with($value, '-');
+
+    $absoluteValue = $negative
+        ? substr($value, 1)
+        : $value;
+
+    $truncated = bcadd(
+        $absoluteValue,
+        '0',
+        $scale + 1
+    );
+
+    [$integer, $fraction] = array_pad(
+        explode('.', $truncated, 2),
+        2,
+        ''
+    );
+
+    $fraction = str_pad(
+        $fraction,
+        $scale + 1,
+        '0'
+    );
+
+    $result = $integer . '.' . substr(
+        $fraction,
+        0,
+        $scale
+    );
+
+    if ((int) $fraction[$scale] >= 5) {
+
+        $increment = '0.'
+            . str_repeat('0', max(0, $scale - 1))
+            . '1';
+
+        $result = bcadd(
+            $result,
+            $increment,
+            $scale
+        );
+
+    }
+
+    return $negative && bccomp($result, '0', $scale) !== 0
+        ? '-' . $result
+        : $result;
 }
 }

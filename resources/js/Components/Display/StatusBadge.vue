@@ -190,6 +190,18 @@ const variants = Object.freeze({
         text: 'Paid',
     },
 
+   in_progress: {
+    badge: 'bg-sky-100 text-sky-700',
+    dot: 'bg-sky-500',
+    text: 'In Progress',
+    },
+
+    completed: {
+        badge: 'bg-emerald-100 text-emerald-700',
+        dot: 'bg-emerald-500',
+        text: 'Completed',
+    },
+
 })
 
 
@@ -262,15 +274,18 @@ const type = computed(() => {
             case 'confirmed':
                 return 'confirmed'
 
+            case 'partially_received':
             case 'partially received':
                 return 'partially_received'
 
+            case 'fully_received':
             case 'fully received':
                 return 'fully_received'
 
             case 'paid':
-                return 'paid'
-
+            return 'paid'
+            
+            case 'partially_paid':
             case 'partially paid':
                 return 'partially_paid'
 
@@ -285,6 +300,14 @@ const type = computed(() => {
 
             case 'inactive':
                 return 'danger'
+
+           
+           case 'in_progress':
+            case 'in progress':
+                return 'in_progress'
+
+            case 'completed':
+                return 'completed'
 
             default:
                 break

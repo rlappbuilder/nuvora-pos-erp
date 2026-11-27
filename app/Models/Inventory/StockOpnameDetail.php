@@ -97,16 +97,16 @@ class StockOpnameDetail extends Model
     protected $casts = [
 
         'system_qty' =>
-            'decimal:2',
+            'decimal:6',
 
         'actual_qty' =>
-            'decimal:2',
+            'decimal:6',
 
         'difference_qty' =>
-            'decimal:2',
+            'decimal:6',
 
         'unit_cost' =>
-            'decimal:2',
+            'decimal:6',
 
         'difference_cost' =>
             'decimal:2',

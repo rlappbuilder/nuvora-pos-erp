@@ -3,7 +3,6 @@
 namespace App\Services\Inventory;
 
 use App\Models\Inventory\InventoryMovement;
-use Illuminate\Support\Collection;
 
 class StockCardService
 {
@@ -32,279 +31,258 @@ class StockCardService
         |--------------------------------------------------------------------------
         */
 
-        $baseQuery =
-            InventoryMovement::query()
-                ->where(
-                    'product_variant_id',
-                    $productVariantId
-                )
-                ->where(
-                    'branch_id',
-                    $branchId
-                )
-                ->where(
-                    'warehouse_id',
-                    $warehouseId
-                )
-                ->where(
-                    'unit_id',
-                    $unitId
-                );
+        $baseQuery = InventoryMovement::query()
+            ->where(
+                'product_variant_id',
+                $productVariantId
+            )
+            ->where(
+                'branch_id',
+                $branchId
+            )
+            ->where(
+                'warehouse_id',
+                $warehouseId
+            )
+            ->where(
+                'unit_id',
+                $unitId
+            );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Opening Balance
+        |--------------------------------------------------------------------------
+        */
 
-       /*
-|--------------------------------------------------------------------------
-| Opening Balance
-|--------------------------------------------------------------------------
-*/
+        $openingQuery = clone $baseQuery;
 
-$openingQuery =
-    clone $baseQuery;
-
-
-if ($dateFrom) {
-
-    $openingQuery->whereDate(
-        'transaction_date',
-        '<',
-        $dateFrom
-    );
-
-}
-
-
-$openingMovements =
-    $openingQuery
-        ->orderBy(
-            'transaction_date'
-        )
-        ->orderBy(
-            'id'
-        )
-        ->get();
-
-
-$openingQtyIn =
-    $openingMovements->sum(
-        fn ($movement) =>
-            (float)
-            $movement->qty_in
-    );
-
-
-$openingQtyOut =
-    $openingMovements->sum(
-        fn ($movement) =>
-            (float)
-            $movement->qty_out
-    );
-
-
-/*
-|--------------------------------------------------------------------------
-| Opening Balance
-|--------------------------------------------------------------------------
-*/
-
-$openingBalance =
-    $dateFrom
-        ? (
-            $openingQtyIn
-            -
-            $openingQtyOut
-        )
-        : 0;
-
-
-/*
-|--------------------------------------------------------------------------
-| Current Period Movements
-|--------------------------------------------------------------------------
-*/
-
-$movementQuery =
-    clone $baseQuery;
-
-
-$movementQuery
-    ->when(
-        $dateFrom,
-        function ($query) use ($dateFrom) {
-
-            $query->whereDate(
+        if ($dateFrom) {
+            $openingQuery->whereDate(
                 'transaction_date',
-                '>=',
+                '<',
                 $dateFrom
             );
-
         }
-    )
-    ->when(
-        $dateTo,
-        function ($query) use ($dateTo) {
 
-            $query->whereDate(
-                'transaction_date',
-                '<=',
-                $dateTo
+        $openingMovements = $openingQuery
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->get();
+
+        $openingQtyIn = '0.000000';
+        $openingQtyOut = '0.000000';
+
+        foreach ($openingMovements as $movement) {
+
+            $openingQtyIn = bcadd(
+                $openingQtyIn,
+                (string) ($movement->qty_in ?? '0'),
+                6
             );
 
+            $openingQtyOut = bcadd(
+                $openingQtyOut,
+                (string) ($movement->qty_out ?? '0'),
+                6
+            );
         }
-    );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Opening Balance
+        |--------------------------------------------------------------------------
+        */
 
-$movements =
-    $movementQuery
-        ->orderBy(
-            'transaction_date'
-        )
-        ->orderBy(
-            'id'
-        )
-        ->get();
+        $openingBalance = $dateFrom
+            ? bcsub(
+                $openingQtyIn,
+                $openingQtyOut,
+                6
+            )
+            : '0.000000';
 
+        /*
+        |--------------------------------------------------------------------------
+        | Current Period Movements
+        |--------------------------------------------------------------------------
+        */
 
-/*
-|--------------------------------------------------------------------------
-| Build Rows
-|--------------------------------------------------------------------------
-*/
+        $movementQuery = clone $baseQuery;
 
-$balance =
-    $openingBalance;
+        $movementQuery
+            ->when(
+                $dateFrom,
+                function ($query) use ($dateFrom) {
 
+                    $query->whereDate(
+                        'transaction_date',
+                        '>=',
+                        $dateFrom
+                    );
 
-$rows = collect();
+                }
+            )
+            ->when(
+                $dateTo,
+                function ($query) use ($dateTo) {
 
+                    $query->whereDate(
+                        'transaction_date',
+                        '<=',
+                        $dateTo
+                    );
 
-/*
-|--------------------------------------------------------------------------
-| Opening Row
-|--------------------------------------------------------------------------
-*/
+                }
+            );
 
-if ($dateFrom) {
+        $movements = $movementQuery
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->get();
 
-    $rows->push([
+        /*
+        |--------------------------------------------------------------------------
+        | Build Rows
+        |--------------------------------------------------------------------------
+        */
 
-        'id' =>
-            null,
+        $balance = $openingBalance;
 
-        'date' =>
-            $dateFrom,
+        $rows = collect();
 
-        'reference_type' =>
-            'OPENING_BALANCE',
+        /*
+        |--------------------------------------------------------------------------
+        | Opening Row
+        |--------------------------------------------------------------------------
+        */
 
-        'reference_number' =>
-            null,
+        if ($dateFrom) {
 
-        'description' =>
-            'Saldo awal',
+            $rows->push([
 
-        'opening_qty' =>
-            0,
+                'id' =>
+                    null,
 
-        'qty_in' =>
-            0,
+                'date' =>
+                    $dateFrom,
 
-        'qty_out' =>
-            0,
+                'reference_type' =>
+                    'OPENING_BALANCE',
 
-        'balance_qty' =>
-            $balance,
+                'reference_number' =>
+                    null,
 
-        'unit_id' =>
-            $unitId,
+                'description' =>
+                    'Saldo awal',
 
-        'unit_cost' =>
-            0,
+                'opening_qty' =>
+                    '0.000000',
 
-        'total_cost' =>
-            0,
+                'qty_in' =>
+                    '0.000000',
 
-    ]);
+                'qty_out' =>
+                    '0.000000',
 
-}
+                'balance_qty' =>
+                    $balance,
 
+                'unit_id' =>
+                    $unitId,
 
-/*
-|--------------------------------------------------------------------------
-| Movement Rows
-|--------------------------------------------------------------------------
-*/
+                'unit_cost' =>
+                    '0.000000',
 
-foreach (
-    $movements
-    as $movement
-) {
+                'total_cost' =>
+                    '0.00',
 
-    $openingQty =
-        $balance;
+            ]);
 
+        }
 
-    $qtyIn =
-        (float)
-        $movement->qty_in;
+        /*
+        |--------------------------------------------------------------------------
+        | Movement Rows
+        |--------------------------------------------------------------------------
+        */
 
+        foreach ($movements as $movement) {
 
-    $qtyOut =
-        (float)
-        $movement->qty_out;
+            $openingQty = $balance;
 
+            $qtyIn = bcadd(
+                (string) ($movement->qty_in ?? '0'),
+                '0',
+                6
+            );
 
-    $balance =
-        $openingQty
-        +
-        $qtyIn
-        -
-        $qtyOut;
+            $qtyOut = bcadd(
+                (string) ($movement->qty_out ?? '0'),
+                '0',
+                6
+            );
 
+            $balance = bcadd(
+                bcsub(
+                    $openingQty,
+                    $qtyOut,
+                    6
+                ),
+                $qtyIn,
+                6
+            );
 
-    $rows->push([
+            $rows->push([
 
-        'id' =>
-            $movement->id,
+                'id' =>
+                    $movement->id,
 
-        'date' =>
-            $movement->transaction_date
-                ?->format('Y-m-d'),
+                'date' =>
+                    $movement->transaction_date
+                        ?->format('Y-m-d'),
 
-        'reference_type' =>
-            $movement->reference_type,
+                'reference_type' =>
+                    $movement->reference_type,
 
-        'reference_number' =>
-            $movement->reference_number,
+                'reference_number' =>
+                    $movement->reference_number,
 
-        'description' =>
-            $movement->description,
+                'description' =>
+                    $movement->description,
 
-        'opening_qty' =>
-            $openingQty,
+                'opening_qty' =>
+                    $openingQty,
 
-        'qty_in' =>
-            $qtyIn,
+                'qty_in' =>
+                    $qtyIn,
 
-        'qty_out' =>
-            $qtyOut,
+                'qty_out' =>
+                    $qtyOut,
 
-        'balance_qty' =>
-            $balance,
+                'balance_qty' =>
+                    $balance,
 
-        'unit_id' =>
-            $movement->unit_id,
+                'unit_id' =>
+                    $movement->unit_id,
 
-        'unit_cost' =>
-            (float)
-            $movement->unit_cost,
+                'unit_cost' =>
+                    bcadd(
+                        (string) ($movement->unit_cost ?? '0'),
+                        '0',
+                        6
+                    ),
 
-        'total_cost' =>
-            (float)
-            $movement->total_cost,
+                'total_cost' =>
+                    bcadd(
+                        (string) ($movement->total_cost ?? '0'),
+                        '0',
+                        2
+                    ),
 
-    ]);
+            ]);
 
-}
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -312,24 +290,35 @@ foreach (
         |--------------------------------------------------------------------------
         */
 
+        $totalQtyIn = '0.000000';
+        $totalQtyOut = '0.000000';
+
+        foreach ($movements as $movement) {
+
+            $totalQtyIn = bcadd(
+                $totalQtyIn,
+                (string) ($movement->qty_in ?? '0'),
+                6
+            );
+
+            $totalQtyOut = bcadd(
+                $totalQtyOut,
+                (string) ($movement->qty_out ?? '0'),
+                6
+            );
+
+        }
+
         $summary = [
 
             'opening_qty' =>
                 $openingBalance,
 
             'total_qty_in' =>
-                $movements->sum(
-                    fn ($movement) =>
-                        (float)
-                        $movement->qty_in
-                ),
+                $totalQtyIn,
 
             'total_qty_out' =>
-                $movements->sum(
-                    fn ($movement) =>
-                        (float)
-                        $movement->qty_out
-                ),
+                $totalQtyOut,
 
             'closing_qty' =>
                 $balance,
@@ -337,95 +326,68 @@ foreach (
         ];
 
         /*
-            |--------------------------------------------------------------------------
-            | Display Order
-            |--------------------------------------------------------------------------
-            |
-            | Stock card selalu ditampilkan chronological.
-            |
-            | Running balance dihitung berdasarkan:
-            |
-            | transaction_date ASC
-            | id ASC
-            |
-            | Jadi urutan tampilan harus sama dengan urutan
-            | perhitungan balance.
-            |
-            */
+        |--------------------------------------------------------------------------
+        | Display Order
+        |--------------------------------------------------------------------------
+        |
+        | Stock card selalu ditampilkan chronological.
+        |
+        | Running balance dihitung berdasarkan:
+        |
+        | transaction_date ASC
+        | id ASC
+        |
+        | Parameter sortBy dan sortDirection tetap dipertahankan
+        | untuk kompatibilitas pemanggil method.
+        |
+        */
 
-            $sortedRows =
-                $rows->values();
+        $sortedRows = $rows->values();
+
         /*
         |--------------------------------------------------------------------------
         | Pagination
         |--------------------------------------------------------------------------
         */
 
-        $perPage =
-            max(
-                1,
-                (int) $perPage
-            );
+        $perPage = max(
+            1,
+            (int) $perPage
+        );
 
+        $page = max(
+            1,
+            (int) $page
+        );
 
-        $page =
-            max(
-                1,
-                (int) $page
-            );
+        $total = $sortedRows->count();
 
+        $lastPage = max(
+            1,
+            (int) ceil(
+                $total / $perPage
+            )
+        );
 
-        $total =
-            $sortedRows->count();
+        $page = min(
+            $page,
+            $lastPage
+        );
 
+        $items = $sortedRows
+            ->slice(
+                ($page - 1) * $perPage,
+                $perPage
+            )
+            ->values();
 
-        $lastPage =
-            max(
-                1,
-                (int) ceil(
-                    $total / $perPage
-                )
-            );
+        $from = $total > 0
+            ? (($page - 1) * $perPage) + 1
+            : null;
 
-
-        $page =
-            min(
-                $page,
-                $lastPage
-            );
-
-
-        $items =
-            $sortedRows
-                ->slice(
-                    (
-                        $page - 1
-                    )
-                    *
-                    $perPage,
-                    $perPage
-                )
-                ->values();
-
-
-        $from =
-            $total > 0
-                ? (
-                    (
-                        $page - 1
-                    )
-                    *
-                    $perPage
-                )
-                + 1
-                : null;
-
-
-        $to =
-            $total > 0
-                ? $from + $items->count() - 1
-                : null;
-
+        $to = $total > 0
+            ? $from + $items->count() - 1
+            : null;
 
         /*
         |--------------------------------------------------------------------------

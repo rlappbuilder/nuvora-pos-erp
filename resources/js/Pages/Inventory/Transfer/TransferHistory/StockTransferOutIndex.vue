@@ -102,11 +102,24 @@ watch(
     }
 )
 
+/*
+|--------------------------------------------------------------------------
+| Number Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatQty(value) {
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value ?? 0))
+}
+
 function formatAmount(value) {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0,
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value ?? 0))
 }
@@ -334,7 +347,7 @@ function exportExcel() {
                 </p>
 
                 <p class="mt-2 text-2xl font-semibold text-gray-800">
-                    {{ stats.totalQty }}
+                    {{ formatQty(stats.totalQty) }}
                 </p>
             </div>
         </div>
@@ -577,7 +590,7 @@ function exportExcel() {
                                 </div>
 
                                 <div class="mt-1 text-sm text-gray-500">
-                                    Qty: {{ getTotalQty(transfer) }}
+                                    Qty: {{ formatQty(getTotalQty(transfer)) }}
                                 </div>
                             </td>
 

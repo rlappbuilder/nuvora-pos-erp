@@ -299,6 +299,12 @@ const loadWarehouseStocks = async (warehouseId) => {
 
     warehouseStocks.value = []
 
+    form.details.forEach(detail => {
+        detail.available_qty = 0
+        detail.unit_cost = 0
+        detail.total_cost = 0
+    })
+
     if (!warehouseId) {
         return
     }
@@ -539,6 +545,12 @@ watch(
 
     }
 )
+const formatQty = (value) => {
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value ?? 0))
+}
 </script>
 
 <template>
@@ -808,12 +820,8 @@ watch(
                             label="Available"
                         >
 
-                            <FormInput
-                                :model-value="
-                                    formatCurrency(
-                                        detail.available_qty
-                                    )
-                                "
+                           <FormInput
+                                :model-value="formatQty(detail.available_qty)"
                                 readonly
                             />
 
@@ -1021,9 +1029,8 @@ watch(
                     </span>
 
                     <span class="font-medium">
-                        {{ totalQuantity }}
+                        {{ formatQty(totalQuantity) }}
                     </span>
-
                 </div>
 
 

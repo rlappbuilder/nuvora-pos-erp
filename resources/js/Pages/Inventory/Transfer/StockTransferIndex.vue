@@ -350,6 +350,7 @@ function toggleAll(event) {
 
 function formatNumber(value) {
     return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value ?? 0))
 }
@@ -358,8 +359,8 @@ function formatAmount(value) {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(Number(value ?? 0))
 }
 
@@ -381,9 +382,11 @@ function getTotalQty(item) {
         0
     )
 }
-
-
-
+function formatCount(value) {
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 0,
+    }).format(Number(value ?? 0))
+}
 /*
 |--------------------------------------------------------------------------
 | Pagination
@@ -434,7 +437,7 @@ function visitPage(url) {
                             </p>
 
                             <p class="mt-2 text-2xl font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ formatNumber(stat.value) }}
+                               {{ formatCount(stat.value) }}
                             </p>
                         </div>
 
