@@ -1,5 +1,4 @@
 <script setup>
-
 import { computed } from 'vue'
 
 import BaseButton from '@/Components/Button/BaseButton.vue'
@@ -60,25 +59,25 @@ function closeConfirm()
     emit('close')
 }
 
+
 function confirmPurchaseOrder()
 {
     emit('confirm')
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Helpers
+| Number Format
 |--------------------------------------------------------------------------
 */
 
-const formatNumber = (
-    value
-) => {
+const formatNumber = (value) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
-            minimumFractionDigits: 0,
+            minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }
     ).format(
@@ -88,17 +87,63 @@ const formatNumber = (
 }
 
 
-const formatCurrency = (
-    value
-) => {
+/*
+|--------------------------------------------------------------------------
+| Unit Price Format
+|--------------------------------------------------------------------------
+*/
+
+const formatUnitPrice = (value) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Currency Format
+|--------------------------------------------------------------------------
+*/
+
+const formatCurrency = (value) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
             style: 'currency',
             currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Percentage Format
+|--------------------------------------------------------------------------
+*/
+
+const formatPercentage = (value) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
         }
     ).format(
         Number(value ?? 0)
@@ -135,17 +180,23 @@ const totalItems = computed(() => {
 
 const totalQuantity = computed(() => {
 
+    if (
+        props.purchaseOrder?.total_quantity !== undefined &&
+        props.purchaseOrder?.total_quantity !== null
+    ) {
+
+        return Number(
+            props.purchaseOrder.total_quantity
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
+        (total, detail) =>
 
             total +
-            Number(
-                detail.qty ?? 0
-            ),
+            Number(detail.qty ?? 0),
 
         0
 
@@ -156,17 +207,21 @@ const totalQuantity = computed(() => {
 
 const subtotal = computed(() => {
 
+    if (
+        props.purchaseOrder?.subtotal !== undefined &&
+        props.purchaseOrder?.subtotal !== null
+    ) {
+
+        return Number(
+            props.purchaseOrder.subtotal
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.subtotal ?? 0
-            ),
+        (total, detail) =>
+            total + Number(detail.subtotal ?? 0),
 
         0
 
@@ -177,17 +232,21 @@ const subtotal = computed(() => {
 
 const discountAmount = computed(() => {
 
+    if (
+        props.purchaseOrder?.discount_amount !== undefined &&
+        props.purchaseOrder?.discount_amount !== null
+    ) {
+
+        return Number(
+            props.purchaseOrder.discount_amount
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.discount_amount ?? 0
-            ),
+        (total, detail) =>
+            total + Number(detail.discount_amount ?? 0),
 
         0
 
@@ -198,17 +257,21 @@ const discountAmount = computed(() => {
 
 const taxAmount = computed(() => {
 
+    if (
+        props.purchaseOrder?.tax_amount !== undefined &&
+        props.purchaseOrder?.tax_amount !== null
+    ) {
+
+        return Number(
+            props.purchaseOrder.tax_amount
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.tax_amount ?? 0
-            ),
+        (total, detail) =>
+            total + Number(detail.tax_amount ?? 0),
 
         0
 
@@ -219,17 +282,21 @@ const taxAmount = computed(() => {
 
 const grandTotal = computed(() => {
 
+    if (
+        props.purchaseOrder?.grand_total !== undefined &&
+        props.purchaseOrder?.grand_total !== null
+    ) {
+
+        return Number(
+            props.purchaseOrder.grand_total
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.total ?? 0
-            ),
+        (total, detail) =>
+            total + Number(detail.total ?? 0),
 
         0
 
@@ -244,9 +311,7 @@ const grandTotal = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const getProductName = (
-    detail
-) => {
+const getProductName = (detail) => {
 
     return (
 
@@ -276,9 +341,7 @@ const getProductName = (
 |--------------------------------------------------------------------------
 */
 
-const getProductSku = (
-    detail
-) => {
+const getProductSku = (detail) => {
 
     return (
         detail
@@ -289,9 +352,33 @@ const getProductSku = (
 
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Line Amount
+|--------------------------------------------------------------------------
+*/
+
+const getAmount = (detail) => {
+
+    if (
+        detail?.subtotal !== undefined &&
+        detail?.subtotal !== null
+    ) {
+
+        return Number(detail.subtotal)
+
+    }
+
+    // Fallback untuk data lama yang belum memiliki subtotal.
+    return (
+        Number(detail?.qty ?? 0) *
+        Number(detail?.unit_price ?? 0)
+    )
+
+}
+
 </script>
-
-
 <template>
 
     <Teleport to="body">
@@ -1036,9 +1123,7 @@ const getProductSku = (
                                                 "
                                             >
                                                 {{
-                                                    formatCurrency(
-                                                        detail.unit_price
-                                                    )
+                                                    formatUnitPrice(detail.unit_price)
                                                 }}
                                             </td>
 
@@ -1057,12 +1142,7 @@ const getProductSku = (
                                             >
                                                 {{
                                                     formatCurrency(
-                                                        Number(
-                                                            detail.qty ?? 0
-                                                        ) *
-                                                        Number(
-                                                            detail.unit_price ?? 0
-                                                        )
+                                                        getAmount(detail)
                                                     )
                                                 }}
                                             </td>
@@ -1081,9 +1161,7 @@ const getProductSku = (
                                                 "
                                             >
                                                 {{
-                                                    formatCurrency(
-                                                        detail.discount_amount
-                                                    )
+                                                    formatCurrency(detail.discount_amount)
                                                 }}
                                             </td>
 
@@ -1100,10 +1178,8 @@ const getProductSku = (
                                                     text-gray-700
                                                 "
                                             >
-                                                {{
-                                                    formatCurrency(
-                                                        detail.tax_amount
-                                                    )
+                                               {{
+                                                    formatCurrency(detail.tax_amount)
                                                 }}
                                             </td>
 
@@ -1121,10 +1197,8 @@ const getProductSku = (
                                                     text-gray-900
                                                 "
                                             >
-                                                {{
-                                                    formatCurrency(
-                                                        detail.total
-                                                    )
+                                               {{
+                                                    formatCurrency(detail.total)
                                                 }}
                                             </td>
 

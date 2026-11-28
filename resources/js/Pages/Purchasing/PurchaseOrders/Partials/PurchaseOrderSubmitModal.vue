@@ -69,48 +69,6 @@ function confirmSubmit()
 
 /*
 |--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
-const formatNumber = (
-    value
-) => {
-
-    return new Intl.NumberFormat(
-        'id-ID',
-        {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-        }
-    ).format(
-        Number(value ?? 0)
-    )
-
-}
-
-
-const formatCurrency = (
-    value
-) => {
-
-    return new Intl.NumberFormat(
-        'id-ID',
-        {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }
-    ).format(
-        Number(value ?? 0)
-    )
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
 | Details
 |--------------------------------------------------------------------------
 */
@@ -137,20 +95,16 @@ const totalItems = computed(() => {
 
 const totalQuantity = computed(() => {
 
+    const headerQuantity = props.purchaseOrder?.total_quantity
+
+    if (headerQuantity !== null && headerQuantity !== undefined) {
+        return headerQuantity
+    }
+
     return details.value.reduce(
-
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.qty ?? 0
-            ),
-
+        (total, detail) =>
+            total + Number(detail.qty ?? 0),
         0
-
     )
 
 })
@@ -158,20 +112,16 @@ const totalQuantity = computed(() => {
 
 const subtotal = computed(() => {
 
+    const headerSubtotal = props.purchaseOrder?.subtotal
+
+    if (headerSubtotal !== null && headerSubtotal !== undefined) {
+        return headerSubtotal
+    }
+
     return details.value.reduce(
-
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.subtotal ?? 0
-            ),
-
+        (total, detail) =>
+            total + Number(detail.subtotal ?? 0),
         0
-
     )
 
 })
@@ -179,20 +129,16 @@ const subtotal = computed(() => {
 
 const discountAmount = computed(() => {
 
+    const headerDiscount = props.purchaseOrder?.discount_amount
+
+    if (headerDiscount !== null && headerDiscount !== undefined) {
+        return headerDiscount
+    }
+
     return details.value.reduce(
-
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.discount_amount ?? 0
-            ),
-
+        (total, detail) =>
+            total + Number(detail.discount_amount ?? 0),
         0
-
     )
 
 })
@@ -200,20 +146,16 @@ const discountAmount = computed(() => {
 
 const taxAmount = computed(() => {
 
+    const headerTax = props.purchaseOrder?.tax_amount
+
+    if (headerTax !== null && headerTax !== undefined) {
+        return headerTax
+    }
+
     return details.value.reduce(
-
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.tax_amount ?? 0
-            ),
-
+        (total, detail) =>
+            total + Number(detail.tax_amount ?? 0),
         0
-
     )
 
 })
@@ -221,20 +163,16 @@ const taxAmount = computed(() => {
 
 const grandTotal = computed(() => {
 
+    const headerGrandTotal = props.purchaseOrder?.grand_total
+
+    if (headerGrandTotal !== null && headerGrandTotal !== undefined) {
+        return headerGrandTotal
+    }
+
     return details.value.reduce(
-
-        (
-            total,
-            detail
-        ) =>
-
-            total +
-            Number(
-                detail.total ?? 0
-            ),
-
+        (total, detail) =>
+            total + Number(detail.total ?? 0),
         0
-
     )
 
 })
@@ -291,9 +229,69 @@ const getProductSku = (
 
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Number Formatting
+|--------------------------------------------------------------------------
+*/
+
+// Quantity: 2 decimal places
+const formatNumber = (
+    value
+) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+// Unit Price: 2-6 decimal places
+const formatUnitPrice = (
+    value
+) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+// Currency: always 2 decimal places
+const formatCurrency = (
+    value
+) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
 </script>
-
-
 <template>
 
     <Teleport to="body">
@@ -1038,14 +1036,14 @@ const getProductSku = (
                                                 "
                                             >
                                                 {{
-                                                    formatCurrency(
+                                                    formatUnitPrice(
                                                         detail.unit_price
                                                     )
                                                 }}
                                             </td>
 
 
-                                            <!-- Amount -->
+                                           <!-- Amount -->
 
                                             <td
                                                 class="
@@ -1059,12 +1057,7 @@ const getProductSku = (
                                             >
                                                 {{
                                                     formatCurrency(
-                                                        Number(
-                                                            detail.qty ?? 0
-                                                        ) *
-                                                        Number(
-                                                            detail.unit_price ?? 0
-                                                        )
+                                                        detail.subtotal
                                                     )
                                                 }}
                                             </td>

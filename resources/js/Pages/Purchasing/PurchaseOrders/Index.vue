@@ -1,7 +1,21 @@
 <script setup>
 
-import {ref,reactive,computed,watch,onMounted,onUnmounted,toRefs,nextTick,} from 'vue'
-import {router,useForm,} from '@inertiajs/vue3'
+import {
+    ref,
+    reactive,
+    computed,
+    watch,
+    onMounted,
+    onUnmounted,
+    toRefs,
+    nextTick,
+} from 'vue'
+
+import {
+    router,
+    useForm,
+} from '@inertiajs/vue3'
+
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PageHeader from '@/Components/Layout/PageHeader.vue'
 import Card from '@/Components/Layout/Card.vue'
@@ -9,22 +23,42 @@ import StatsCard from '@/Components/Card/StatsCard.vue'
 import BaseButton from '@/Components/Button/BaseButton.vue'
 import ActionDropdown from '@/Components/Action/ActionDropdown.vue'
 import BulkActionDropdown from '@/Components/Bulk/BulkActionDropdown.vue'
+
 import DataTable from '@/Components/Table/DataTable.vue'
 import DataTableHead from '@/Components/Table/DataTableHead.vue'
 import DataTableBody from '@/Components/Table/DataTableBody.vue'
 import DataTableHeaderCell from '@/Components/Table/DataTableHeaderCell.vue'
 import DataTableRow from '@/Components/Table/DataTableRow.vue'
 import DataTableCell from '@/Components/Table/DataTableCell.vue'
+
 import TablePagination from '@/Components/Table/TablePagination.vue'
 import TableEmpty from '@/Components/Table/TableEmpty.vue'
+
 import StatusBadge from '@/Components/Display/StatusBadge.vue'
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue'
-import { LoadingOverlay } from '@/Components/Feedback'
-import { PlusIcon,} from '@heroicons/vue/24/solid'
-import { success,error,} from '@/Utils'
-import {formatDate,} from '@/Utils'
+
+import {
+    LoadingOverlay,
+} from '@/Components/Feedback'
+
+import {
+    PlusIcon,
+} from '@heroicons/vue/24/solid'
+
+import {
+    FunnelIcon,
+    ArrowPathIcon,
+} from '@heroicons/vue/24/outline'
+
+import {
+    success,
+    error,
+    formatDate,
+} from '@/Utils'
+
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
+
 import PurchaseOrderForm from './Partials/PurchaseOrderForm.vue'
 import PurchaseOrderViewModal from './Partials/PurchaseOrderViewModal.vue'
 import PurchaseOrderApproveModal from './Partials/PurchaseOrderApproveModal.vue'
@@ -35,6 +69,7 @@ import PurchaseOrderConfirmModal from './Partials/PurchaseOrderConfirmModal.vue'
 import ConfirmDeleteModal from '@/Components/Modal/ConfirmDeleteModal.vue'
 import PurchaseOrderCancelModal from './Partials/PurchaseOrderCancelModal.vue'
 
+
 /*
 |--------------------------------------------------------------------------
 | Props
@@ -44,122 +79,74 @@ import PurchaseOrderCancelModal from './Partials/PurchaseOrderCancelModal.vue'
 const props = defineProps({
 
     purchaseOrders: {
-
         type: Object,
-
         default: () => ({
-
             data: [],
-
             current_page: 1,
-
             last_page: 1,
-
             per_page: 10,
-
             total: 0,
-
         }),
-
     },
 
     statistics: {
-
         type: Object,
-
         default: () => ({
-
             total: 0,
-
             draft: 0,
-
             submitted: 0,
-
             rejected: 0,
-
             approved: 0,
-
             sent: 0,
-
             confirmed: 0,
-
             partially_received: 0,
-
             fully_received: 0,
-
             cancelled: 0,
-
             closed: 0,
-
         }),
-
     },
 
     companyId: {
-
         type: [
             Number,
             String,
         ],
-
         default: null,
-
     },
 
     branches: {
-
         type: Array,
-
         default: () => [],
-
     },
 
     warehouses: {
-
         type: Array,
-
         default: () => [],
-
     },
 
     suppliers: {
-
         type: Array,
-
         default: () => [],
-
     },
 
     variants: {
-
         type: Array,
-
         default: () => [],
-
     },
 
     units: {
-
         type: Array,
-
         default: () => [],
-
     },
 
     filters: {
-
         type: Object,
-
         default: () => ({}),
-
     },
 
     previewNumber: {
-
         type: String,
-
         default: '',
-
     },
 
     show: {
@@ -193,7 +180,7 @@ const {
 */
 
 const pageTitle = computed(
-    () => 'Purchase Order'
+    () => 'Purchase Orders'
 )
 
 
@@ -211,17 +198,26 @@ let removeFinishListener
 
 
 const startLoading = () => {
-
     loading.value = true
-
 }
 
 
 const stopLoading = () => {
-
     loading.value = false
-
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Filter Visibility
+|--------------------------------------------------------------------------
+*/
+
+const showFilters = ref(false)
+
+const suspendFilterWatchers = ref(false)
+
+const skipWarehouseWatch = ref(false)
 
 
 /*
@@ -256,195 +252,45 @@ const filters = reactive({
     date_to:
         props.filters?.date_to ?? '',
 
-    date_range:
-        props.filters?.date_from
-            && props.filters?.date_to
-            ? `${props.filters.date_from} to ${props.filters.date_to}`
-            : props.filters?.date_from ?? '',
-
 })
+
+
+const dateRange = ref(
+
+    filters.date_from && filters.date_to
+
+        ? `${filters.date_from} to ${filters.date_to}`
+
+        : filters.date_from || filters.date_to || ''
+
+)
+
+
 let debounceTimer = null
 
-function loadData()
-{
-    let dateFrom = ''
-    let dateTo = ''
 
-    if (filters.date_range) {
+/*
+|--------------------------------------------------------------------------
+| Active Filter
+|--------------------------------------------------------------------------
+*/
 
-        const dates =
-            filters.date_range.split(' to ')
+const hasActiveFilter = computed(() => {
 
-        dateFrom =
-            dates[0] ?? ''
+    return Boolean(
 
-        dateTo =
-            dates[1]
-            ?? dates[0]
-            ?? ''
-
-    }
-
-    router.get(
-
-        route(
-            'purchase-orders.index'
-        ),
-
-        {
-            ...filters,
-
-            date_from: dateFrom,
-            date_to: dateTo,
-        },
-
-        {
-
-            preserveState: true,
-
-            preserveScroll: true,
-
-            replace: true,
-
-        }
+        filters.date_from ||
+        filters.date_to ||
+        filters.branch_id ||
+        filters.warehouse_id ||
+        filters.supplier_id ||
+        filters.status
 
     )
 
-}
+})
 
-watch(
 
-    () => filters.search,
-
-    () => {
-
-        clearTimeout(
-            debounceTimer
-        )
-
-        debounceTimer =
-            setTimeout(
-
-                () => {
-
-                    loadData()
-
-                },
-
-                500
-
-            )
-
-    }
-
-)
-
-
-watch(
-
-    () => filters.branch_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
-    () => filters.warehouse_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
-    () => filters.supplier_id,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
-    () => filters.status,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-watch(
-
-    () => filters.per_page,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-watch(
-
-    () => filters.date_range,
-
-    () => {
-
-        loadData()
-
-    }
-
-)
-
-
-function refresh()
-{
-    Object.assign(
-
-        filters,
-
-        {
-
-            search: '',
-
-            branch_id: '',
-
-            warehouse_id: '',
-
-            supplier_id: '',
-
-            status: '',
-
-            per_page: 10,
-
-            date_range: '',
-
-        }
-
-    )
-
-    loadData()
-
-}
 /*
 |--------------------------------------------------------------------------
 | Status
@@ -508,6 +354,392 @@ const statusOptions = [
 
 /*
 |--------------------------------------------------------------------------
+| Sorting
+|--------------------------------------------------------------------------
+*/
+
+const sort = ref(
+    props.filters?.sort_by ?? 'id'
+)
+
+const direction = ref(
+    props.filters?.sort_direction ?? 'desc'
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Data
+|--------------------------------------------------------------------------
+*/
+
+function loadData() {
+
+    router.get(
+
+        route('purchase-orders.index'),
+
+        {
+
+            ...filters,
+
+            sort_by:
+                sort.value,
+
+            sort_direction:
+                direction.value,
+
+            page: 1,
+
+        },
+
+        {
+
+            preserveState: true,
+
+            preserveScroll: true,
+
+            replace: true,
+
+            onStart: () => {
+                loading.value = true
+            },
+
+            onFinish: () => {
+                loading.value = false
+            },
+
+        }
+
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Formatting
+|--------------------------------------------------------------------------
+*/
+
+function formatDateForFilter(date) {
+
+    const year = date.getFullYear()
+
+    const month = String(
+        date.getMonth() + 1
+    ).padStart(2, '0')
+
+    const day = String(
+        date.getDate()
+    ).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Range Change
+|--------------------------------------------------------------------------
+*/
+
+function handleDateRangeChange(selectedDates) {
+
+    if (!selectedDates.length) {
+
+        filters.date_from = ''
+
+        filters.date_to = ''
+
+        loadData()
+
+        return
+
+    }
+
+    filters.date_from = formatDateForFilter(
+        selectedDates[0]
+    )
+
+    filters.date_to = selectedDates.length > 1
+
+        ? formatDateForFilter(
+            selectedDates[1]
+        )
+
+        : formatDateForFilter(
+            selectedDates[0]
+        )
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Date Range Configuration
+|--------------------------------------------------------------------------
+*/
+
+const dateRangeConfig = {
+
+    mode: 'range',
+
+    dateFormat: 'Y-m-d',
+
+    allowInput: true,
+
+    onChange: handleDateRangeChange,
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Filter Watchers
+|--------------------------------------------------------------------------
+*/
+
+watch(
+
+    () => filters.search,
+
+    () => {
+
+        clearTimeout(debounceTimer)
+
+        debounceTimer = setTimeout(() => {
+
+            loadData()
+
+        }, 500)
+
+    }
+
+)
+
+
+watch(
+
+    () => filters.branch_id,
+
+    (newValue, oldValue) => {
+
+        if (
+
+            suspendFilterWatchers.value ||
+
+            newValue === oldValue
+
+        ) {
+            return
+        }
+
+        if (filters.warehouse_id) {
+
+            skipWarehouseWatch.value = true
+
+            filters.warehouse_id = ''
+
+        }
+
+        loadData()
+
+    }
+
+)
+
+
+watch(
+
+    () => filters.warehouse_id,
+
+    (newValue, oldValue) => {
+
+        if (
+
+            suspendFilterWatchers.value ||
+
+            newValue === oldValue
+
+        ) {
+            return
+        }
+
+        if (skipWarehouseWatch.value) {
+
+            skipWarehouseWatch.value = false
+
+            return
+
+        }
+
+        loadData()
+
+    }
+
+)
+
+
+watch(
+
+    () => filters.supplier_id,
+
+    (newValue, oldValue) => {
+
+        if (
+
+            suspendFilterWatchers.value ||
+
+            newValue === oldValue
+
+        ) {
+            return
+        }
+
+        loadData()
+
+    }
+
+)
+
+
+watch(
+
+    () => filters.status,
+
+    (newValue, oldValue) => {
+
+        if (
+
+            suspendFilterWatchers.value ||
+
+            newValue === oldValue
+
+        ) {
+            return
+        }
+
+        loadData()
+
+    }
+
+)
+
+
+watch(
+
+    () => filters.per_page,
+
+    (newValue, oldValue) => {
+
+        if (
+
+            suspendFilterWatchers.value ||
+
+            newValue === oldValue
+
+        ) {
+            return
+        }
+
+        loadData()
+
+    }
+
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Filtered Warehouses
+|--------------------------------------------------------------------------
+*/
+
+const filteredFilterWarehouses = computed(() => {
+
+    if (!filters.branch_id) {
+
+        return props.warehouses
+
+    }
+
+    return props.warehouses.filter(
+
+        warehouse =>
+
+            Number(warehouse.branch_id) ===
+
+            Number(filters.branch_id)
+
+    )
+
+})
+
+
+/*
+|--------------------------------------------------------------------------
+| Reset Filters
+|--------------------------------------------------------------------------
+*/
+
+async function resetFilters() {
+
+    clearTimeout(debounceTimer)
+
+    suspendFilterWatchers.value = true
+
+    skipWarehouseWatch.value = false
+
+    Object.assign(filters, {
+
+        search: '',
+
+        branch_id: '',
+
+        warehouse_id: '',
+
+        supplier_id: '',
+
+        status: '',
+
+        per_page: 10,
+
+        date_from: '',
+
+        date_to: '',
+
+    })
+
+    dateRange.value = ''
+
+    await nextTick()
+
+    suspendFilterWatchers.value = false
+
+    loadData()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Refresh
+|--------------------------------------------------------------------------
+*/
+
+function refresh() {
+
+    resetFilters()
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Selection
 |--------------------------------------------------------------------------
 */
@@ -520,17 +752,13 @@ const selectAllRef = ref(null)
 const isAllSelected = computed(() => {
 
     const totalRows =
-        purchaseOrders
-            .value
-            ?.data
-            ?.length ?? 0
+        purchaseOrders.value?.data?.length ?? 0
 
     return (
 
         totalRows > 0 &&
 
-        selectedRows.value.length ===
-            totalRows
+        selectedRows.value.length === totalRows
 
     )
 
@@ -540,17 +768,13 @@ const isAllSelected = computed(() => {
 const isIndeterminate = computed(() => {
 
     const totalRows =
-        purchaseOrders
-            .value
-            ?.data
-            ?.length ?? 0
+        purchaseOrders.value?.data?.length ?? 0
 
     return (
 
         selectedRows.value.length > 0 &&
 
-        selectedRows.value.length <
-            totalRows
+        selectedRows.value.length < totalRows
 
     )
 
@@ -563,12 +787,9 @@ watch(
 
     (value) => {
 
-        if (
-            selectAllRef.value
-        ) {
+        if (selectAllRef.value) {
 
-            selectAllRef.value.indeterminate =
-                value
+            selectAllRef.value.indeterminate = value
 
         }
 
@@ -581,23 +802,17 @@ watch(
 )
 
 
-function toggleSelectAll(
-    event
-)
-{
+function toggleSelectAll(event) {
 
-    if (
-        event.target.checked
-    ) {
+    if (event.target.checked) {
 
         selectedRows.value =
-            purchaseOrders
-                .value
-                ?.data
-                ?.map(
-                    item => item.id
-                )
-                ?? []
+
+            purchaseOrders.value?.data?.map(
+
+                item => item.id
+
+            ) ?? []
 
     } else {
 
@@ -629,44 +844,31 @@ const editingItem = ref(null)
 
 const createEmptyDetail = () => ({
 
-    product_variant_id:
-        null,
+    product_variant_id: null,
 
-    unit_id:
-        null,
+    unit_id: null,
 
-    qty:
-        1,
+    qty: 0,
 
-    received_qty:
-        0,
+    received_qty: 0,
 
-    remaining_qty:
-        1,
+    remaining_qty: 0,
 
-    unit_price:
-        0,
+    unit_price: 0,
 
-    discount_rate:
-        0,
+    discount_rate: 0,
 
-    discount_amount:
-        0,
+    discount_amount: 0,
 
-    tax_rate:
-        0,
+    tax_rate: 0,
 
-    tax_amount:
-        0,
+    tax_amount: 0,
 
-    subtotal:
-        0,
+    subtotal: 0,
 
-    total:
-        0,
+    total: 0,
 
-    description:
-        null,
+    description: null,
 
 })
 
@@ -676,31 +878,22 @@ const form = useForm({
     number:
         props.previewNumber ?? '',
 
-    company_id:
-        null,
+    company_id: null,
 
-    branch_id:
-        null,
+    branch_id: null,
 
-    warehouse_id:
-        null,
+    warehouse_id: null,
 
-    supplier_id:
-        null,
+    supplier_id: null,
 
-    purchase_request_id:
-        null,
+    purchase_request_id: null,
 
     order_date:
-        new Date()
-            .toISOString()
-            .slice(0, 10),
+        new Date().toISOString().slice(0, 10),
 
-    required_date:
-        null,
+    required_date: null,
 
-    description:
-        null,
+    description: null,
 
     details: [
 
@@ -737,8 +930,7 @@ const filteredUnits = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-function create()
-{
+function create() {
 
     isEditing.value = false
 
@@ -757,18 +949,13 @@ function create()
         props.companyId ?? null
 
     form.order_date =
-        new Date()
-            .toISOString()
-            .slice(0, 10)
+        new Date().toISOString().slice(0, 10)
 
-    form.required_date =
-        null
+    form.required_date = null
 
-    form.supplier_id =
-        null
+    form.supplier_id = null
 
-    form.purchase_request_id =
-        null
+    form.purchase_request_id = null
 
     form.details = [
 
@@ -787,18 +974,15 @@ function create()
 |--------------------------------------------------------------------------
 */
 
-function cancelForm()
-{
+function cancelForm() {
 
     form.reset()
 
     form.clearErrors()
 
-    editingItem.value =
-        null
+    editingItem.value = null
 
-    view.value =
-        'list'
+    view.value = 'list'
 
 }
 
@@ -809,18 +993,13 @@ function cancelForm()
 |--------------------------------------------------------------------------
 */
 
-function submit()
-{
+function submit() {
 
-    if (
-        formMode.value === 'create'
-    ) {
+    if (formMode.value === 'create') {
 
         form.post(
 
-            route(
-                'purchase-orders.store'
-            ),
+            route('purchase-orders.store'),
 
             {
 
@@ -829,15 +1008,11 @@ function submit()
                 onSuccess: () => {
 
                     success(
-
                         'Success',
-
                         'Purchase order created successfully.'
-
                     )
 
-                    view.value =
-                        'list'
+                    view.value = 'list'
 
                 },
 
@@ -853,11 +1028,8 @@ function submit()
     form.put(
 
         route(
-
             'purchase-orders.update',
-
             editingItem.value.id
-
         ),
 
         {
@@ -867,32 +1039,23 @@ function submit()
             onSuccess: () => {
 
                 success(
-
                     'Success',
-
                     'Purchase order updated successfully.'
-
                 )
 
-                view.value =
-                    'list'
+                view.value = 'list'
 
             },
 
             onError: (errors) => {
 
                 console.error(
-
                     'UPDATE ERRORS:',
-
                     errors
-
                 )
 
                 error(
-
                     'Failed to update purchase order.'
-
                 )
 
             },
@@ -910,14 +1073,11 @@ function submit()
 |--------------------------------------------------------------------------
 */
 
-function submitAndNew()
-{
+function submitAndNew() {
 
     form.post(
 
-        route(
-            'purchase-orders.store'
-        ),
+        route('purchase-orders.store'),
 
         {
 
@@ -941,18 +1101,13 @@ function submitAndNew()
                     props.companyId
 
                 form.order_date =
-                    new Date()
-                        .toISOString()
-                        .slice(0, 10)
+                    new Date().toISOString().slice(0, 10)
 
-                form.required_date =
-                    null
+                form.required_date = null
 
-                form.supplier_id =
-                    null
+                form.supplier_id = null
 
-                form.purchase_request_id =
-                    null
+                form.purchase_request_id = null
 
                 form.details = [
 
@@ -975,22 +1130,19 @@ function submitAndNew()
 |--------------------------------------------------------------------------
 */
 
-function editPurchaseOrder(item)
-{
+function editPurchaseOrder(item) {
 
     if (
+
         ![
             'Draft',
             'Rejected',
-        ].includes(
-            item.status
-        )
+        ].includes(item.status)
+
     ) {
 
         error(
-
             'Only Draft or Rejected purchase order can be edited.'
-
         )
 
         return
@@ -1000,116 +1152,105 @@ function editPurchaseOrder(item)
 
     isEditing.value = true
 
-    editingItem.value =
-        item
+    editingItem.value = item
 
-    formMode.value =
-        'edit'
+    formMode.value = 'edit'
 
     form.clearErrors()
 
-    form.number =
-        item.number
+    form.number = item.number
 
-    form.company_id =
-        item.company_id
+    form.company_id = item.company_id
 
-    form.branch_id =
-        item.branch_id
+    form.branch_id = item.branch_id
 
-    form.warehouse_id =
-        item.warehouse_id
+    form.warehouse_id = item.warehouse_id
 
-    form.supplier_id =
-        item.supplier_id
+    form.supplier_id = item.supplier_id
 
-    form.purchase_request_id =
-        item.purchase_request_id
+    form.purchase_request_id = item.purchase_request_id
 
 
-    form.order_date =
-        item.order_date
-            ? String(
-                item.order_date
-            ).slice(0, 10)
-            : null
+    form.order_date = item.order_date
+
+        ? String(item.order_date).slice(0, 10)
+
+        : null
 
 
-    form.required_date =
-        item.required_date
-            ? String(
-                item.required_date
-            ).slice(0, 10)
-            : null
+    form.required_date = item.required_date
+
+        ? String(item.required_date).slice(0, 10)
+
+        : null
 
 
-    form.description =
-        item.description
+    form.description = item.description
 
 
-    form.details =
-        item.details?.map(
-            detail => ({
+    form.details = item.details?.map(
 
-                product_variant_id:
-                    detail.product_variant_id,
+        detail => ({
 
-                unit_id:
-                    detail.unit_id,
+            purchase_request_detail_id:
+                detail.purchase_request_detail_id ?? null,
 
-                qty:
-                    detail.qty,
+            product_variant_id:
+                detail.product_variant_id,
 
-                received_qty:
-                    detail.received_qty ?? 0,
+            unit_id:
+                detail.unit_id,
 
-                remaining_qty:
-                    detail.remaining_qty ??
-                    detail.qty,
+            qty:
+                detail.qty,
 
-                unit_price:
-                    detail.unit_price ?? 0,
+            received_qty:
+                detail.received_qty ?? 0,
 
-                discount_rate:
-                    detail.discount_rate ?? 0,
+            remaining_qty:
+                detail.remaining_qty ?? detail.qty,
 
-                discount_amount:
-                    detail.discount_amount ?? 0,
+            unit_price:
+                detail.unit_price ?? 0,
 
-                tax_rate:
-                    detail.tax_rate ?? 0,
+            discount_rate:
+                detail.discount_rate ?? 0,
 
-                tax_amount:
-                    detail.tax_amount ?? 0,
+            discount_amount:
+                detail.discount_amount ?? 0,
 
-                subtotal:
-                    detail.subtotal ?? 0,
+            tax_rate:
+                detail.tax_rate ?? 0,
 
-                total:
-                    detail.total ?? 0,
+            tax_amount:
+                detail.tax_amount ?? 0,
 
-                description:
-                    detail.description,
+            subtotal:
+                detail.subtotal ?? 0,
 
-            })
-        ) ?? [
+            total:
+                detail.total ?? 0,
 
-            createEmptyDetail(),
+            description:
+                detail.description,
 
-        ]
+        })
+
+    ) ?? [
+
+        createEmptyDetail(),
+
+    ]
 
 
-    view.value =
-        'form'
+    view.value = 'form'
 
 
     nextTick(() => {
 
-        form.warehouse_id =
-            item.warehouse_id
+        form.warehouse_id = item.warehouse_id
 
-        isEditing.value =
-            false
+        isEditing.value = false
 
     })
 
@@ -1122,18 +1263,14 @@ function editPurchaseOrder(item)
 |--------------------------------------------------------------------------
 */
 
-const selectedItem =
-    ref(null)
+const selectedItem = ref(null)
 
 
-function showPurchaseOrder(item)
-{
+function showPurchaseOrder(item) {
 
-    selectedItem.value =
-        item
+    selectedItem.value = item
 
-    view.value =
-        'show'
+    view.value = 'show'
 
 }
 
@@ -1144,14 +1281,11 @@ function showPurchaseOrder(item)
 |--------------------------------------------------------------------------
 */
 
-function backToList()
-{
+function backToList() {
 
-    selectedItem.value =
-        null
+    selectedItem.value = null
 
-    view.value =
-        'list'
+    view.value = 'list'
 
 }
 
@@ -1162,8 +1296,7 @@ function backToList()
 |--------------------------------------------------------------------------
 */
 
-function duplicate(item)
-{
+function duplicate(item) {
 
     router.post(
 
@@ -1208,19 +1341,14 @@ function duplicate(item)
 |--------------------------------------------------------------------------
 */
 
-const deleteItem =
-    ref(null)
+const deleteItem = ref(null)
 
-const showDelete =
-    ref(false)
+const showDelete = ref(false)
 
 
-function openDelete(item)
-{
+function openDelete(item) {
 
-    if (
-        item.status !== 'Draft'
-    ) {
+    if (item.status !== 'Draft') {
 
         error(
             'Only Draft purchase order can be deleted.'
@@ -1230,56 +1358,42 @@ function openDelete(item)
 
     }
 
+    deleteItem.value = item
 
-    deleteItem.value =
-        item
-
-    showDelete.value =
-        true
+    showDelete.value = true
 
 }
 
 
-function closeDelete()
-{
+function closeDelete() {
 
-    deleteItem.value =
-        null
+    deleteItem.value = null
 
-    showDelete.value =
-        false
+    showDelete.value = false
 
 }
 
 
-const deleteMessage =
-    computed(() => {
+const deleteMessage = computed(() => {
 
-        if (
-            !deleteItem.value
-        ) {
+    if (!deleteItem.value) {
 
-            return ''
+        return ''
 
-        }
+    }
 
+    return `Are you sure you want to delete "${deleteItem.value.number}"?`
 
-        return `Are you sure you want to delete "${deleteItem.value.number}"?`
-
-    })
+})
 
 
-function confirmDelete()
-{
+function confirmDelete() {
 
-    if (
-        !deleteItem.value
-    ) {
+    if (!deleteItem.value) {
 
         return
 
     }
-
 
     router.delete(
 
@@ -1324,62 +1438,48 @@ function confirmDelete()
 |--------------------------------------------------------------------------
 */
 
-const showBulkDelete =
-    ref(false)
+const showBulkDelete = ref(false)
 
 
-function openBulkDelete()
-{
+function openBulkDelete() {
 
-    if (
-        !selectedRows.value.length
-    ) {
+    if (!selectedRows.value.length) {
 
         return
 
     }
 
-
-    showBulkDelete.value =
-        true
+    showBulkDelete.value = true
 
 }
 
 
-const bulkDeleteMessage =
-    computed(() => {
+const bulkDeleteMessage = computed(() => {
 
-        const total =
-            selectedRows.value.length
+    const total = selectedRows.value.length
 
+    if (!total) {
 
-        if (!total) {
+        return ''
 
-            return ''
+    }
 
-        }
+    return `Are you sure you want to delete ${total} selected Purchase Order document(s)?`
 
-
-        return `Are you sure you want to delete ${total} selected Purchase Order document(s)?`
-
-    })
+})
 
 
-function bulkDelete()
-{
+function bulkDelete() {
 
     router.delete(
 
-        route(
-            'purchase-orders.bulk-delete'
-        ),
+        route('purchase-orders.bulk-delete'),
 
         {
 
             data: {
 
-                ids:
-                    selectedRows.value,
+                ids: selectedRows.value,
 
             },
 
@@ -1387,11 +1487,9 @@ function bulkDelete()
 
             onSuccess: () => {
 
-                showBulkDelete.value =
-                    false
+                showBulkDelete.value = false
 
-                selectedRows.value =
-                    []
+                selectedRows.value = []
 
                 success(
                     'Success',
@@ -1409,12 +1507,11 @@ function bulkDelete()
 
 /*
 |--------------------------------------------------------------------------
-| Submit
+| Submit Modal
 |--------------------------------------------------------------------------
 */
 
-const submitItem =
-    ref(null)
+const submitItem = ref(null)
 
 const showSubmitModal = ref(false)
 
@@ -1422,10 +1519,10 @@ const selectedPurchaseOrder = ref(null)
 
 const submitLoading = ref(false)
 
+
 const openSubmit = (purchaseOrder) => {
 
-    selectedPurchaseOrder.value =
-        purchaseOrder
+    selectedPurchaseOrder.value = purchaseOrder
 
     showSubmitModal.value = true
 
@@ -1440,21 +1537,28 @@ const closeSubmit = () => {
 
 }
 
+
 const confirmSubmit = () => {
 
     if (!selectedPurchaseOrder.value) {
+
         return
+
     }
 
     submitLoading.value = true
 
     router.post(
+
         route(
             'purchasing.purchase-orders.submit',
             selectedPurchaseOrder.value.id
         ),
+
         {},
+
         {
+
             preserveScroll: true,
 
             onSuccess: () => {
@@ -1479,24 +1583,23 @@ const confirmSubmit = () => {
             },
 
         }
+
     )
 
 }
-const submitMessage =
-    computed(() => {
-
-        if (
-            !submitItem.value
-        ) {
-
-            return ''
-
-        }
 
 
-        return `Are you sure you want to submit "${submitItem.value.number}"?`
+const submitMessage = computed(() => {
 
-    })
+    if (!submitItem.value) {
+
+        return ''
+
+    }
+
+    return `Are you sure you want to submit "${submitItem.value.number}"?`
+
+})
 
 
 /*
@@ -1505,50 +1608,36 @@ const submitMessage =
 |--------------------------------------------------------------------------
 */
 
-const approveItem =
-    ref(null)
+const approveItem = ref(null)
 
-const showApprove =
-    ref(false)
+const showApprove = ref(false)
 
 
-function openApprove(
-    purchaseOrder
-)
-{
+function openApprove(purchaseOrder) {
 
-    approveItem.value =
-        purchaseOrder
+    approveItem.value = purchaseOrder
 
-    showApprove.value =
-        true
+    showApprove.value = true
 
 }
 
 
-function closeApprove()
-{
+function closeApprove() {
 
-    approveItem.value =
-        null
+    approveItem.value = null
 
-    showApprove.value =
-        false
+    showApprove.value = false
 
 }
 
 
-function confirmApprove()
-{
+function confirmApprove() {
 
-    if (
-        !approveItem.value
-    ) {
+    if (!approveItem.value) {
 
         return
 
     }
-
 
     router.post(
 
@@ -1595,63 +1684,44 @@ function confirmApprove()
 |--------------------------------------------------------------------------
 */
 
-const rejectItem =
-    ref(null)
+const rejectItem = ref(null)
 
-const showReject =
-    ref(false)
+const showReject = ref(false)
 
-const rejectReason =
-    ref('')
+const rejectReason = ref('')
 
 
-function openReject(
-    purchaseOrder
-)
-{
+function openReject(purchaseOrder) {
 
-    rejectItem.value =
-        purchaseOrder
+    rejectItem.value = purchaseOrder
 
-    rejectReason.value =
-        ''
+    rejectReason.value = ''
 
-    showReject.value =
-        true
+    showReject.value = true
 
 }
 
 
-function closeReject()
-{
+function closeReject() {
 
-    rejectItem.value =
-        null
+    rejectItem.value = null
 
-    rejectReason.value =
-        ''
+    rejectReason.value = ''
 
-    showReject.value =
-        false
+    showReject.value = false
 
 }
 
 
-function confirmReject()
-{
+function confirmReject() {
 
-    if (
-        !rejectItem.value
-    ) {
+    if (!rejectItem.value) {
 
         return
 
     }
 
-
-    if (
-        !rejectReason.value.trim()
-    ) {
+    if (!rejectReason.value.trim()) {
 
         error(
             'Rejection reason is required.'
@@ -1660,7 +1730,6 @@ function confirmReject()
         return
 
     }
-
 
     router.post(
 
@@ -1671,8 +1740,7 @@ function confirmReject()
 
         {
 
-            reason:
-                rejectReason.value.trim(),
+            reason: rejectReason.value.trim(),
 
         },
 
@@ -1712,50 +1780,36 @@ function confirmReject()
 |--------------------------------------------------------------------------
 */
 
-const sendItem =
-    ref(null)
+const sendItem = ref(null)
 
-const showSend =
-    ref(false)
+const showSend = ref(false)
 
 
-function openSend(
-    purchaseOrder
-)
-{
+function openSend(purchaseOrder) {
 
-    sendItem.value =
-        purchaseOrder
+    sendItem.value = purchaseOrder
 
-    showSend.value =
-        true
+    showSend.value = true
 
 }
 
 
-function closeSend()
-{
+function closeSend() {
 
-    sendItem.value =
-        null
+    sendItem.value = null
 
-    showSend.value =
-        false
+    showSend.value = false
 
 }
 
 
-function confirmSend()
-{
+function confirmSend() {
 
-    if (
-        !sendItem.value
-    ) {
+    if (!sendItem.value) {
 
         return
 
     }
-
 
     router.post(
 
@@ -1796,21 +1850,17 @@ function confirmSend()
 }
 
 
-const sendMessage =
-    computed(() => {
+const sendMessage = computed(() => {
 
-        if (
-            !sendItem.value
-        ) {
+    if (!sendItem.value) {
 
-            return ''
+        return ''
 
-        }
+    }
 
+    return `Are you sure you want to send "${sendItem.value.number}" to supplier?`
 
-        return `Are you sure you want to send "${sendItem.value.number}" to supplier?`
-
-    })
+})
 
 
 /*
@@ -1819,50 +1869,36 @@ const sendMessage =
 |--------------------------------------------------------------------------
 */
 
-const confirmItem =
-    ref(null)
+const confirmItem = ref(null)
 
-const showConfirm =
-    ref(false)
+const showConfirm = ref(false)
 
 
-function openConfirm(
-    purchaseOrder
-)
-{
+function openConfirm(purchaseOrder) {
 
-    confirmItem.value =
-        purchaseOrder
+    confirmItem.value = purchaseOrder
 
-    showConfirm.value =
-        true
+    showConfirm.value = true
 
 }
 
 
-function closeConfirm()
-{
+function closeConfirm() {
 
-    confirmItem.value =
-        null
+    confirmItem.value = null
 
-    showConfirm.value =
-        false
+    showConfirm.value = false
 
 }
 
 
-function confirmPurchaseOrder()
-{
+function confirmPurchaseOrder() {
 
-    if (
-        !confirmItem.value
-    ) {
+    if (!confirmItem.value) {
 
         return
 
     }
-
 
     router.post(
 
@@ -1903,51 +1939,15 @@ function confirmPurchaseOrder()
 }
 
 
-const confirmMessage =
-    computed(() => {
+const confirmMessage = computed(() => {
 
-        if (
-            !confirmItem.value
-        ) {
+    if (!confirmItem.value) {
 
-            return ''
+        return ''
 
-        }
+    }
 
-
-        return `Are you sure you want to confirm "${confirmItem.value.number}"?`
-
-    })
-
-
-/*
-|--------------------------------------------------------------------------
-| Lifecycle
-|--------------------------------------------------------------------------
-*/
-
-onMounted(() => {
-
-    removeStartListener =
-        router.on(
-            'start',
-            startLoading
-        )
-
-    removeFinishListener =
-        router.on(
-            'finish',
-            stopLoading
-        )
-
-})
-
-
-onUnmounted(() => {
-
-    removeStartListener?.()
-
-    removeFinishListener?.()
+    return `Are you sure you want to confirm "${confirmItem.value.number}"?`
 
 })
 
@@ -1958,23 +1958,9 @@ onUnmounted(() => {
 |--------------------------------------------------------------------------
 */
 
-const sort =
-    ref(
-        props.filters?.sort_by ?? 'id'
-    )
+function sortBy(column) {
 
-const direction =
-    ref(
-        props.filters?.sort_direction ?? 'desc'
-    )
-
-
-function sortBy(column)
-{
-
-    if (
-        sort.value === column
-    ) {
+    if (sort.value === column) {
 
         direction.value =
             direction.value === 'asc'
@@ -1983,104 +1969,45 @@ function sortBy(column)
 
     } else {
 
-        sort.value =
-            column
+        sort.value = column
 
-        direction.value =
-            'asc'
+        direction.value = 'asc'
 
     }
 
-
-    router.get(
-
-        route(
-            'purchase-orders.index'
-        ),
-
-        {
-
-            search:
-                filters.search,
-
-            branch_id:
-                filters.branch_id,
-
-            warehouse_id:
-                filters.warehouse_id,
-
-            supplier_id:
-                filters.supplier_id,
-
-            status:
-                filters.status,
-
-            per_page:
-                filters.per_page,
-
-            sort_by:
-                sort.value,
-
-            sort_direction:
-                direction.value,
-
-        },
-
-        {
-
-            preserveState:
-                true,
-
-            preserveScroll:
-                true,
-
-            replace:
-                true,
-
-        }
-
-    )
+    loadData()
 
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| Filtered Warehouse
+| Filtered Warehouse For Form
 |--------------------------------------------------------------------------
 */
 
-const isEditing =
-    ref(false)
+const isEditing = ref(false)
 
 
-const filteredWarehouses =
-    computed(() => {
+const filteredWarehouses = computed(() => {
 
-        if (
-            !form.branch_id
-        ) {
+    if (!form.branch_id) {
 
-            return []
+        return []
 
-        }
+    }
 
+    return props.warehouses.filter(
 
-        return props.warehouses.filter(
+        warehouse =>
 
-            warehouse =>
+            Number(warehouse.branch_id) ===
 
-                Number(
-                    warehouse.branch_id
-                ) ===
+            Number(form.branch_id)
 
-                Number(
-                    form.branch_id
-                )
+    )
 
-        )
-
-    })
+})
 
 
 watch(
@@ -2104,76 +2031,91 @@ watch(
 
         }
 
-
-        form.warehouse_id =
-            null
+        form.warehouse_id = null
 
     }
 
 )
+
+
 /*
 |--------------------------------------------------------------------------
 | Action Permissions
 |--------------------------------------------------------------------------
 */
 
-function canEdit(item)
-{
+function canEdit(item) {
+
     return [
+
         'Draft',
         'Rejected',
+
     ].includes(item.status)
+
 }
 
 
-function canSubmit(item)
-{
+function canSubmit(item) {
+
     return item.status === 'Draft'
+
 }
 
 
-function canApprove(item)
-{
+function canApprove(item) {
+
     return item.status === 'Submitted'
+
 }
 
 
-function canReject(item)
-{
+function canReject(item) {
+
     return item.status === 'Submitted'
+
 }
 
 
-function canSend(item)
-{
+function canSend(item) {
+
     return item.status === 'Approved'
+
 }
 
 
-function canConfirm(item)
-{
+function canConfirm(item) {
+
     return item.status === 'Sent'
+
 }
 
 
-function canCancel(item)
-{
+function canCancel(item) {
+
     return [
+
         'Submitted',
         'Approved',
         'Sent',
         'Confirmed',
+
     ].includes(item.status)
+
 }
 
 
-function canDelete(item)
-{
+function canDelete(item) {
+
     return [
+
         'Draft',
         'Rejected',
+
     ].includes(item.status)
+
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2181,131 +2123,95 @@ function canDelete(item)
 |--------------------------------------------------------------------------
 */
 
-const viewLoading =
-    ref(false)
+const viewLoading = ref(false)
 
-const showView =
-    ref(false)
+const showView = ref(false)
 
-const viewItem =
-    ref(null)
+const viewItem = ref(null)
 
 
-async function openView(item)
-{
+async function openView(item) {
 
-    viewLoading.value =
-        true
+    viewLoading.value = true
 
-    viewItem.value =
-        null
+    viewItem.value = null
 
-    showView.value =
-        true
-
+    showView.value = true
 
     try {
 
-        const response =
-            await fetch(
+        const response = await fetch(
 
-                route(
-                    'purchase-orders.data',
-                    item.id
-                ),
+            route(
+                'purchase-orders.data',
+                item.id
+            ),
 
-                {
+            {
 
-                    headers: {
+                headers: {
 
-                        Accept:
-                            'application/json',
+                    Accept: 'application/json',
 
-                        'X-Requested-With':
-                            'XMLHttpRequest',
+                    'X-Requested-With': 'XMLHttpRequest',
 
-                    },
+                },
 
-                }
+            }
 
-            )
+        )
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
-
                 `HTTP ${response.status}`
-
             )
 
         }
 
 
-        const responseData =
-            await response.json()
+        const responseData = await response.json()
 
 
         console.log(
-
             'PURCHASE ORDER VIEW RESPONSE:',
-
             responseData
-
         )
 
 
-        viewItem.value =
-            responseData.data
+        viewItem.value = responseData.data
 
 
-    } catch (
-        exception
-    ) {
+    } catch (exception) {
 
         console.error(
-
             'PURCHASE ORDER VIEW ERROR:',
-
             exception
-
         )
 
+        showView.value = false
 
-        showView.value =
-            false
-
-        viewItem.value =
-            null
-
+        viewItem.value = null
 
         error(
-
             'Failed to load purchase order detail.'
-
         )
-
 
     } finally {
 
-        viewLoading.value =
-            false
+        viewLoading.value = false
 
     }
 
 }
 
 
-function closeView()
-{
+function closeView() {
 
-    viewItem.value =
-        null
+    viewItem.value = null
 
-    showView.value =
-        false
+    showView.value = false
 
 }
 
@@ -2316,18 +2222,16 @@ function closeView()
 |--------------------------------------------------------------------------
 */
 
-function exportSelected()
-{
+function exportSelected() {
 
     console.log(
-
         'EXPORT SELECTED:',
-
         selectedRows.value
-
     )
 
 }
+
+
 /*
 |--------------------------------------------------------------------------
 | Currency
@@ -2337,62 +2241,96 @@ function exportSelected()
 const formatCurrency = (value) => {
 
     return new Intl.NumberFormat(
+
         'id-ID',
+
         {
+
             style: 'currency',
+
             currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+
+            minimumFractionDigits: 2,
+
+            maximumFractionDigits: 2,
+
         }
+
     ).format(
+
         Number(value || 0)
+
     )
 
 }
-const showCancelModal = ref(false)
 
-//const selectedPurchaseOrder = ref(null)
+
+/*
+|--------------------------------------------------------------------------
+| Cancel
+|--------------------------------------------------------------------------
+*/
+
+const showCancelModal = ref(false)
 
 const cancelLoading = ref(false)
 
 const cancelReason = ref('')
-function openCancel(item)
-{
+
+
+function openCancel(item) {
+
     selectedPurchaseOrder.value = item
 
     cancelReason.value = ''
 
     showCancelModal.value = true
+
 }
-function closeCancel()
-{
+
+
+function closeCancel() {
+
     showCancelModal.value = false
 
     selectedPurchaseOrder.value = null
 
     cancelReason.value = ''
+
 }
-function confirmCancel()
-{
+
+
+function confirmCancel() {
+
     if (!selectedPurchaseOrder.value) {
+
         return
+
     }
 
     if (!cancelReason.value.trim()) {
+
         return
+
     }
 
     cancelLoading.value = true
 
     router.post(
+
         route(
             'purchasing.purchase-orders.cancel',
             selectedPurchaseOrder.value.id
         ),
+
         {
+
             reason: cancelReason.value,
+
         },
+
         {
+
             preserveScroll: true,
 
             onFinish: () => {
@@ -2406,764 +2344,1239 @@ function confirmCancel()
                 closeCancel()
 
             },
+
         }
+
     )
+
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Lifecycle
+|--------------------------------------------------------------------------
+*/
+
+onMounted(() => {
+
+    removeStartListener = router.on(
+        'start',
+        startLoading
+    )
+
+    removeFinishListener = router.on(
+        'finish',
+        stopLoading
+    )
+
+})
+
+
+onUnmounted(() => {
+
+    clearTimeout(debounceTimer)
+
+    removeStartListener?.()
+
+    removeFinishListener?.()
+
+})
+
 </script>
 <template>
-<AppLayout>
-   
-    <Transition
-        name="page"
-        mode="out-in"
-    >
+    <AppLayout title="Purchase Orders">
 
-        <!-- LIST part b-->
-        <div
-            v-if="view === 'list'"
-            key="list"
+        <Transition
+            name="page"
+            mode="out-in"
         >
 
-        <div class="space-y-6">
-
             <!-- ===================================================== -->
-            <!-- Page Header -->
-
-            <!-- <PageHeader
-                icon="📦"
-                title="Purchae Request"
-                subtitle="Manage Purchase Request transactions."
-            />===================================================== -->
-
-            <!-- ===================================================== -->
-            <!-- Statistics -->
+            <!-- LIST -->
             <!-- ===================================================== -->
 
             <div
+                v-if="view === 'list'"
+                key="list"
+                class="space-y-6"
+            >
+
+                <!-- ================================================= -->
+                <!-- Breadcrumb -->
+                <!-- ================================================= -->
+
+                <div class="flex items-center gap-2 text-sm">
+
+                    <span class="text-gray-500 dark:text-gray-400">
+                        Purchasing
+                    </span>
+
+                    <span class="text-gray-400">/</span>
+
+                    <span class="font-medium text-gray-900 dark:text-white">
+                        Purchase Orders
+                    </span>
+
+                </div>
+
+
+                <!-- ================================================= -->
+                <!-- Page Header -->
+                <!-- ================================================= -->
+
+                <div
+                    class="
+                        flex
+                        flex-col
+                        gap-4
+                        lg:flex-row
+                        lg:items-center
+                        lg:justify-between
+                    "
+                >
+
+                    <div class="min-w-0">
+
+                        <h1
+                            class="
+                                text-2xl
+                                font-bold
+                                text-gray-900
+                                dark:text-white
+                            "
+                        >
+                            Purchase Orders
+                        </h1>
+
+                        <p
+                            class="
+                                mt-1
+                                text-sm
+                                text-gray-600
+                                dark:text-gray-400
+                            "
+                        >
+                            Manage and monitor your purchase orders.
+                        </p>
+
+                    </div>
+
+
+                    <!-- Header Actions -->
+
+                    <div
+                        class="
+                            flex
+                            w-full
+                            flex-col
+                            gap-2
+                            sm:flex-row
+                            lg:w-auto
+                            sm:items-center
+                        "
+                    >
+
+                        <!-- Create -->
+
+                        <BaseButton
+                            class="w-full shrink-0 sm:w-auto"
+                            @click="create"
+                        >
+
+                            <template #icon>
+
+                                <PlusIcon class="h-5 w-5" />
+
+                            </template>
+
+                            Create
+
+                        </BaseButton>
+
+
+                        <!-- Refresh -->
+
+                        <BaseButton
+                            variant="secondary"
+                            class="w-full shrink-0 sm:w-auto"
+                            @click="refresh"
+                        >
+
+                            <span
+                                class="
+                                    inline-flex
+                                    items-center
+                                    justify-center
+                                    gap-2
+                                    whitespace-nowrap
+                                "
+                            >
+
+                                <ArrowPathIcon
+                                    class="
+                                        h-4
+                                        w-4
+                                        shrink-0
+                                        text-emerald-600
+                                        dark:text-emerald-400
+                                    "
+                                />
+
+                                Refresh
+
+                            </span>
+
+                        </BaseButton>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ================================================= -->
+                <!-- Statistics -->
+                <!-- ================================================= -->
+
+                <div
                     class="
                         grid
                         grid-cols-1
                         gap-4
-                        md:grid-cols-2
+                        sm:grid-cols-2
                         xl:grid-cols-4
                     "
                 >
+
+                    <!-- Total Purchase Orders -->
 
                     <StatsCard
                         title="Total Purchase Order"
                         :value="statistics?.total ?? 0"
                         icon="📋"
+                        color="blue"
                     />
+
+
+                    <!-- Draft -->
 
                     <StatsCard
                         title="Draft"
                         :value="statistics?.draft ?? 0"
                         icon="📝"
+                        color="gray"
                     />
+
+
+                    <!-- Submitted -->
 
                     <StatsCard
                         title="Submitted"
                         :value="statistics?.submitted ?? 0"
                         icon="📤"
+                        color="indigo"
                     />
+
+
+                    <!-- Approved -->
 
                     <StatsCard
                         title="Approved"
                         :value="statistics?.approved ?? 0"
                         icon="✅"
+                        color="green"
                     />
+
+
+                    <!-- Sent -->
 
                     <StatsCard
                         title="Sent"
                         :value="statistics?.sent ?? 0"
                         icon="📨"
+                        color="purple"
                     />
+
+
+                    <!-- Confirmed -->
 
                     <StatsCard
                         title="Confirmed"
                         :value="statistics?.confirmed ?? 0"
                         icon="🤝"
+                        color="cyan"
                     />
+
+
+                    <!-- Partially Received -->
 
                     <StatsCard
                         title="Partially Received"
                         :value="statistics?.partially_received ?? 0"
                         icon="📦"
+                        color="yellow"
                     />
+
+
+                    <!-- Fully Received -->
 
                     <StatsCard
                         title="Fully Received"
                         :value="statistics?.fully_received ?? 0"
                         icon="✔️"
+                        color="emerald"
                     />
 
                 </div>
 
-        <!-- ========================================================= -->
-        <!-- List Card -->
-        <!-- ========================================================= -->
-
-        <Card class="mt-4">
-
-            <!-- ===================================================== -->
-            <!-- Toolbar -->
-            <!-- ===================================================== -->
-
-          <div class="space-y-3">
-
-    <!-- Top Row -->
-
-    <div
-        class="
-            flex
-            flex-col
-            gap-2
-            sm:flex-row
-            sm:items-center
-        "
-    >
-
-        <!-- Search -->
-
-        <input
-            v-model="filters.search"
-            type="text"
-            placeholder="Search PO number..."
-            class="
-                min-w-0
-                flex-1
-                rounded-xl
-                border
-                border-gray-300
-                px-4
-                py-2.5
-            "
-        />
-
-
-        <!-- Refresh -->
-
-        <BaseButton
-            variant="secondary"
-            class="
-                w-full
-                shrink-0
-                whitespace-nowrap
-                sm:w-auto
-            "
-            @click="refresh"
-        >
-            Refresh
-        </BaseButton>
-
-    </div>
-
-
-    <!-- Bottom Row -->
-
-    <div
-        class="
-            grid
-            grid-cols-1
-            gap-2
-            sm:grid-cols-2
-            lg:flex
-            lg:flex-wrap
-            lg:items-center
-        "
-    >
-
-        <!-- Date Range -->
-
-        <FlatPickr
-            v-model="filters.date_range"
-            :config="{
-                mode: 'range',
-                dateFormat: 'Y-m-d',
-                allowInput: true,
-            }"
-            placeholder="Order Date"
-            class="
-                w-full
-                rounded-xl
-                border
-                border-gray-300
-                px-3
-                py-2.5
-                lg:w-56
-            "
-        />
-
-
-        <!-- Supplier -->
-
-        <div class="w-full lg:w-56">
-
-            <SearchableSelect
-                v-model="filters.supplier_id"
-                :options="suppliers"
-                label="label"
-                value-key="id"
-                placeholder="All Suppliers"
-            />
 
-        </div>
+                <!-- ================================================= -->
+                <!-- Purchase Order List -->
+                <!-- ================================================= -->
+
+                <Card>
+
+                    <!-- ============================================= -->
+                    <!-- Toolbar -->
+                    <!-- ============================================= -->
+
+                    <div
+                        class="
+                            flex
+                            flex-col
+                            gap-3
+                            border-b
+                            border-gray-200
+                            p-4
+                            dark:border-gray-700
+                            sm:flex-row
+                            sm:items-center
+                            sm:justify-between
+                        "
+                    >
+
+                        <div class="min-w-0">
+
+                            <h2
+                                class="
+                                    text-base
+                                    font-semibold
+                                    text-gray-900
+                                    dark:text-white
+                                "
+                            >
+                                Purchase Order List
+                            </h2>
+
+                            <p
+                                class="
+                                    mt-1
+                                    text-sm
+                                    text-gray-500
+                                    dark:text-gray-400
+                                "
+                            >
+                                Manage purchase order transactions.
+                            </p>
+
+                        </div>
+
+
+                        <!-- Search, Filter & Bulk Actions -->
+
+                        <div
+                            class="
+                                flex
+                                w-full
+                                flex-col
+                                gap-2
+                                sm:w-auto
+                                sm:flex-row
+                                sm:items-center
+                            "
+                        >
+
+                            <!-- Search -->
+
+                            <div class="relative w-full sm:w-64">
+
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    class="
+                                        pointer-events-none
+                                        absolute
+                                        left-3
+                                        top-1/2
+                                        h-4
+                                        w-4
+                                        -translate-y-1/2
+                                        text-gray-400
+                                    "
+                                >
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path
+                                        stroke-linecap="round"
+                                        d="m20 20-4-4"
+                                    />
+                                </svg>
+
+                                <input
+                                    v-model="filters.search"
+                                    type="text"
+                                    placeholder="Search PO Number..."
+                                    class="
+                                        w-full
+                                        rounded-lg
+                                        border
+                                        border-gray-300
+                                        bg-white
+                                        py-2
+                                        pl-9
+                                        pr-3
+                                        text-sm
+                                        shadow-sm
+                                        transition
+                                        placeholder:text-gray-400
+                                        focus:border-blue-500
+                                        focus:outline-none
+                                        focus:ring-2
+                                        focus:ring-blue-100
+                                        dark:border-gray-700
+                                        dark:bg-gray-800
+                                        dark:text-white
+                                        dark:placeholder:text-gray-500
+                                    "
+                                />
+
+                            </div>
+
+
+                            <!-- Filter -->
+
+                            <BaseButton
+                                variant="secondary"
+                                class="w-full shrink-0 sm:w-auto"
+                                @click="showFilters = !showFilters"
+                            >
+
+                                <span
+                                    class="
+                                        inline-flex
+                                        items-center
+                                        justify-center
+                                        gap-2
+                                        whitespace-nowrap
+                                    "
+                                >
+
+                                    <FunnelIcon class="h-4 w-4 shrink-0" />
+
+                                    Filter
+
+                                    <span
+                                        v-if="hasActiveFilter"
+                                        class="
+                                            h-2
+                                            w-2
+                                            shrink-0
+                                            rounded-full
+                                            bg-blue-500
+                                        "
+                                    ></span>
+
+                                </span>
+
+                            </BaseButton>
+
+
+                            <!-- Bulk Actions -->
+
+                            <BulkActionDropdown
+                                :count="selectedRows.length"
+                                :disabled="selectedRows.length === 0"
+                                :actions="[
+                                    'export',
+                                    'delete',
+                                ]"
+                                @delete="openBulkDelete"
+                                @export="exportSelected"
+                                class="w-full sm:w-auto"
+                            />
+
+                        </div>
+
+                    </div>
+
+
+                   <!-- ============================================= -->
+                    <!-- Filter Panel -->
+                    <!-- ============================================= -->
+
+                    <div
+                        v-if="showFilters"
+                        class="
+                            border-b
+                            border-gray-200
+                            bg-gray-50
+                            p-4
+                            dark:border-gray-700
+                            dark:bg-gray-800/50
+                        "
+                    >
+
+                        <!-- Filter Header -->
+
+                        <div
+                            class="
+                                mb-4
+                                flex
+                                flex-col
+                                gap-3
+                                sm:flex-row
+                                sm:items-center
+                                sm:justify-between
+                            "
+                        >
+
+                            <div>
+
+                                <h3
+                                    class="
+                                        text-sm
+                                        font-semibold
+                                        text-gray-900
+                                        dark:text-white
+                                    "
+                                >
+                                    Filter Purchase Orders
+                                </h3>
+
+                                <p
+                                    class="
+                                        mt-0.5
+                                        text-xs
+                                        text-gray-500
+                                        dark:text-gray-400
+                                    "
+                                >
+                                    Narrow down purchase orders using the filters below.
+                                </p>
+
+                            </div>
+
+
+                            <!-- Reset Filter -->
+
+                            <BaseButton
+                                variant="secondary"
+                                class="w-full shrink-0 sm:w-auto"
+                                @click="resetFilters"
+                            >
+
+                                <span
+                                    class="
+                                        inline-flex
+                                        items-center
+                                        justify-center
+                                        gap-2
+                                    "
+                                >
+
+                                    <ArrowPathIcon
+                                        class="
+                                            h-4
+                                            w-4
+                                            text-emerald-600
+                                            dark:text-emerald-400
+                                        "
+                                    />
+
+                                    Reset Filter
+
+                                </span>
+
+                            </BaseButton>
+
+                        </div>
+
+
+                        <!-- Filter Fields -->
+
+                        <div
+                            class="
+                                grid
+                                grid-cols-1
+                                gap-4
+                                sm:grid-cols-2
+                                xl:grid-cols-3
+                            "
+                        >
+
+                            <!-- Date Range -->
+
+                            <div class="min-w-0">
+
+                                <label
+                                    class="
+                                        mb-1.5
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        dark:text-gray-300
+                                    "
+                                >
+                                    Order Date
+                                </label>
+
+                                <FlatPickr
+                                    v-model="dateRange"
+                                    :config="dateRangeConfig"
+                                    placeholder="Select date range"
+                                    class="
+                                        w-full
+                                        rounded-lg
+                                        border
+                                        border-gray-300
+                                        bg-white
+                                        px-3
+                                        py-2.5
+                                        text-sm
+                                        shadow-sm
+                                        focus:border-blue-500
+                                        focus:outline-none
+                                        focus:ring-2
+                                        focus:ring-blue-100
+                                        dark:border-gray-700
+                                        dark:bg-gray-800
+                                        dark:text-white
+                                    "
+                                />
+
+                            </div>
+
+
+                            <!-- Branch -->
+
+                            <div class="min-w-0">
+
+                                <label
+                                    class="
+                                        mb-1.5
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        dark:text-gray-300
+                                    "
+                                >
+                                    Branch
+                                </label>
+
+                                <SearchableSelect
+                                    v-model="filters.branch_id"
+                                    :options="branches"
+                                    label="label"
+                                    value-key="id"
+                                    placeholder="All Branches"
+                                />
+
+                            </div>
+
+
+                            <!-- Warehouse -->
+
+                            <div class="min-w-0">
+
+                                <label
+                                    class="
+                                        mb-1.5
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        dark:text-gray-300
+                                    "
+                                >
+                                    Warehouse
+                                </label>
+
+                                <SearchableSelect
+                                    v-model="filters.warehouse_id"
+                                    :options="filteredFilterWarehouses"
+                                    label="label"
+                                    value-key="id"
+                                    placeholder="All Warehouses"
+                                />
+
+                            </div>
+
+
+                            <!-- Supplier -->
+
+                            <div class="min-w-0">
+
+                                <label
+                                    class="
+                                        mb-1.5
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        dark:text-gray-300
+                                    "
+                                >
+                                    Supplier
+                                </label>
+
+                                <SearchableSelect
+                                    v-model="filters.supplier_id"
+                                    :options="suppliers"
+                                    label="label"
+                                    value-key="id"
+                                    placeholder="All Suppliers"
+                                />
+
+                            </div>
+
+
+                            <!-- Status -->
+
+                            <div class="min-w-0">
+
+                                <label
+                                    class="
+                                        mb-1.5
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        dark:text-gray-300
+                                    "
+                                >
+                                    Status
+                                </label>
+
+                                <SearchableSelect
+                                    v-model="filters.status"
+                                    :options="statusOptions"
+                                    label="label"
+                                    value-key="value"
+                                    placeholder="All Status"
+                                />
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- ============================================= -->
+                    <!-- Table -->
+                    <!-- ============================================= -->
+
+                    <div class="relative mt-6">
+
+                        <!-- Loading -->
+
+                        <LoadingOverlay
+                            :show="loading"
+                            text="Loading Purchase Orders..."
+                        />
+
+
+                        <!-- Data -->
+
+                        <DataTable
+                            v-if="purchaseOrders?.data?.length"
+                            sticky-header
+                            max-height="650px"
+                        >
+
+                            <DataTableHead sticky>
+
+                                <!-- Select All -->
+
+                                <DataTableHeaderCell
+                                    width="60px"
+                                    align="center"
+                                >
+
+                                    <input
+                                        ref="selectAllRef"
+                                        type="checkbox"
+                                        :checked="isAllSelected"
+                                        @change="toggleSelectAll"
+                                        class="rounded border-gray-300"
+                                    />
+
+                                </DataTableHeaderCell>
+
+
+                                <!-- PO Number -->
+
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="number"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="180px"
+                                >
+                                    PO Number
+                                </DataTableHeaderCell>
+
+
+                                <!-- Order Date -->
+
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="order_date"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="150px"
+                                >
+                                    Order Date
+                                </DataTableHeaderCell>
+
+
+                                <!-- Supplier -->
+
+                                <DataTableHeaderCell width="220px">
+                                    Supplier
+                                </DataTableHeaderCell>
+
+
+                                <!-- Required Date -->
+
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="required_date"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="150px"
+                                >
+                                    Required Date
+                                </DataTableHeaderCell>
+
+
+                                <!-- Location -->
+
+                                <DataTableHeaderCell width="220px">
+                                    Location
+                                </DataTableHeaderCell>
+
+
+                                <!-- Items -->
+
+                                <DataTableHeaderCell
+                                    width="90px"
+                                    align="right"
+                                >
+                                    Items
+                                </DataTableHeaderCell>
+
+
+                                <!-- Total -->
+
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="grand_total"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="160px"
+                                    align="right"
+                                >
+                                    Total
+                                </DataTableHeaderCell>
+
+
+                                <!-- Status -->
+
+                                <DataTableHeaderCell
+                                    sortable
+                                    column="status"
+                                    :sort="sort"
+                                    :direction="direction"
+                                    @sort="sortBy"
+                                    width="150px"
+                                    align="center"
+                                >
+                                    Status
+                                </DataTableHeaderCell>
+
+
+                                <!-- Actions -->
+
+                                <DataTableHeaderCell
+                                    width="100px"
+                                    align="center"
+                                >
+                                    Actions
+                                </DataTableHeaderCell>
+
+                            </DataTableHead>
+
+
+                            <DataTableBody>
+
+                                <DataTableRow
+                                    v-for="item in (purchaseOrders?.data ?? [])"
+                                    :key="item.id"
+                                >
+
+                                    <!-- Checkbox -->
+
+                                    <DataTableCell align="center">
+
+                                        <input
+                                            v-model="selectedRows"
+                                            :value="item.id"
+                                            type="checkbox"
+                                            class="rounded border-gray-300"
+                                        />
+
+                                    </DataTableCell>
+
 
+                                    <!-- PO Number -->
+
+                                    <DataTableCell>
 
-        <!-- Status -->
+                                        <span class="font-medium">
+                                            {{ item.number }}
+                                        </span>
 
-        <div class="w-full lg:w-44">
+                                    </DataTableCell>
 
-            <SearchableSelect
-                v-model="filters.status"
-                :options="statusOptions"
-                label="label"
-                value-key="value"
-                placeholder="All Status"
-            />
 
-        </div>
+                                    <!-- Order Date -->
 
+                                    <DataTableCell>
 
-        <!-- Actions -->
+                                        {{
+                                            item.order_date
+                                                ? formatDate(item.order_date)
+                                                : '-'
+                                        }}
 
-        <div
-            class="
-                grid
-                grid-cols-2
-                gap-2
-                sm:col-span-2
-                lg:flex
-                lg:items-center
-            "
-        >
+                                    </DataTableCell>
 
-            <!-- Add -->
 
-            <BaseButton
-                class="
-                    w-full
-                    whitespace-nowrap
-                    lg:w-auto
-                "
-                @click="create"
-            >
+                                    <!-- Supplier -->
 
-                <template #icon>
+                                    <DataTableCell>
 
-                    <PlusIcon class="h-5 w-5" />
+                                        <div class="font-medium">
+                                            {{ item.supplier?.name ?? '-' }}
+                                        </div>
+
+                                        <div
+                                            v-if="item.supplier?.supplier_code"
+                                            class="text-xs text-gray-500"
+                                        >
+                                            {{ item.supplier.supplier_code }}
+                                        </div>
+
+                                    </DataTableCell>
 
-                </template>
 
-                Add
+                                    <!-- Required Date -->
 
-            </BaseButton>
+                                    <DataTableCell>
 
+                                        {{
+                                            item.required_date
+                                                ? formatDate(item.required_date)
+                                                : '-'
+                                        }}
 
-            <!-- Bulk -->
+                                    </DataTableCell>
 
-            <BulkActionDropdown
-                :count="selectedRows.length"
-                :disabled="
-                    selectedRows.length === 0
-                "
-                :actions="[
-                    'export',
-                    'delete',
-                ]"
-                @delete="openBulkDelete"
-                @export="exportSelected"
-                class="
-                    w-full
-                    lg:w-auto
-                "
-            />
 
-        </div>
+                                    <!-- Location -->
 
-    </div>
+                                    <DataTableCell>
 
-</div>
-            <!-- ===================================================== -->
-            <!-- Table -->
-            <!-- ===================================================== -->
+                                        <div class="font-medium">
+                                            {{ item.branch?.name ?? '-' }}
+                                        </div>
 
-            <div class="mt-6">
+                                        <div class="text-xs text-gray-500">
+                                            {{ item.warehouse?.name ?? '-' }}
+                                        </div>
 
-                <!-- Loading -->
+                                    </DataTableCell>
 
-                <LoadingOverlay
-                    :show="loading"
-                    text="Loading Purchase Order..."
-                />
 
+                                    <!-- Items -->
 
-                <!-- Data -->
+                                    <DataTableCell align="right">
 
-                <DataTable
-                    v-if="purchaseOrders?.data?.length"
-                    sticky-header
-                    max-height="650px"
-                >
+                                        {{
+                                            item.total_items
+                                            ?? item.details_count
+                                            ?? item.details?.length
+                                            ?? 0
+                                        }}
 
-                   <DataTableHead sticky>
+                                    </DataTableCell>
 
-    <!-- Select All -->
 
-    <DataTableHeaderCell
-        width="60px"
-        align="center"
-    >
+                                    <!-- Total -->
 
-        <input
-            ref="selectAllRef"
-            type="checkbox"
-            :checked="isAllSelected"
-            @change="toggleSelectAll"
-            class="rounded border-gray-300"
-        />
+                                    <DataTableCell align="right">
 
-    </DataTableHeaderCell>
+                                        <span class="font-semibold">
+                                            {{ formatCurrency(item.grand_total) }}
+                                        </span>
 
+                                    </DataTableCell>
 
-    <!-- PO Number -->
 
-    <DataTableHeaderCell
-        sortable
-        column="number"
-        :sort="sort"
-        :direction="direction"
-        @sort="sortBy"
-        width="180px"
-    >
-        PO Number
-    </DataTableHeaderCell>
+                                    <!-- Status -->
 
+                                    <DataTableCell align="center">
 
-    <!-- Order Date -->
+                                        <StatusBadge
+                                            :status="item.status"
+                                        />
 
-    <DataTableHeaderCell
-        sortable
-        column="order_date"
-        :sort="sort"
-        :direction="direction"
-        @sort="sortBy"
-        width="150px"
-    >
-        Order Date
-    </DataTableHeaderCell>
+                                    </DataTableCell>
 
 
-    <!-- Supplier -->
+                                    <!-- Actions -->
 
-    <DataTableHeaderCell
-        width="220px"
-    >
-        Supplier
-    </DataTableHeaderCell>
+                                    <DataTableCell align="center">
 
+                                        <ActionDropdown
 
-    <!-- Required Date -->
+                                            @view="openView(item)"
+                                            @edit="editPurchaseOrder(item)"
+                                            @duplicate="duplicate(item)"
+                                            @submit="openSubmit(item)"
+                                            @approve="openApprove(item)"
+                                            @reject="openReject(item)"
+                                            @send="openSend(item)"
+                                            @confirm="openConfirm(item)"
+                                            @cancel="openCancel(item)"
+                                            @delete="openDelete(item)"
 
-    <DataTableHeaderCell
-        sortable
-        column="required_date"
-        :sort="sort"
-        :direction="direction"
-        @sort="sortBy"
-        width="150px"
-    >
-        Required Date
-    </DataTableHeaderCell>
+                                            :showEdit="canEdit(item)"
+                                            :showDuplicate="true"
+                                            :showSubmit="canSubmit(item)"
+                                            :showApprove="canApprove(item)"
+                                            :showReject="canReject(item)"
+                                            :showSend="canSend(item)"
+                                            :showConfirm="canConfirm(item)"
+                                            :showCancel="canCancel(item)"
+                                            :showExport="false"
+                                            :showHistory="false"
+                                            :showDelete="canDelete(item)"
 
+                                        />
 
-    <!-- Location -->
+                                    </DataTableCell>
 
-    <DataTableHeaderCell
-        width="220px"
-    >
-        Location
-    </DataTableHeaderCell>
+                                </DataTableRow>
 
+                            </DataTableBody>
 
-    <!-- Items -->
+                        </DataTable>
 
-    <DataTableHeaderCell
-        width="90px"
-        align="right"
-    >
-        Items
-    </DataTableHeaderCell>
 
+                        <!-- Empty -->
 
-    <!-- Total -->
+                        <TableEmpty
+                            v-else
+                            icon="📦"
+                            title="No Purchase Order Found"
+                            description="There are no Purchase Order transactions available."
+                        >
 
-    <DataTableHeaderCell
-        sortable
-        column="grand_total"
-        :sort="sort"
-        :direction="direction"
-        @sort="sortBy"
-        width="160px"
-        align="right"
-    >
-        Total
-    </DataTableHeaderCell>
+                            <template #action>
 
+                                <BaseButton
+                                    @click="create"
+                                >
+                                    Create Purchase Order
+                                </BaseButton>
 
-    <!-- Status -->
+                            </template>
 
-    <DataTableHeaderCell
-        sortable
-        column="status"
-        :sort="sort"
-        :direction="direction"
-        @sort="sortBy"
-        width="150px"
-        align="center"
-    >
-        Status
-    </DataTableHeaderCell>
+                        </TableEmpty>
 
+                    </div>
 
-    <!-- Actions -->
 
-    <DataTableHeaderCell
-        width="100px"
-        align="center"
-    >
-        Actions
-    </DataTableHeaderCell>
+                    <!-- ============================================= -->
+                    <!-- Pagination -->
+                    <!-- ============================================= -->
 
-</DataTableHead>
+                    <div class="mt-6">
 
+                        <TablePagination
+                            :data="purchaseOrders"
+                            label="Purchase Order"
+                        />
 
-<DataTableBody>
+                    </div>
 
-    <DataTableRow
-        v-for="item in (purchaseOrders?.data ?? [])"
-        :key="item.id"
-    >
+                </Card>
 
-        <!-- Checkbox -->
-
-        <DataTableCell align="center">
-
-            <input
-                v-model="selectedRows"
-                :value="item.id"
-                type="checkbox"
-                class="rounded border-gray-300"
-            />
-
-        </DataTableCell>
-
-
-        <!-- PO Number -->
-
-        <DataTableCell>
-
-            <span class="font-medium">
-                {{ item.number }}
-            </span>
-
-        </DataTableCell>
-
-
-        <!-- Order Date -->
-
-        <DataTableCell>
-
-            {{
-                item.order_date
-                    ? formatDate(item.order_date)
-                    : '-'
-            }}
-
-        </DataTableCell>
-
-
-        <!-- Supplier -->
-
-        <DataTableCell>
-
-            <div class="font-medium">
-                {{ item.supplier?.name ?? '-' }}
             </div>
+
+
+            <!-- ===================================================== -->
+            <!-- FORM -->
+            <!-- ===================================================== -->
 
             <div
-                v-if="item.supplier?.supplier_code"
-                class="text-xs text-gray-500"
+                v-else-if="view === 'form'"
+                key="form"
+                class="space-y-6"
             >
-                {{ item.supplier.supplier_code }}
-            </div>
 
-        </DataTableCell>
+                <!-- Breadcrumb -->
 
+                <div class="flex flex-wrap items-center gap-2 text-sm">
 
-        <!-- Required Date -->
+                    <span class="text-gray-500 dark:text-gray-400">
+                        Purchasing
+                    </span>
 
-        <DataTableCell>
+                    <span class="text-gray-400">/</span>
 
-            {{
-                item.required_date
-                    ? formatDate(item.required_date)
-                    : '-'
-            }}
+                    <button
+                        type="button"
+                        @click="router.visit(route('purchase-orders.index'))"
+                        class="text-gray-500 transition hover:text-blue-600"
+                    >
+                        Purchase Orders
+                    </button>
 
-        </DataTableCell>
+                    <span class="text-gray-400">/</span>
 
+                    <span class="font-medium text-gray-900 dark:text-white">
+                        {{
+                            formMode === 'create'
+                                ? 'Create Purchase Order'
+                                : 'Edit Purchase Order'
+                        }}
+                    </span>
 
-        <!-- Location -->
-
-        <DataTableCell>
-
-            <div class="font-medium">
-                {{ item.branch?.name ?? '-' }}
-            </div>
-
-            <div class="text-xs text-gray-500">
-                {{ item.warehouse?.name ?? '-' }}
-            </div>
-
-        </DataTableCell>
+                </div>
 
 
-        <!-- Items -->
+                <Card>
 
-        <DataTableCell align="right">
+                    <PurchaseOrderForm
+                        :form="form"
+                        :branches="branches"
+                        :filtered-warehouses="filteredWarehouses"
+                        :suppliers="suppliers"
+                        :filtered-variants="filteredVariants"
+                        :purchase-requests="purchaseRequests"
+                        :mode="formMode"
+                        @submit="submit"
+                        @submit-and-new="submitAndNew"
+                        @cancel="cancelForm"
+                    />
 
-            {{
-                item.total_items
-                ?? item.details_count
-                ?? item.details?.length
-                ?? 0
-            }}
-
-        </DataTableCell>
-
-
-        <!-- Total -->
-
-        <DataTableCell align="right">
-
-            <span class="font-semibold">
-                {{ formatCurrency(item.grand_total) }}
-            </span>
-
-        </DataTableCell>
-
-
-        <!-- Status -->
-
-        <DataTableCell align="center">
-
-            <StatusBadge
-                :status="item.status"
-            />
-
-        </DataTableCell>
-
-
-        <!-- Actions -->
-
-        <DataTableCell align="center">
-
-            <ActionDropdown
-
-                @view="openView(item)"
-                @edit="editPurchaseOrder(item)"
-                @duplicate="duplicate(item)"
-                @submit="openSubmit(item)"
-                @approve="openApprove(item)"
-                @reject="openReject(item)"
-                @send="openSend(item)"
-                @confirm="openConfirm(item)"
-                @cancel="openCancel(item)"
-                @delete="openDelete(item)"
-
-                :showEdit="canEdit(item)"
-                :showDuplicate="true"
-                :showSubmit="canSubmit(item)"
-                :showApprove="canApprove(item)"
-                :showReject="canReject(item)"
-                :showSend="canSend(item)"
-                :showConfirm="canConfirm(item)"
-                :showCancel="canCancel(item)"
-                :showExport="false"
-                :showHistory="false"
-                :showDelete="canDelete(item)"
-
-            />
-
-        </DataTableCell>
-
-    </DataTableRow>
-
-</DataTableBody>
-
-                
-                </DataTable>
-
-
-                <!-- Empty -->
-
-                <TableEmpty
-                    v-else
-                    icon="📦"
-                    title="No Purchase Order Found"
-                    description="There are no Purchase Order transactions available."
-                >
-
-                    <template #action>
-
-                        <BaseButton
-                            @click="create"
-                        >
-                            Create Purchase Order
-                        </BaseButton>
-
-                    </template>
-
-                </TableEmpty>
+                </Card>
 
             </div>
 
+        </Transition>
 
-            <!-- ===================================================== -->
-            <!-- Pagination -->
-            <!-- ===================================================== -->
-
-            <div class="mt-6">
-
-                <TablePagination
-                    :data="purchaseOrders"
-                    label="Purchase Order"
-                />
-
-            </div>
-
-        </Card>
-            
-        </div>
-    </div>
-        <!-- end part b-->
-
-       <!-- FORM -->
-
-        <div
-            v-else-if="view === 'form'"
-            key="form"
-            class="space-y-6"
-        >
-
-            <PageHeader
-                icon="📋"
-                :title="
-                    formMode === 'create'
-                        ? 'Create Purchase Order'
-                        : 'Edit Purchase Order'
-                "
-                :subtitle="
-                    formMode === 'create'
-                        ? 'Create a new purchase Order.'
-                        : 'Update purchase Order.'
-                "
-            />
+    </AppLayout>
 
 
-            <Card>
+    <!-- ============================================================= -->
+    <!-- MODALS -->
+    <!-- ============================================================= -->
 
-            <PurchaseOrderForm
-                :form="form"
-                :branches="branches"
-                :filtered-warehouses="filteredWarehouses"
-                :suppliers="suppliers"
-                :filtered-variants="filteredVariants"
-                :purchase-requests="purchaseRequests"
-                :mode="formMode"
-                @submit="submit"
-                @submit-and-new="submitAndNew"
-                @cancel="cancelForm"
-            />
+    <ConfirmDeleteModal
+        :show="showDelete"
+        title="Delete Purchase Order"
+        :message="deleteMessage"
+        confirm-text="Delete"
+        @close="closeDelete"
+        @confirm="confirmDelete"
+    />
 
-</Card>
 
-</div>
+    <PurchaseOrderViewModal
+        :show="showView"
+        :purchase-order="viewItem"
+        :loading="viewLoading"
+        @close="closeView"
+    />
 
-</Transition>
 
-</AppLayout>
+    <PurchaseOrderSubmitModal
+        :show="showSubmitModal"
+        :purchase-order="selectedPurchaseOrder"
+        :loading="submitLoading"
+        @close="closeSubmit"
+        @confirm="confirmSubmit"
+    />
 
-<ConfirmDeleteModal
-    :show="showDelete"
-    title="Delete Purchase Order"
-    :message="deleteMessage"
-    confirm-text="Delete"
-    @close="closeDelete"
-    @confirm="confirmDelete"
-/>
 
-<PurchaseOrderViewModal
-    :show="showView"
-    :purchase-order="viewItem"
-    :loading="viewLoading"
-    @close="closeView"
-/>
+    <PurchaseOrderApproveModal
+        :show="showApprove"
+        :purchase-order="approveItem"
+        :loading="false"
+        @close="closeApprove"
+        @confirm="confirmApprove"
+    />
 
-<PurchaseOrderSubmitModal
-    :show="showSubmitModal"
-    :purchase-order="selectedPurchaseOrder"
-    :loading="submitLoading"
-    @close="closeSubmit"
-    @confirm="confirmSubmit"
-/>
 
-<PurchaseOrderApproveModal
-    :show="showApprove"
-    :purchase-order="approveItem"
-    :loading="false"
-    @close="closeApprove"
-    @confirm="confirmApprove"
-/>
+    <PurchaseOrderRejectModal
+        :show="showReject"
+        :purchase-order="rejectItem"
+        :reason="rejectReason"
+        :loading="false"
+        @close="closeReject"
+        @update:reason="rejectReason = $event"
+        @confirm="confirmReject"
+    />
 
-<PurchaseOrderRejectModal
-    :show="showReject"
-    :purchase-order="rejectItem"
-    :reason="rejectReason"
-    :loading="false"
-    @close="closeReject"
-    @update:reason="
-        rejectReason = $event
-    "
-    @confirm="confirmReject"
-/>
 
-<PurchaseOrderSendModal
-    :show="showSend"
-    :purchase-order="sendItem"
-    :loading="false"
-    @close="closeSend"
-    @confirm="confirmSend"
-/>
+    <PurchaseOrderSendModal
+        :show="showSend"
+        :purchase-order="sendItem"
+        :loading="false"
+        @close="closeSend"
+        @confirm="confirmSend"
+    />
 
-<PurchaseOrderConfirmModal
-    :show="showConfirm"
-    :purchase-order="confirmItem"
-    :loading="false"
-    @close="closeConfirm"
-    @confirm="confirmPurchaseOrder"
-/>
 
-<PurchaseOrderCancelModal
-    :show="showCancelModal"
-    :purchase-order="selectedPurchaseOrder"
-    :loading="cancelLoading"
-    :reason="cancelReason"
-    @close="closeCancel"
-    @confirm="confirmCancel"
-    @update:reason="cancelReason = $event"
-/>
+    <PurchaseOrderConfirmModal
+        :show="showConfirm"
+        :purchase-order="confirmItem"
+        :loading="false"
+        @close="closeConfirm"
+        @confirm="confirmPurchaseOrder"
+    />
+
+
+    <PurchaseOrderCancelModal
+        :show="showCancelModal"
+        :purchase-order="selectedPurchaseOrder"
+        :loading="cancelLoading"
+        :reason="cancelReason"
+        @close="closeCancel"
+        @confirm="confirmCancel"
+        @update:reason="cancelReason = $event"
+    />
+
 </template>
 <style scoped>
 

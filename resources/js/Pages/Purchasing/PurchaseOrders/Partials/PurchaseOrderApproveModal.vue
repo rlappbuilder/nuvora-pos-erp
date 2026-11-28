@@ -1,5 +1,4 @@
 <script setup>
-
 import { computed } from 'vue'
 
 import BaseButton from '@/Components/Button/BaseButton.vue'
@@ -69,18 +68,16 @@ function confirmApprove()
 
 /*
 |--------------------------------------------------------------------------
-| Helpers
+| Number Format
 |--------------------------------------------------------------------------
 */
 
-const formatNumber = (
-    value
-) => {
+const formatNumber = (value) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
-            minimumFractionDigits: 0,
+            minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }
     ).format(
@@ -90,17 +87,63 @@ const formatNumber = (
 }
 
 
-const formatCurrency = (
-    value
-) => {
+/*
+|--------------------------------------------------------------------------
+| Unit Price Format
+|--------------------------------------------------------------------------
+*/
+
+const formatUnitPrice = (value) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Percentage Format
+|--------------------------------------------------------------------------
+*/
+
+const formatPercentage = (value) => {
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+        }
+    ).format(
+        Number(value ?? 0)
+    )
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Currency Format
+|--------------------------------------------------------------------------
+*/
+
+const formatCurrency = (value) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
             style: 'currency',
             currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }
     ).format(
         Number(value ?? 0)
@@ -137,17 +180,21 @@ const totalItems = computed(() => {
 
 const totalQuantity = computed(() => {
 
+    if (props.purchaseOrder?.total_quantity !== undefined &&
+        props.purchaseOrder?.total_quantity !== null) {
+
+        return Number(
+            props.purchaseOrder.total_quantity
+        )
+
+    }
+
     return details.value.reduce(
 
-        (
-            total,
-            detail
-        ) =>
+        (total, detail) =>
 
             total +
-            Number(
-                detail.qty ?? 0
-            ),
+            Number(detail.qty ?? 0),
 
         0
 
@@ -198,9 +245,7 @@ const grandTotal = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const getProductName = (
-    detail
-) => {
+const getProductName = (detail) => {
 
     return (
 
@@ -230,9 +275,7 @@ const getProductName = (
 |--------------------------------------------------------------------------
 */
 
-const getProductSku = (
-    detail
-) => {
+const getProductSku = (detail) => {
 
     return (
         detail
@@ -250,24 +293,26 @@ const getProductSku = (
 |--------------------------------------------------------------------------
 */
 
-const getAmount = (
-    detail
-) => {
+const getAmount = (detail) => {
 
+    if (
+        detail?.subtotal !== undefined &&
+        detail?.subtotal !== null
+    ) {
+
+        return Number(detail.subtotal)
+
+    }
+
+    // Fallback untuk data lama yang belum memiliki subtotal.
     return (
-        Number(
-            detail?.qty ?? 0
-        ) *
-        Number(
-            detail?.unit_price ?? 0
-        )
+        Number(detail?.qty ?? 0) *
+        Number(detail?.unit_price ?? 0)
     )
 
 }
 
 </script>
-
-
 <template>
 
     <Teleport to="body">
@@ -967,9 +1012,7 @@ const getAmount = (
                                                 "
                                             >
                                                 {{
-                                                    formatCurrency(
-                                                        detail.unit_price
-                                                    )
+                                                    formatUnitPrice(detail.unit_price)
                                                 }}
                                             </td>
 
@@ -986,11 +1029,9 @@ const getAmount = (
                                                     text-gray-700
                                                 "
                                             >
-                                                {{
+                                               {{
                                                     formatCurrency(
-                                                        getAmount(
-                                                            detail
-                                                        )
+                                                        getAmount(detail)
                                                     )
                                                 }}
                                             </td>
@@ -1008,10 +1049,8 @@ const getAmount = (
                                                     text-gray-700
                                                 "
                                             >
-                                                {{
-                                                    formatNumber(
-                                                        detail.discount_rate
-                                                    )
+                                               {{
+                                                    formatPercentage(detail.discount_rate)
                                                 }}%
                                             </td>
 
@@ -1028,10 +1067,8 @@ const getAmount = (
                                                     text-gray-700
                                                 "
                                             >
-                                                {{
-                                                    formatNumber(
-                                                        detail.tax_rate
-                                                    )
+                                               {{
+                                                    formatPercentage(detail.tax_rate)
                                                 }}%
                                             </td>
 
@@ -1050,9 +1087,7 @@ const getAmount = (
                                                 "
                                             >
                                                 {{
-                                                    formatCurrency(
-                                                        detail.total
-                                                    )
+                                                    formatCurrency(detail.total)
                                                 }}
                                             </td>
 

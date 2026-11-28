@@ -77,10 +77,15 @@ const totalItems = computed(() => {
 
 const totalQuantity = computed(() => {
 
+    const headerQuantity = props.purchaseOrder?.total_quantity
+
+    if (headerQuantity !== null && headerQuantity !== undefined) {
+        return headerQuantity
+    }
+
     return details.value.reduce(
         (total, detail) =>
-            total +
-            Number(detail.qty || 0),
+            total + Number(detail.qty || 0),
         0
     )
 
@@ -89,10 +94,15 @@ const totalQuantity = computed(() => {
 
 const subtotal = computed(() => {
 
+    const headerSubtotal = props.purchaseOrder?.subtotal
+
+    if (headerSubtotal !== null && headerSubtotal !== undefined) {
+        return headerSubtotal
+    }
+
     return details.value.reduce(
         (total, detail) =>
-            total +
-            Number(detail.subtotal || 0),
+            total + Number(detail.subtotal || 0),
         0
     )
 
@@ -101,10 +111,15 @@ const subtotal = computed(() => {
 
 const discountAmount = computed(() => {
 
+    const headerDiscount = props.purchaseOrder?.discount_amount
+
+    if (headerDiscount !== null && headerDiscount !== undefined) {
+        return headerDiscount
+    }
+
     return details.value.reduce(
         (total, detail) =>
-            total +
-            Number(detail.discount_amount || 0),
+            total + Number(detail.discount_amount || 0),
         0
     )
 
@@ -113,10 +128,15 @@ const discountAmount = computed(() => {
 
 const taxAmount = computed(() => {
 
+    const headerTax = props.purchaseOrder?.tax_amount
+
+    if (headerTax !== null && headerTax !== undefined) {
+        return headerTax
+    }
+
     return details.value.reduce(
         (total, detail) =>
-            total +
-            Number(detail.tax_amount || 0),
+            total + Number(detail.tax_amount || 0),
         0
     )
 
@@ -125,10 +145,15 @@ const taxAmount = computed(() => {
 
 const grandTotal = computed(() => {
 
+    const headerGrandTotal = props.purchaseOrder?.grand_total
+
+    if (headerGrandTotal !== null && headerGrandTotal !== undefined) {
+        return headerGrandTotal
+    }
+
     return details.value.reduce(
         (total, detail) =>
-            total +
-            Number(detail.total || 0),
+            total + Number(detail.total || 0),
         0
     )
 
@@ -141,12 +166,13 @@ const grandTotal = computed(() => {
 |--------------------------------------------------------------------------
 */
 
+// Quantity: tampil 2 angka desimal
 function formatNumber(value)
 {
     return new Intl.NumberFormat(
         'id-ID',
         {
-            minimumFractionDigits: 0,
+            minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }
     ).format(
@@ -155,6 +181,22 @@ function formatNumber(value)
 }
 
 
+// Unit Price: tampil maksimal 6 angka desimal
+function formatUnitPrice(value)
+{
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+        }
+    ).format(
+        Number(value || 0)
+    )
+}
+
+
+// Nominal uang: selalu 2 angka desimal
 function formatCurrency(value)
 {
     return new Intl.NumberFormat(
@@ -162,8 +204,8 @@ function formatCurrency(value)
         {
             style: 'currency',
             currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }
     ).format(
         Number(value || 0)
@@ -211,8 +253,6 @@ function formatDateTime(value)
 }
 
 </script>
-
-
 <template>
 
     <BaseModal
@@ -984,7 +1024,7 @@ function formatDateTime(value)
                                             "
                                         >
                                             {{
-                                                formatCurrency(
+                                                formatUnitPrice(
                                                     detail.unit_price
                                                 )
                                             }}

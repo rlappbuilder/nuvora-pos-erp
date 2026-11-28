@@ -10,8 +10,7 @@ import { TrashIcon } from '@heroicons/vue/24/outline'
 import FlatPickr from 'vue-flatpickr-component'
 import 'flatpickr/dist/flatpickr.css'
 
-import { computed } from 'vue'
-
+import { computed, reactive } from 'vue'
 
 /*
 |--------------------------------------------------------------------------
@@ -58,10 +57,211 @@ const props = defineProps({
 
 })
 
-
 const form = props.form
+/*
+|--------------------------------------------------------------------------
+| Unit Price Input Buffer
+|--------------------------------------------------------------------------
+|
+| Jangan langsung format value ketika user sedang mengetik.
+| Format hanya ketika blur.
+|
+*/
 
+const unitPriceInputs = reactive({})
 
+/*
+|--------------------------------------------------------------------------
+| Unit Price Key
+|--------------------------------------------------------------------------
+*/
+
+const unitPriceKeys = new WeakMap()
+
+let unitPriceKeyCounter = 0
+
+const ensureUnitPriceKey = (detail) => {
+
+    if (!unitPriceKeys.has(detail)) {
+
+        unitPriceKeyCounter++
+
+        unitPriceKeys.set(
+            detail,
+            `unit-price-${unitPriceKeyCounter}`
+        )
+
+    }
+
+    return unitPriceKeys.get(detail)
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Unit Price Helpers
+|--------------------------------------------------------------------------
+*/
+
+const unitPriceKey = (detail) => {
+
+    return ensureUnitPriceKey(detail)
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Format Unit Price
+|--------------------------------------------------------------------------
+|
+| Internal:
+| 25000
+|
+| Display:
+| 25.000,00
+|
+*/
+
+const formatUnitPrice = (value) => {
+
+    const amount = Number(value ?? 0)
+
+    if (!Number.isFinite(amount)) {
+        return ''
+    }
+
+    return new Intl.NumberFormat(
+        'id-ID',
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+        }
+    ).format(amount)
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Focus Unit Price
+|--------------------------------------------------------------------------
+*/
+
+const focusUnitPrice = (
+    detail,
+    event
+) => {
+
+    const key = unitPriceKey(detail)
+
+    const value = Number(detail.unit_price || 0)
+
+    unitPriceInputs[key] = value > 0
+        ? String(detail.unit_price)
+        : ''
+
+    event.target.value = unitPriceInputs[key]
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Update Unit Price
+|--------------------------------------------------------------------------
+*/
+
+const updateUnitPrice = (
+    detail,
+    event
+) => {
+
+    const key = unitPriceKey(detail)
+
+    let value = event.target.value
+
+    // Hanya angka dan satu titik desimal
+    value = value.replace(/[^0-9.]/g, '')
+
+    const parts = value.split('.')
+
+    if (parts.length > 2) {
+        value = `${parts[0]}.${parts.slice(1).join('')}`
+    }
+
+    // Maksimal 6 angka desimal
+    if (value.includes('.')) {
+
+        const decimalParts = value.split('.')
+
+        value =
+            decimalParts[0] +
+            '.' +
+            decimalParts[1].slice(0, 6)
+
+    }
+
+    unitPriceInputs[key] = value
+
+    detail.unit_price = value === ''
+        ? 0
+        : Number(value)
+
+    calculateDetail(detail)
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Blur Unit Price
+|--------------------------------------------------------------------------
+*/
+
+const blurUnitPrice = (
+    detail
+) => {
+
+    const key = unitPriceKey(detail)
+
+    let value = Number(detail.unit_price || 0)
+
+    if (!Number.isFinite(value) || value < 0) {
+        value = 0
+    }
+
+    detail.unit_price = Number(
+        value.toFixed(6)
+    )
+
+    unitPriceInputs[key] =
+        formatUnitPrice(detail.unit_price)
+
+    calculateDetail(detail)
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Display Unit Price
+|--------------------------------------------------------------------------
+*/
+
+const displayUnitPrice = (
+    detail
+) => {
+
+    const key = unitPriceKey(detail)
+
+    if (
+        Object.prototype.hasOwnProperty.call(
+            unitPriceInputs,
+            key
+        )
+    ) {
+        return unitPriceInputs[key]
+    }
+
+    return formatUnitPrice(detail.unit_price)
+
+}
 /*
 |--------------------------------------------------------------------------
 | Emits
@@ -74,7 +274,6 @@ const emit = defineEmits([
     'cancel',
 ])
 
-
 /*
 |--------------------------------------------------------------------------
 | Submit
@@ -82,11 +281,8 @@ const emit = defineEmits([
 */
 
 const handleSubmit = () => {
-
     emit('submit')
-
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -96,44 +292,31 @@ const handleSubmit = () => {
 
 const createEmptyDetail = () => ({
 
-    purchase_request_detail_id:
-        null,
+    purchase_request_detail_id: null,
 
-    product_variant_id:
-        null,
+    product_variant_id: null,
 
-    unit_id:
-        null,
+    unit_id: null,
 
-    qty:
-        1,
+    qty: 0,
 
-    unit_price:
-        0,
+    unit_price: 0,
 
-    discount_rate:
-        0,
+    discount_rate: 0,
 
-    discount_amount:
-        0,
+    discount_amount: 0,
 
-    tax_rate:
-        0,
+    tax_rate: 0,
 
-    tax_amount:
-        0,
+    tax_amount: 0,
 
-    subtotal:
-        0,
+    subtotal: 0,
 
-    total:
-        0,
+    total: 0,
 
-    description:
-        null,
+    description: null,
 
 })
-
 
 /*
 |--------------------------------------------------------------------------
@@ -143,48 +326,11 @@ const createEmptyDetail = () => ({
 
 const addDetail = () => {
 
-    form.details.push({
-
-        purchase_request_detail_id:
-            null,
-
-        product_variant_id:
-            null,
-
-        unit_id:
-            null,
-
-        qty:
-            1,
-
-        unit_price:
-            0,
-
-        discount_rate:
-            0,
-
-        discount_amount:
-            0,
-
-        tax_rate:
-            0,
-
-        tax_amount:
-            0,
-
-        subtotal:
-            0,
-
-        total:
-            0,
-
-        description:
-            null,
-
-    })
+    form.details.push(
+        createEmptyDetail()
+    )
 
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -192,55 +338,76 @@ const addDetail = () => {
 |--------------------------------------------------------------------------
 */
 
-const removeDetail = (
-    index
-) => {
+const removeDetail = (index) => {
 
-    if (
-        form.details.length <= 1
-    ) {
-
+    if (form.details.length <= 1) {
         return
-
     }
 
-    form.details.splice(
-        index,
-        1
-    )
+    form.details.splice(index, 1)
 
 }
 
+/*
+|--------------------------------------------------------------------------
+| Prevent Negative Numeric Input
+|--------------------------------------------------------------------------
+*/
 
+const handleNonNegativeInput = (event, detail, field) => {
+
+    const input = event.target
+    const value = input.value
+
+    // Handle negative values
+    if (value !== '' && Number(value) < 0) {
+
+        input.value = 0
+        detail[field] = 0
+
+    } else {
+
+        detail[field] = value === ''
+            ? ''
+            : Number(value)
+
+    }
+
+    calculateDetail(detail)
+
+}
+
+const preventNegativeInput = (event) => {
+
+    if (
+        event.key === '-' ||
+        event.key === 'e' ||
+        event.key === 'E'
+    ) {
+        event.preventDefault()
+    }
+
+}
 /*
 |--------------------------------------------------------------------------
 | Variant Units
 |--------------------------------------------------------------------------
 */
 
-const getUnitsForVariant = (
-    variantId
-) => {
+const getUnitsForVariant = (variantId) => {
 
     if (!variantId) {
-
         return []
-
     }
 
-    const variant =
-        props.filteredVariants.find(
-
-            item =>
-                Number(item.id) ===
-                Number(variantId)
-
-        )
+    const variant = props.filteredVariants.find(
+        item =>
+            Number(item.id) === Number(variantId)
+    )
 
     return variant?.units ?? []
 
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -248,44 +415,27 @@ const getUnitsForVariant = (
 |--------------------------------------------------------------------------
 */
 
-const changeVariant = (
-    detail
-) => {
+const changeVariant = (detail) => {
 
-    if (
-        !detail.product_variant_id
-    ) {
+    if (!detail.product_variant_id) {
 
-        detail.unit_id =
-            null
+        detail.unit_id = null
 
         return
-
     }
 
+    detail.unit_id = null
 
-    detail.unit_id =
-        null
+    const units = getUnitsForVariant(
+        detail.product_variant_id
+    )
 
-
-    const units =
-        getUnitsForVariant(
-            detail.product_variant_id
-        )
-
-
-    const defaultUnit =
-        units.find(
-            unit =>
-                unit.is_default
-        )
-
+    const defaultUnit = units.find(
+        unit => unit.is_default
+    )
 
     if (defaultUnit) {
-
-        detail.unit_id =
-            defaultUnit.id
-
+        detail.unit_id = defaultUnit.id
     }
 
 }
@@ -296,9 +446,7 @@ const changeVariant = (
 |--------------------------------------------------------------------------
 */
 
-const selectPurchaseRequest = (
-    purchaseRequestId
-) => {
+const selectPurchaseRequest = (purchaseRequestId) => {
 
     /*
     |--------------------------------------------------------------------------
@@ -309,15 +457,11 @@ const selectPurchaseRequest = (
     if (!purchaseRequestId) {
 
         form.details = [
-
             createEmptyDetail(),
-
         ]
 
         return
-
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -325,24 +469,14 @@ const selectPurchaseRequest = (
     |--------------------------------------------------------------------------
     */
 
-    const purchaseRequest =
-        props.purchaseRequests.find(
+    const purchaseRequest = props.purchaseRequests.find(
+        item =>
+            Number(item.id) === Number(purchaseRequestId)
+    )
 
-            item =>
-                Number(item.id) ===
-                Number(purchaseRequestId)
-
-        )
-
-
-    if (
-        !purchaseRequest
-    ) {
-
+    if (!purchaseRequest) {
         return
-
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -350,16 +484,12 @@ const selectPurchaseRequest = (
     |--------------------------------------------------------------------------
     */
 
-    form.branch_id =
-        purchaseRequest.branch_id
+    form.branch_id = purchaseRequest.branch_id
 
-    form.warehouse_id =
-        purchaseRequest.warehouse_id
+    form.warehouse_id = purchaseRequest.warehouse_id
 
     form.required_date =
-        purchaseRequest.required_date
-            ?? null
-
+        purchaseRequest.required_date ?? null
 
     /*
     |--------------------------------------------------------------------------
@@ -367,64 +497,43 @@ const selectPurchaseRequest = (
     |--------------------------------------------------------------------------
     */
 
-    const details =
-        purchaseRequest.details ?? []
+    const details = purchaseRequest.details ?? []
 
+    form.details = details.map(
+        detail => ({
 
-    form.details =
-        details.map(
+            purchase_request_detail_id: detail.id,
 
-            detail => ({
+            product_variant_id: detail.product_variant_id,
 
-                purchase_request_detail_id:
-                    detail.id,
+            unit_id: detail.unit_id,
 
-                product_variant_id:
-                    detail.product_variant_id,
+            qty: Number(detail.qty || 0),
 
-                unit_id:
-                    detail.unit_id,
+            /*
+            |--------------------------------------------------------------------------
+            | Pricing is entered in PO
+            |--------------------------------------------------------------------------
+            */
 
-                qty:
-                    Number(
-                        detail.qty || 0
-                    ),
+            unit_price: 0,
 
-                /*
-                |--------------------------------------------------------------------------
-                | Pricing is entered in PO
-                |--------------------------------------------------------------------------
-                */
+            discount_rate: 0,
 
-                unit_price:
-                    0,
+            discount_amount: 0,
 
-                discount_rate:
-                    0,
+            tax_rate: 0,
 
-                discount_amount:
-                    0,
+            tax_amount: 0,
 
-                tax_rate:
-                    0,
+            subtotal: 0,
 
-                tax_amount:
-                    0,
+            total: 0,
 
-                subtotal:
-                    0,
+            description: detail.description ?? null,
 
-                total:
-                    0,
-
-                description:
-                    detail.description
-                    ?? null,
-
-            })
-
-        )
-
+        })
+    )
 
     /*
     |--------------------------------------------------------------------------
@@ -432,14 +541,10 @@ const selectPurchaseRequest = (
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !form.details.length
-    ) {
+    if (!form.details.length) {
 
         form.details = [
-
             createEmptyDetail(),
-
         ]
 
     }
@@ -452,30 +557,15 @@ const selectPurchaseRequest = (
 |--------------------------------------------------------------------------
 */
 
-const calculateDetail = (
-    detail
-) => {
+const calculateDetail = (detail) => {
 
-    const qty =
-        Number(
-            detail.qty || 0
-        )
+    const qty = Number(detail.qty || 0)
 
-    const unitPrice =
-        Number(
-            detail.unit_price || 0
-        )
+    const unitPrice = Number(detail.unit_price || 0)
 
-    const discountRate =
-        Number(
-            detail.discount_rate || 0
-        )
+    const discountRate = Number(detail.discount_rate || 0)
 
-    const taxRate =
-        Number(
-            detail.tax_rate || 0
-        )
-
+    const taxRate = Number(detail.tax_rate || 0)
 
     /*
     |--------------------------------------------------------------------------
@@ -483,9 +573,7 @@ const calculateDetail = (
     |--------------------------------------------------------------------------
     */
 
-    const gross =
-        qty * unitPrice
-
+    const gross = qty * unitPrice
 
     /*
     |--------------------------------------------------------------------------
@@ -494,10 +582,7 @@ const calculateDetail = (
     */
 
     const discountAmount =
-        gross *
-        discountRate /
-        100
-
+        gross * discountRate / 100
 
     /*
     |--------------------------------------------------------------------------
@@ -506,9 +591,7 @@ const calculateDetail = (
     */
 
     const calculatedSubtotal =
-        gross -
-        discountAmount
-
+        gross - discountAmount
 
     /*
     |--------------------------------------------------------------------------
@@ -517,10 +600,7 @@ const calculateDetail = (
     */
 
     const taxAmount =
-        calculatedSubtotal *
-        taxRate /
-        100
-
+        calculatedSubtotal * taxRate / 100
 
     /*
     |--------------------------------------------------------------------------
@@ -529,32 +609,21 @@ const calculateDetail = (
     */
 
     const total =
-        calculatedSubtotal +
-        taxAmount
-
+        calculatedSubtotal + taxAmount
 
     detail.discount_amount =
-        Number(
-            discountAmount.toFixed(2)
-        )
+        Number(discountAmount.toFixed(2))
 
     detail.subtotal =
-        Number(
-            calculatedSubtotal.toFixed(2)
-        )
+        Number(calculatedSubtotal.toFixed(2))
 
     detail.tax_amount =
-        Number(
-            taxAmount.toFixed(2)
-        )
+        Number(taxAmount.toFixed(2))
 
     detail.total =
-        Number(
-            total.toFixed(2)
-        )
+        Number(total.toFixed(2))
 
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -562,21 +631,14 @@ const calculateDetail = (
 |--------------------------------------------------------------------------
 */
 
-const getGrossAmount = (
-    detail
-) => {
+const getGrossAmount = (detail) => {
 
     return (
-        Number(
-            detail.qty || 0
-        ) *
-        Number(
-            detail.unit_price || 0
-        )
+        Number(detail.qty || 0) *
+        Number(detail.unit_price || 0)
     )
 
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -590,112 +652,65 @@ const totalItems = computed(() => {
 
 })
 
-
 const totalQuantity = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            Number(
-                detail.qty || 0
-            ),
-
+            total + Number(detail.qty || 0),
         0
-
     )
 
 })
-
 
 const grossAmount = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            getGrossAmount(detail),
-
+            total + getGrossAmount(detail),
         0
-
     )
 
 })
-
 
 const discountAmount = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            Number(
-                detail.discount_amount || 0
-            ),
-
+            total + Number(detail.discount_amount || 0),
         0
-
     )
 
 })
-
 
 const subtotal = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            Number(
-                detail.subtotal || 0
-            ),
-
+            total + Number(detail.subtotal || 0),
         0
-
     )
 
 })
-
 
 const taxAmount = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            Number(
-                detail.tax_amount || 0
-            ),
-
+            total + Number(detail.tax_amount || 0),
         0
-
     )
 
 })
-
 
 const grandTotal = computed(() => {
 
     return form.details.reduce(
-
         (total, detail) =>
-
-            total +
-            Number(
-                detail.total || 0
-            ),
-
+            total + Number(detail.total || 0),
         0
-
     )
 
 })
-
 
 /*
 |--------------------------------------------------------------------------
@@ -703,17 +718,15 @@ const grandTotal = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const formatCurrency = (
-    value
-) => {
+const formatCurrency = (value) => {
 
     return new Intl.NumberFormat(
         'id-ID',
         {
             style: 'currency',
             currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }
     ).format(
         Number(value || 0)
@@ -722,11 +735,10 @@ const formatCurrency = (
 }
 
 </script>
+
 <template>
 
-    <form
-        @submit.prevent="handleSubmit"
-    >
+    <form @submit.prevent="handleSubmit">
 
         <!-- ========================================================= -->
         <!-- Purchase Order Information -->
@@ -743,9 +755,7 @@ const formatCurrency = (
 
             <FormField
                 label="Number"
-                :error="
-                    form.errors.number
-                "
+                :error="form.errors.number"
             >
 
                 <FormInput
@@ -756,15 +766,12 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Order Date -->
 
             <FormField
                 label="Order Date"
                 required
-                :error="
-                    form.errors.order_date
-                "
+                :error="form.errors.order_date"
             >
 
                 <FlatPickr
@@ -784,14 +791,11 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Required Date -->
 
             <FormField
                 label="Required Date"
-                :error="
-                    form.errors.required_date
-                "
+                :error="form.errors.required_date"
             >
 
                 <FlatPickr
@@ -811,15 +815,12 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Supplier -->
 
             <FormField
                 label="Supplier"
                 required
-                :error="
-                    form.errors.supplier_id
-                "
+                :error="form.errors.supplier_id"
             >
 
                 <SearchableSelect
@@ -832,15 +833,12 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Branch -->
 
             <FormField
                 label="Branch"
                 required
-                :error="
-                    form.errors.branch_id
-                "
+                :error="form.errors.branch_id"
             >
 
                 <SearchableSelect
@@ -853,15 +851,12 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Warehouse -->
 
             <FormField
                 label="Warehouse"
                 required
-                :error="
-                    form.errors.warehouse_id
-                "
+                :error="form.errors.warehouse_id"
             >
 
                 <SearchableSelect
@@ -874,10 +869,9 @@ const formatCurrency = (
 
             </FormField>
 
-
             <!-- Purchase Request -->
 
-           <FormField
+            <FormField
                 label="Purchase Request"
                 :error="form.errors.purchase_request_id"
             >
@@ -895,480 +889,411 @@ const formatCurrency = (
 
         </FormSection>
 
+        <!-- ========================================================= -->
+        <!-- Order Details -->
+        <!-- ========================================================= -->
 
-       <!-- ========================================================= -->
-<!-- Order Details -->
-<!-- ========================================================= -->
-
-<FormSection
-    icon="📦"
-    title="Order Details"
-    description="Add products, quantities, pricing and applicable taxes."
-    :columns="1"
->
-
-    <div class="space-y-3">
-
-        <!-- ===================================================== -->
-        <!-- Desktop / Tablet Horizontal Scroll -->
-        <!-- ===================================================== -->
-
-        <div
-            class="
-                overflow-x-auto
-                rounded-xl
-                border
-                border-gray-200
-            "
+        <FormSection
+            icon="📦"
+            title="Order Details"
+            description="Add products, quantities, pricing and applicable taxes."
+            :columns="1"
         >
 
-            <div
-                class="
-                    min-w-[1100px]
-                    p-3
-                "
-            >
+            <div class="space-y-3">
 
-                <!-- ================================================= -->
-                <!-- Table Header -->
-                <!-- ================================================= -->
+                <!-- Desktop / Tablet Horizontal Scroll -->
 
                 <div
                     class="
-                        grid
-                        grid-cols-[minmax(260px,2fr)_80px_80px_130px_140px_90px_90px_140px_80px]
-                        items-center
-                        gap-2
-                        border-b
+                        overflow-x-auto
+                        rounded-xl
+                        border
                         border-gray-200
-                        px-2
-                        pb-2
-                        text-xs
-                        font-semibold
-                        text-gray-500
                     "
                 >
 
-                    <div>
-                        Product Variant
-                    </div>
+                    <div class="min-w-[1100px] p-3">
 
-                    <div>
-                        Unit
-                    </div>
+                        <!-- Table Header -->
 
-                    <div>
-                        Qty
-                    </div>
+                        <div
+                            class="
+                                grid
+                                grid-cols-[minmax(260px,2fr)_80px_80px_130px_140px_90px_90px_140px_80px]
+                                items-center
+                                gap-2
+                                border-b
+                                border-gray-200
+                                px-2
+                                pb-2
+                                text-xs
+                                font-semibold
+                                text-gray-500
+                            "
+                        >
 
-                    <div>
-                        Unit Price
-                    </div>
+                            <div>Product Variant</div>
 
-                    <div>
-                        Amount
-                    </div>
+                            <div>Unit</div>
 
-                    <div>
-                        Disc %
-                    </div>
+                            <div>Qty</div>
 
-                    <div>
-                        Tax %
-                    </div>
+                            <div>Unit Price</div>
 
-                    <div class="text-right">
-                        Total
-                    </div>
+                            <div>Amount</div>
 
-                    <div class="text-center">
-                        Action
+                            <div>Disc %</div>
+
+                            <div>Tax %</div>
+
+                            <div class="text-right">Total</div>
+
+                            <div class="text-center">Action</div>
+
+                        </div>
+
+                        <!-- Detail Rows -->
+
+                        <div
+                            v-for="(detail, index) in form.details"
+                            :key="index"
+                            class="
+                                grid
+                                grid-cols-[minmax(260px,2fr)_80px_80px_130px_140px_90px_90px_140px_80px]
+                                items-start
+                                gap-2
+                                border-b
+                                border-gray-100
+                                px-2
+                                py-3
+                                last:border-b-0
+                            "
+                        >
+
+                            <!-- Product Variant -->
+
+                            <FormField
+                                label="Product"
+                                required
+                                :error="
+                                    form.errors[
+                                        `details.${index}.product_variant_id`
+                                    ]
+                                "
+                            >
+
+                                <SearchableSelect
+                                    v-model="detail.product_variant_id"
+                                    :options="filteredVariants"
+                                    label="label"
+                                    value-key="id"
+                                    placeholder="Select Variant"
+                                    :disabled="!!detail.purchase_request_detail_id"
+                                    @update:modelValue="changeVariant(detail)"
+                                />
+
+                            </FormField>
+
+                            <!-- Unit -->
+
+                            <FormField
+                                label="Unit"
+                                required
+                                :error="
+                                    form.errors[
+                                        `details.${index}.unit_id`
+                                    ]
+                                "
+                            >
+
+                                <SearchableSelect
+                                    v-model="detail.unit_id"
+                                    :options="
+                                        getUnitsForVariant(
+                                            detail.product_variant_id
+                                        )
+                                    "
+                                    label="label"
+                                    value-key="id"
+                                    placeholder="Unit"
+                                    :disabled="!!detail.purchase_request_detail_id"
+                                />
+
+                            </FormField>
+
+                            <!-- Qty -->
+
+                            <FormField
+                                label="Qty"
+                                required
+                                :error="
+                                    form.errors[
+                                        `details.${index}.qty`
+                                    ]
+                                "
+                            >
+
+                               <FormInput
+                                    v-model="detail.qty"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    :readonly="!!detail.purchase_request_detail_id"
+                                    @input="handleNonNegativeInput($event, detail, 'qty')"
+                                    @keydown="preventNegativeInput"
+                                />
+
+                            </FormField>
+
+                            
+                            <!-- ================================================= -->
+                            <!-- Unit Price -->
+                            <!-- ================================================= -->
+
+                            <FormField
+                                label="Unit Price"
+                                required
+                                :error="form.errors[`details.${index}.unit_price`]"
+                            >
+
+                                <input
+                                    type="text"
+                                    inputmode="decimal"
+                                    autocomplete="off"
+                                    :value="displayUnitPrice(detail)"
+                                    placeholder="0,00"
+                                    class="
+                                        w-full
+                                        rounded-xl
+                                        border
+                                        border-gray-300
+                                        bg-white
+                                        px-3
+                                        py-2.5
+                                        text-sm
+                                        text-right
+                                        transition
+                                        focus:border-indigo-500
+                                        focus:outline-none
+                                        focus:ring-2
+                                        focus:ring-indigo-100
+                                    "
+                                    @focus="
+                                        focusUnitPrice(
+                                            detail,
+                                            $event
+                                        )
+                                    "
+                                    @input="
+                                        updateUnitPrice(
+                                            detail,
+                                            $event
+                                        )
+                                    "
+                                    @blur="
+                                        blurUnitPrice(detail)
+                                    "
+                                    @keydown="preventNegativeInput"
+                                />
+
+                            </FormField>
+
+                            <!-- Amount -->
+
+                            <FormField label="Amount">
+
+                                <div
+                                    class="
+                                        flex
+                                        min-h-[38px]
+                                        items-center
+                                        justify-end
+                                        rounded-lg
+                                        border
+                                        border-gray-200
+                                        bg-gray-50
+                                        px-2
+                                        text-sm
+                                        font-medium
+                                        text-gray-700
+                                        whitespace-nowrap
+                                    "
+                                >
+
+                                    {{
+                                        formatCurrency(
+                                            getGrossAmount(detail)
+                                        )
+                                    }}
+
+                                </div>
+
+                            </FormField>
+
+                            <!-- Discount -->
+
+                            <FormField
+                                label="Disc %"
+                                :error="
+                                    form.errors[
+                                        `details.${index}.discount_rate`
+                                    ]
+                                "
+                            >
+
+                                <FormInput
+                                    v-model="detail.discount_rate"
+                                    type="number"
+                                    min="0"
+                                    step="0.0001"
+                                    placeholder="0.0000"
+                                    @input="handleNonNegativeInput($event, detail, 'discount_rate')"
+                                    @keydown="preventNegativeInput"
+                                />
+
+                            </FormField>
+
+                            <!-- Tax -->
+
+                            <FormField
+                                label="Tax %"
+                                :error="
+                                    form.errors[
+                                        `details.${index}.tax_rate`
+                                    ]
+                                "
+                            >
+
+                                <FormInput
+                                    v-model="detail.tax_rate"
+                                    type="number"
+                                    min="0"
+                                    step="0.0001"
+                                    placeholder="0.0000"
+                                    @input="handleNonNegativeInput($event, detail, 'tax_rate')"
+                                    @keydown="preventNegativeInput"
+                                />
+
+                            </FormField>
+
+                            <!-- Total -->
+
+                            <FormField label="Total">
+
+                                <div
+                                    class="
+                                        flex
+                                        min-h-[38px]
+                                        items-center
+                                        justify-end
+                                        rounded-lg
+                                        border
+                                        border-gray-200
+                                        bg-gray-50
+                                        px-2
+                                        text-sm
+                                        font-semibold
+                                        text-gray-800
+                                        whitespace-nowrap
+                                    "
+                                >
+
+                                    {{ formatCurrency(detail.total) }}
+
+                                </div>
+
+                            </FormField>
+
+                            <!-- Remove -->
+
+                            <div
+                                class="
+                                    flex
+                                    min-h-[38px]
+                                    items-center
+                                    justify-center
+                                "
+                            >
+
+                                <button
+                                    v-if="form.details.length > 1"
+                                    type="button"
+                                    class="
+                                        inline-flex
+                                        h-9
+                                        w-9
+                                        items-center
+                                        justify-center
+                                        rounded-lg
+                                        text-red-600
+                                        transition
+                                        hover:bg-red-50
+                                        hover:text-red-700
+                                        focus:outline-none
+                                        focus:ring-2
+                                        focus:ring-red-500
+                                        focus:ring-offset-1
+                                    "
+                                    title="Remove item"
+                                    @click="removeDetail(index)"
+                                >
+
+                                    <TrashIcon class="h-5 w-5" />
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
                     </div>
 
                 </div>
 
-
-                <!-- ================================================= -->
-                <!-- Detail Rows -->
-                <!-- ================================================= -->
+                <!-- Mobile Hint -->
 
                 <div
-                    v-for="(
-                        detail,
-                        index
-                    ) in form.details"
-
-                    :key="index"
-
                     class="
-                        grid
-                        grid-cols-[minmax(260px,2fr)_80px_80px_130px_140px_90px_90px_140px_80px]
-                        items-start
+                        flex
+                        items-center
                         gap-2
-                        border-b
-                        border-gray-100
-                        px-2
-                        py-3
-                        last:border-b-0
+                        text-xs
+                        text-gray-400
+                        lg:hidden
                     "
                 >
 
-                    <!-- ================================================= -->
-                    <!-- Product Variant -->
-                    <!-- ================================================= -->
+                    <span>←</span>
 
-                    <FormField
-                        label="Product"
-                        required
-                        :error="
-                            form.errors[
-                                `details.${index}.product_variant_id`
-                            ]
-                        "
+                    <span>
+                        Geser tabel ke samping untuk melihat semua kolom
+                    </span>
+
+                    <span>→</span>
+
+                </div>
+
+                <!-- Add Product -->
+
+                <div class="flex justify-start">
+
+                    <BaseButton
+                        type="button"
+                        variant="secondary"
+                        @click="addDetail"
                     >
 
-                        <SearchableSelect
-                            v-model="
-                                detail.product_variant_id
-                            "
-                            :options="
-                                filteredVariants
-                            "
-                            label="label"
-                            value-key="id"
-                            placeholder="Select Variant"
-                              :disabled="!!detail.purchase_request_detail_id"
-                            @update:modelValue="
-                                changeVariant(detail)
-                            "
-                        />
+                        + Add Product
 
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Unit -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Unit"
-                        required
-                        :error="
-                            form.errors[
-                                `details.${index}.unit_id`
-                            ]
-                        "
-                    >
-
-                        <SearchableSelect
-                            v-model="
-                                detail.unit_id
-                            "
-                            :options="
-                                getUnitsForVariant(
-                                    detail.product_variant_id
-                                )
-                            "
-                            label="label"
-                            value-key="id"
-                            placeholder="Unit"
-                            :disabled="!!detail.purchase_request_detail_id"
-                        />
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Qty -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Qty"
-                        required
-                        :error="
-                            form.errors[
-                                `details.${index}.qty`
-                            ]
-                        "
-                    >
-
-                        <FormInput
-                            v-model="
-                                detail.qty
-                            "
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            @input="
-                                calculateDetail(detail)
-                            "
-                            :readonly="!!detail.purchase_request_detail_id"
-                        />
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Unit Price -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Unit Price"
-                        required
-                        :error="
-                            form.errors[
-                                `details.${index}.unit_price`
-                            ]
-                        "
-                    >
-
-                        <FormInput
-                            v-model="
-                                detail.unit_price
-                            "
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            @input="
-                                calculateDetail(detail)
-                            "
-                        />
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Amount -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Amount"
-                    >
-
-                        <div
-                            class="
-                                flex
-                                min-h-[38px]
-                                items-center
-                                justify-end
-                                rounded-lg
-                                border
-                                border-gray-200
-                                bg-gray-50
-                                px-2
-                                text-sm
-                                font-medium
-                                text-gray-700
-                                whitespace-nowrap
-                            "
-                        >
-
-                            {{
-                                formatCurrency(
-                                    getGrossAmount(detail)
-                                )
-                            }}
-
-                        </div>
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Discount -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Disc %"
-                        :error="
-                            form.errors[
-                                `details.${index}.discount_rate`
-                            ]
-                        "
-                    >
-
-                        <FormInput
-                            v-model="
-                                detail.discount_rate
-                            "
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            @input="
-                                calculateDetail(detail)
-                            "
-                        />
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Tax -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Tax %"
-                        :error="
-                            form.errors[
-                                `details.${index}.tax_rate`
-                            ]
-                        "
-                    >
-
-                        <FormInput
-                            v-model="
-                                detail.tax_rate
-                            "
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            @input="
-                                calculateDetail(detail)
-                            "
-                        />
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Total -->
-                    <!-- ================================================= -->
-
-                    <FormField
-                        label="Total"
-                    >
-
-                        <div
-                            class="
-                                flex
-                                min-h-[38px]
-                                items-center
-                                justify-end
-                                rounded-lg
-                                border
-                                border-gray-200
-                                bg-gray-50
-                                px-2
-                                text-sm
-                                font-semibold
-                                text-gray-800
-                                whitespace-nowrap
-                            "
-                        >
-
-                            {{
-                                formatCurrency(
-                                    detail.total
-                                )
-                            }}
-
-                        </div>
-
-                    </FormField>
-
-
-                    <!-- ================================================= -->
-                    <!-- Remove -->
-                    <!-- ================================================= -->
-
-                    <div
-                        class="
-                            flex
-                            min-h-[38px]
-                            items-center
-                            justify-center
-                        "
-                    >
-
-                        <button
-                            v-if="form.details.length > 1"
-                            type="button"
-                            class="
-                                inline-flex
-                                h-9
-                                w-9
-                                items-center
-                                justify-center
-                                rounded-lg
-                                text-red-600
-                                transition
-                                hover:bg-red-50
-                                hover:text-red-700
-                                focus:outline-none
-                                focus:ring-2
-                                focus:ring-red-500
-                                focus:ring-offset-1
-                            "
-                            title="Remove item"
-                            @click="removeDetail(index)"
-                        >
-                            <TrashIcon class="h-5 w-5" />
-                        </button>
-
-                    </div>
+                    </BaseButton>
 
                 </div>
 
             </div>
 
-        </div>
-
-
-        <!-- ===================================================== -->
-        <!-- Mobile Hint -->
-        <!-- ===================================================== -->
-
-        <div
-            class="
-                flex
-                items-center
-                gap-2
-                text-xs
-                text-gray-400
-                lg:hidden
-            "
-        >
-
-            <span>
-                ←
-            </span>
-
-            <span>
-                Geser tabel ke samping untuk melihat semua kolom
-            </span>
-
-            <span>
-                →
-            </span>
-
-        </div>
-
-
-        <!-- ===================================================== -->
-        <!-- Add Product -->
-        <!-- ===================================================== -->
-
-        <div class="flex justify-start">
-
-            <BaseButton
-                type="button"
-                variant="secondary"
-                @click="addDetail"
-            >
-
-                + Add Product
-
-            </BaseButton>
-
-        </div>
-
-    </div>
-
-</FormSection>
+        </FormSection>
 
         <!-- ========================================================= -->
         <!-- Description -->
@@ -1383,15 +1308,11 @@ const formatCurrency = (
 
             <FormField
                 label="Description"
-                :error="
-                    form.errors.description
-                "
+                :error="form.errors.description"
             >
 
                 <FormTextarea
-                    v-model="
-                        form.description
-                    "
+                    v-model="form.description"
                     :rows="4"
                     placeholder="Write additional notes..."
                 />
@@ -1400,18 +1321,11 @@ const formatCurrency = (
 
         </FormSection>
 
-
         <!-- ========================================================= -->
         <!-- Summary -->
         <!-- ========================================================= -->
 
-        <div
-            class="
-                mt-6
-                flex
-                justify-end
-            "
-        >
+        <div class="mt-6 flex justify-end">
 
             <div
                 class="
@@ -1424,97 +1338,97 @@ const formatCurrency = (
                 "
             >
 
+                <div class="flex justify-between py-2 text-sm">
+
+                    <span>Total Items</span>
+
+                    <span class="font-medium">
+                        {{ totalItems }}
+                    </span>
+
+                </div>
+
+                <div class="flex justify-between py-2 text-sm">
+
+                    <span>Total Quantity</span>
+
+                    <span class="font-medium">
+                        {{ totalQuantity }}
+                    </span>
+
+                </div>
+
                 <div
                     class="
-                        w-full
-                        max-w-md
-                        rounded-xl
-                        border
-                        bg-gray-50
-                        p-5
+                        mt-2
+                        flex
+                        justify-between
+                        border-t
+                        py-2
+                        text-sm
                     "
                 >
 
-                    <div class="flex justify-between py-2 text-sm">
-                        <span>Total Items</span>
-                        <span class="font-medium">
-                            {{ totalItems }}
-                        </span>
-                    </div>
+                    <span>Gross Amount</span>
 
-                    <div class="flex justify-between py-2 text-sm">
-                        <span>Total Quantity</span>
-                        <span class="font-medium">
-                            {{ totalQuantity }}
-                        </span>
-                    </div>
+                    <span class="font-medium">
+                        {{ formatCurrency(grossAmount) }}
+                    </span>
 
-                    <div
-                        class="
-                            mt-2
-                            flex
-                            justify-between
-                            border-t
-                            py-2
-                            text-sm
-                        "
-                    >
-                        <span>Gross Amount</span>
+                </div>
 
-                        <span class="font-medium">
-                            {{ formatCurrency(grossAmount) }}
-                        </span>
-                    </div>
+                <div class="flex justify-between py-2 text-sm">
 
-                    <div class="flex justify-between py-2 text-sm">
-                        <span>Discount</span>
+                    <span>Discount</span>
 
-                        <span class="font-medium">
-                            {{ formatCurrency(discountAmount) }}
-                        </span>
-                    </div>
+                    <span class="font-medium">
+                        {{ formatCurrency(discountAmount) }}
+                    </span>
 
-                    <div class="flex justify-between py-2 text-sm">
-                        <span>Subtotal</span>
+                </div>
 
-                        <span class="font-medium">
-                            {{ formatCurrency(subtotal) }}
-                        </span>
-                    </div>
+                <div class="flex justify-between py-2 text-sm">
 
-                    <div class="flex justify-between py-2 text-sm">
-                        <span>Tax</span>
+                    <span>Subtotal</span>
 
-                        <span class="font-medium">
-                            {{ formatCurrency(taxAmount) }}
-                        </span>
-                    </div>
+                    <span class="font-medium">
+                        {{ formatCurrency(subtotal) }}
+                    </span>
 
-                    <div
-                        class="
-                            flex
-                            justify-between
-                            border-t
-                            pt-3
-                            text-base
-                            font-semibold
-                        "
-                    >
-                        <span>
-                            Grand Total
-                        </span>
+                </div>
 
-                        <span>
-                            {{ formatCurrency(grandTotal) }}
-                        </span>
-                    </div>
+                <div class="flex justify-between py-2 text-sm">
+
+                    <span>Tax</span>
+
+                    <span class="font-medium">
+                        {{ formatCurrency(taxAmount) }}
+                    </span>
+
+                </div>
+
+                <div
+                    class="
+                        flex
+                        justify-between
+                        border-t
+                        pt-3
+                        text-base
+                        font-semibold
+                    "
+                >
+
+                    <span>Grand Total</span>
+
+                    <span>
+                        {{ formatCurrency(grandTotal) }}
+                    </span>
 
                 </div>
 
             </div>
 
         </div>
-
 
         <!-- ========================================================= -->
         <!-- Actions -->
@@ -1534,19 +1448,14 @@ const formatCurrency = (
             <BaseButton
                 type="button"
                 variant="secondary"
-                @click="
-                    emit('cancel')
-                "
+                @click="emit('cancel')"
             >
                 Cancel
             </BaseButton>
 
-
             <BaseButton
                 type="submit"
-                :loading="
-                    form.processing
-                "
+                :loading="form.processing"
             >
 
                 {{
@@ -1557,19 +1466,12 @@ const formatCurrency = (
 
             </BaseButton>
 
-
             <BaseButton
-                v-if="
-                    mode === 'create'
-                "
+                v-if="mode === 'create'"
                 type="button"
                 variant="success"
-                :loading="
-                    form.processing
-                "
-                @click="
-                    emit('submitAndNew')
-                "
+                :loading="form.processing"
+                @click="emit('submitAndNew')"
             >
 
                 Save &amp; New
